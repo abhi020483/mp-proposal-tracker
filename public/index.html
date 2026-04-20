@@ -340,7 +340,122 @@
             .header { padding: 24px; }
             .timeline-periods { grid-template-columns: repeat(4, 1fr); }
             .company-cells { grid-template-columns: repeat(4, 1fr); }
+            .kanban-board { grid-template-columns: repeat(2, 1fr); }
+            .analytics-container { padding: 24px; }
+            .tab-nav { padding: 0 24px; }
         }
+
+        /* ─── Tab Navigation ─── */
+        .tab-nav {
+            background: var(--mckinsey-blue);
+            border-bottom: 1px solid rgba(255,255,255,0.12);
+            display: flex; padding: 0 60px;
+        }
+        .tab-btn {
+            padding: 13px 26px; background: transparent;
+            border: none; border-bottom: 3px solid transparent;
+            color: rgba(255,255,255,0.45); font-size: 12px;
+            font-weight: 700; letter-spacing: 1.2px; text-transform: uppercase;
+            cursor: pointer; transition: all 0.2s; font-family: Georgia, serif;
+        }
+        .tab-btn:hover { color: rgba(255,255,255,0.8); }
+        .tab-btn.active { color: #FFFFFF; border-bottom-color: var(--mckinsey-accent); }
+        .tab-pane { display: none; }
+        .tab-pane.active { display: block; }
+
+        /* ─── Analytics Container ─── */
+        .analytics-container { max-width: 1600px; margin: 0 auto; padding: 40px 60px; }
+        .analytics-filters {
+            display: flex; gap: 10px; margin-bottom: 36px; align-items: center; flex-wrap: wrap;
+        }
+        .filter-btn {
+            padding: 7px 20px; border: 1px solid var(--border-light);
+            background: var(--bg-card); color: var(--text-secondary);
+            font-size: 11px; font-weight: 700; letter-spacing: 0.8px;
+            text-transform: uppercase; cursor: pointer; transition: all 0.2s;
+        }
+        .filter-btn:hover { border-color: var(--mckinsey-blue); color: var(--mckinsey-blue); }
+        .filter-btn.active { background: var(--mckinsey-blue); color: #fff; border-color: var(--mckinsey-blue); }
+        .filter-btn.hot-active { background: var(--hot-3); border-color: var(--hot-3); color: #fff; }
+        .filter-btn.warm-active { background: var(--warm-3); border-color: var(--warm-3); color: #fff; }
+
+        .analytics-section { margin-bottom: 52px; }
+        .analytics-section-title {
+            font-size: 13px; font-weight: 700; color: var(--mckinsey-blue);
+            text-transform: uppercase; letter-spacing: 1.5px;
+            margin-bottom: 20px; padding-bottom: 10px;
+            border-bottom: 2px solid var(--border-light);
+        }
+
+        /* ─── Value Chart ─── */
+        .chart-row { display: flex; align-items: center; gap: 14px; margin-bottom: 10px; }
+        .chart-company { width: 150px; font-size: 12px; font-weight: 600; color: var(--text-primary); text-align: right; flex-shrink: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+        .chart-bar-wrap { flex: 1; background: #F0F2F4; height: 30px; overflow: hidden; position: relative; }
+        .chart-bar { height: 100%; display: flex; align-items: center; padding-left: 10px; min-width: 4px; transition: width 0.5s ease; }
+        .chart-bar.hot { background: linear-gradient(90deg, var(--hot-3), var(--hot-1)); }
+        .chart-bar.warm { background: linear-gradient(90deg, var(--warm-3), var(--warm-2)); }
+        .chart-bar.mixed { background: linear-gradient(90deg, var(--hot-3), var(--warm-2)); }
+        .chart-val { font-size: 11px; font-weight: 700; color: #fff; white-space: nowrap; }
+        .chart-val-outside { font-size: 11px; font-weight: 600; color: var(--text-secondary); white-space: nowrap; }
+
+        /* ─── Company Summary Cards ─── */
+        .company-cards { display: grid; grid-template-columns: repeat(auto-fill, minmax(210px, 1fr)); gap: 14px; }
+        .company-card {
+            background: var(--bg-card); border: 1px solid var(--border-light);
+            padding: 18px; position: relative;
+        }
+        .company-card::before {
+            content: ''; position: absolute; top: 0; left: 0; right: 0; height: 3px;
+        }
+        .company-card.all-hot::before { background: var(--hot-3); }
+        .company-card.all-warm::before { background: var(--warm-3); }
+        .company-card.mixed::before { background: linear-gradient(90deg, var(--hot-3), var(--warm-3)); }
+        .company-card-header { display: flex; align-items: center; gap: 8px; margin-bottom: 12px; }
+        .company-card-name { font-size: 13px; font-weight: 700; color: var(--mckinsey-blue); line-height: 1.2; }
+        .company-card-value { font-size: 22px; font-weight: 700; color: var(--mckinsey-blue); margin-bottom: 3px; letter-spacing: -0.5px; }
+        .company-card-meta { font-size: 12px; color: var(--text-secondary); margin-bottom: 10px; }
+        .company-card-pills { display: flex; gap: 6px; flex-wrap: wrap; }
+        .company-pill { font-size: 10px; font-weight: 700; padding: 2px 8px; text-transform: uppercase; letter-spacing: 0.5px; }
+        .company-pill.hot { background: rgba(185,28,28,0.1); color: var(--hot-3); }
+        .company-pill.warm { background: rgba(217,119,6,0.12); color: var(--warm-4); }
+
+        /* ─── Kanban ─── */
+        .kanban-board { display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px; }
+        .kanban-col { background: #F3F4F6; border: 1px solid var(--border-light); padding: 16px; }
+        .kanban-col-header { margin-bottom: 14px; }
+        .kanban-col-title { font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: 1.2px; color: var(--text-secondary); margin-bottom: 3px; }
+        .kanban-col-count { font-size: 28px; font-weight: 700; color: var(--mckinsey-blue); line-height: 1; }
+        .kanban-card {
+            background: var(--bg-card); border: 1px solid var(--border-light);
+            border-left: 3px solid; padding: 10px 12px; margin-bottom: 8px;
+        }
+        .kanban-card:last-child { margin-bottom: 0; }
+        .kanban-card.hot { border-left-color: var(--hot-3); }
+        .kanban-card.warm { border-left-color: var(--warm-3); }
+        .kanban-card-company { font-size: 9px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.8px; color: var(--text-light); margin-bottom: 3px; }
+        .kanban-card-name { font-size: 12px; font-weight: 600; color: var(--text-primary); margin-bottom: 5px; line-height: 1.3; }
+        .kanban-card-value { font-size: 11px; font-weight: 700; color: var(--mckinsey-blue); }
+
+        /* ─── Sortable Table ─── */
+        .data-table-wrap { overflow-x: auto; }
+        .data-table { width: 100%; border-collapse: collapse; font-size: 13px; background: var(--bg-card); border: 1px solid var(--border-light); }
+        .data-table th {
+            padding: 11px 16px; text-align: left; font-size: 10px; font-weight: 700;
+            text-transform: uppercase; letter-spacing: 1px; color: var(--text-secondary);
+            background: #F3F4F6; border-bottom: 2px solid var(--border-light);
+            cursor: pointer; user-select: none; white-space: nowrap;
+        }
+        .data-table th:hover { background: #E9EAEC; color: var(--mckinsey-blue); }
+        .sort-icon { margin-left: 4px; opacity: 0.35; font-style: normal; }
+        .data-table th.sorted .sort-icon { opacity: 1; color: var(--mckinsey-accent); }
+        .data-table td { padding: 10px 16px; border-bottom: 1px solid var(--border-light); vertical-align: middle; }
+        .data-table tr:last-child td { border-bottom: none; }
+        .data-table tr:hover td { background: #F9FAFB; }
+        .type-badge { display: inline-block; padding: 2px 8px; font-size: 9px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px; }
+        .type-badge.hot { background: rgba(185,28,28,0.1); color: var(--hot-3); }
+        .type-badge.warm { background: rgba(217,119,6,0.1); color: var(--warm-4); }
+        .table-value { font-weight: 700; color: var(--mckinsey-blue); }
+        .table-co { display: flex; align-items: center; gap: 8px; }
     </style>
 </head>
 <body>
@@ -384,8 +499,20 @@
             </div>
         </header>
 
-        <div class="container" id="app">
-            <div class="loading">Loading proposals from database...</div>
+        <nav class="tab-nav">
+            <button class="tab-btn active" data-tab="heatmap">⊞ Heat Map</button>
+            <button class="tab-btn" data-tab="analytics">◈ Analytics</button>
+        </nav>
+
+        <div class="tab-pane active" id="tab-heatmap">
+            <div class="container" id="app">
+                <div class="loading">Loading proposals from database...</div>
+            </div>
+        </div>
+        <div class="tab-pane" id="tab-analytics">
+            <div class="analytics-container" id="analytics-app">
+                <div class="loading">Loading analytics...</div>
+            </div>
         </div>
     </div>
 
@@ -673,6 +800,176 @@
                 </div>`;
         }
 
+        // ─── Tab Switching ───
+        document.querySelectorAll('.tab-btn').forEach(btn => {
+            btn.addEventListener('click', () => {
+                document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+                document.querySelectorAll('.tab-pane').forEach(p => p.classList.remove('active'));
+                btn.classList.add('active');
+                document.getElementById('tab-' + btn.dataset.tab).classList.add('active');
+            });
+        });
+
+        // ─── Analytics State ───
+        let _allProposals = [];
+        let _sortCol = 'value';
+        let _sortAsc = false;
+        let _filter = 'all';
+
+        function renderAnalytics(proposals) {
+            _allProposals = proposals;
+            const app = document.getElementById('analytics-app');
+            if (!app) return;
+            const filtered = _filter === 'all' ? proposals : proposals.filter(p => p.type === _filter);
+            app.innerHTML = `
+                <div class="analytics-filters">
+                    <button class="filter-btn${_filter==='all'?' active':''}" data-f="all">All Proposals</button>
+                    <button class="filter-btn${_filter==='hot'?' hot-active':''}" data-f="hot">🔴 Hot Only</button>
+                    <button class="filter-btn${_filter==='warm'?' warm-active':''}" data-f="warm">🟡 Warm Only</button>
+                </div>
+                <div class="analytics-section">
+                    <div class="analytics-section-title">Pipeline Value by Company</div>
+                    ${buildChart(filtered)}
+                </div>
+                <div class="analytics-section">
+                    <div class="analytics-section-title">Company Summary</div>
+                    ${buildCompanySummary(filtered)}
+                </div>
+                <div class="analytics-section">
+                    <div class="analytics-section-title">Pipeline by Status</div>
+                    ${buildKanban(proposals)}
+                </div>
+                <div class="analytics-section">
+                    <div class="analytics-section-title">All Proposals — Sortable Table</div>
+                    ${buildTable(filtered)}
+                </div>`;
+
+            app.querySelectorAll('.filter-btn').forEach(btn => {
+                btn.addEventListener('click', () => {
+                    _filter = btn.dataset.f;
+                    renderAnalytics(_allProposals);
+                });
+            });
+            app.querySelectorAll('.data-table th[data-col]').forEach(th => {
+                th.addEventListener('click', () => {
+                    if (_sortCol === th.dataset.col) _sortAsc = !_sortAsc;
+                    else { _sortCol = th.dataset.col; _sortAsc = true; }
+                    renderAnalytics(_allProposals);
+                });
+            });
+        }
+
+        function buildChart(proposals) {
+            const byCompany = {};
+            for (const p of proposals) {
+                if (!byCompany[p.company]) byCompany[p.company] = { hot: 0, warm: 0, total: 0 };
+                const v = parseValue(p.value);
+                byCompany[p.company][p.type] += v;
+                byCompany[p.company].total += v;
+            }
+            const sorted = Object.entries(byCompany).sort((a, b) => b[1].total - a[1].total);
+            if (!sorted.length) return '<div style="color:var(--text-light);font-style:italic">No data</div>';
+            const max = sorted[0][1].total || 1;
+            return sorted.map(([company, vals]) => {
+                const pct = Math.max((vals.total / max * 100), 2).toFixed(1);
+                const type = vals.hot > 0 && vals.warm > 0 ? 'mixed' : vals.hot > 0 ? 'hot' : 'warm';
+                const valStr = vals.total > 0 ? `₹${vals.total.toFixed(1)}L` : 'TBD';
+                const showInside = parseFloat(pct) > 22;
+                return `<div class="chart-row">
+                    <div class="chart-company">${company}</div>
+                    <div class="chart-bar-wrap">
+                        <div class="chart-bar ${type}" style="width:${pct}%">
+                            ${showInside ? `<span class="chart-val">${valStr}</span>` : ''}
+                        </div>
+                    </div>
+                    ${!showInside ? `<span class="chart-val-outside">${valStr}</span>` : ''}
+                </div>`;
+            }).join('');
+        }
+
+        function buildCompanySummary(proposals) {
+            const byCompany = {};
+            for (const p of proposals) {
+                if (!byCompany[p.company]) byCompany[p.company] = { hot: [], warm: [] };
+                byCompany[p.company][p.type].push(p);
+            }
+            const sorted = Object.entries(byCompany).sort((a, b) => {
+                const va = [...a[1].hot, ...a[1].warm].reduce((s, p) => s + parseValue(p.value), 0);
+                const vb = [...b[1].hot, ...b[1].warm].reduce((s, p) => s + parseValue(p.value), 0);
+                return vb - va;
+            });
+            if (!sorted.length) return '<div style="color:var(--text-light);font-style:italic">No data</div>';
+            return `<div class="company-cards">${sorted.map(([company, data]) => {
+                const all = [...data.hot, ...data.warm];
+                const total = all.reduce((s, p) => s + parseValue(p.value), 0);
+                const cardType = data.hot.length > 0 && data.warm.length > 0 ? 'mixed' : data.hot.length > 0 ? 'all-hot' : 'all-warm';
+                return `<div class="company-card ${cardType}">
+                    <div class="company-card-header">${logoImg(company, 28)}<span class="company-card-name">${company}</span></div>
+                    <div class="company-card-value">${total > 0 ? '₹'+total.toFixed(1)+'L' : 'TBD'}</div>
+                    <div class="company-card-meta">${all.length} proposal${all.length>1?'s':''}</div>
+                    <div class="company-card-pills">
+                        ${data.hot.length ? `<span class="company-pill hot">${data.hot.length} Hot</span>` : ''}
+                        ${data.warm.length ? `<span class="company-pill warm">${data.warm.length} Warm</span>` : ''}
+                    </div>
+                </div>`;
+            }).join('')}</div>`;
+        }
+
+        function buildKanban(proposals) {
+            const cols = [
+                { key: 'active',     label: 'Active',           fn: p => !p.status || (p.status !== 'discussion' && p.status !== 'shared' && p.status !== 'won') },
+                { key: 'discussion', label: 'In Discussion',     fn: p => p.status === 'discussion' },
+                { key: 'shared',     label: 'Proposal Shared',   fn: p => p.status === 'shared' },
+                { key: 'won',        label: 'Closed Won',        fn: p => p.status === 'won' },
+            ];
+            return `<div class="kanban-board">${cols.map(col => {
+                const cards = proposals.filter(col.fn);
+                return `<div class="kanban-col">
+                    <div class="kanban-col-header">
+                        <div class="kanban-col-title">${col.label}</div>
+                        <div class="kanban-col-count">${cards.length}</div>
+                    </div>
+                    ${cards.map(p => `<div class="kanban-card ${p.type}">
+                        <div class="kanban-card-company">${p.company}</div>
+                        <div class="kanban-card-name">${p.deliverable}</div>
+                        <div class="kanban-card-value">${p.value || 'TBD'}</div>
+                    </div>`).join('')}
+                </div>`;
+            }).join('')}</div>`;
+        }
+
+        function buildTable(proposals) {
+            const COLS = [
+                { key: 'company',     label: 'Company' },
+                { key: 'deliverable', label: 'Deliverable' },
+                { key: 'type',        label: 'Type' },
+                { key: 'value',       label: 'Value' },
+                { key: 'status',      label: 'Status' },
+                { key: 'time_period', label: 'Period' },
+            ];
+            const sorted = [...proposals].sort((a, b) => {
+                let va = _sortCol === 'value' ? parseValue(a.value) : (a[_sortCol] || '').toLowerCase();
+                let vb = _sortCol === 'value' ? parseValue(b.value) : (b[_sortCol] || '').toLowerCase();
+                if (va < vb) return _sortAsc ? -1 : 1;
+                if (va > vb) return _sortAsc ? 1 : -1;
+                return 0;
+            });
+            const thead = COLS.map(c => {
+                const active = _sortCol === c.key;
+                const icon = active ? (_sortAsc ? '▲' : '▼') : '⇅';
+                return `<th data-col="${c.key}" class="${active?'sorted':''}">${c.label} <span class="sort-icon">${icon}</span></th>`;
+            }).join('');
+            const tbody = sorted.map(p => `<tr>
+                <td><div class="table-co">${logoImg(p.company, 20)}<span>${p.company}</span></div></td>
+                <td>${p.deliverable}</td>
+                <td><span class="type-badge ${p.type}">${p.type}</span></td>
+                <td class="table-value">${p.value || 'TBD'}</td>
+                <td>${p.status ? `<span class="status-pill ${p.status}">${p.status}</span>` : '—'}</td>
+                <td>${p.time_period ? p.time_period.replace(/_/g,' ') : '—'}</td>
+            </tr>`).join('');
+            return `<div class="data-table-wrap"><table class="data-table"><thead><tr>${thead}</tr></thead><tbody>${tbody}</tbody></table></div>`;
+        }
+
         async function init() {
             document.getElementById('app').innerHTML = '<div class="loading">Loading proposals from database...</div>';
             try {
@@ -692,6 +989,7 @@
                 const summary = await summaryRes.json();
 
                 document.getElementById('app').innerHTML = renderHeatmap(proposals);
+                renderAnalytics(proposals);
 
                 document.getElementById('hot-count').textContent = summary.hot_count;
                 document.getElementById('hot-value').textContent = `₹${summary.hot_value.toFixed(2)} L pipeline value`;
