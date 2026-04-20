@@ -37,28 +37,110 @@
             min-height: 100vh;
         }
 
+        /* ─── Cover / Auth Overlay ─── */
+        #auth-overlay {
+            position: fixed; inset: 0; z-index: 9999;
+            background: var(--mckinsey-blue);
+            display: flex; align-items: center; justify-content: center;
+        }
+        #auth-overlay.hidden { display: none; }
+
+        .auth-box {
+            background: #0D2B40;
+            border: 1px solid rgba(255,255,255,0.12);
+            padding: 56px 64px;
+            width: 440px;
+            position: relative;
+        }
+        .auth-box::before {
+            content: '';
+            position: absolute; top: 0; left: 0; right: 0; height: 3px;
+            background: linear-gradient(90deg, var(--hot-3) 0%, var(--warm-3) 100%);
+        }
+
+        .auth-logo {
+            font-size: 10px; font-weight: 600; letter-spacing: 3px;
+            text-transform: uppercase; color: rgba(255,255,255,0.4);
+            margin-bottom: 32px;
+        }
+        .auth-title {
+            font-size: 24px; font-weight: 400; color: #FFFFFF;
+            margin-bottom: 6px; letter-spacing: -0.3px;
+        }
+        .auth-subtitle {
+            font-size: 13px; color: rgba(255,255,255,0.5);
+            font-style: italic; margin-bottom: 40px;
+        }
+
+        .auth-label {
+            font-size: 10px; font-weight: 600; letter-spacing: 1.5px;
+            text-transform: uppercase; color: rgba(255,255,255,0.5);
+            margin-bottom: 8px;
+        }
+        .auth-input {
+            width: 100%; padding: 14px 16px;
+            background: rgba(255,255,255,0.06);
+            border: 1px solid rgba(255,255,255,0.15);
+            color: #FFFFFF; font-size: 16px; font-family: Georgia, serif;
+            outline: none; margin-bottom: 20px;
+            transition: border-color 0.2s;
+        }
+        .auth-input:focus { border-color: var(--mckinsey-accent); }
+        .auth-input::placeholder { color: rgba(255,255,255,0.25); }
+
+        .auth-btn {
+            width: 100%; padding: 14px;
+            background: var(--mckinsey-accent);
+            border: none; color: #FFFFFF;
+            font-size: 13px; font-weight: 600; letter-spacing: 1px;
+            text-transform: uppercase; cursor: pointer;
+            transition: background 0.2s;
+        }
+        .auth-btn:hover { background: #008BB8; }
+        .auth-btn:disabled { background: rgba(255,255,255,0.15); cursor: default; }
+
+        .auth-error {
+            margin-top: 16px; font-size: 12px;
+            color: var(--hot-1); display: none; text-align: center;
+        }
+        .auth-error.visible { display: block; }
+
+        /* ─── Main App (hidden until auth) ─── */
+        #main-app { display: none; }
+        #main-app.visible { display: block; }
+
+        /* ─── Header ─── */
         .header {
             background: var(--mckinsey-blue);
             padding: 40px 60px;
             position: relative;
         }
-
         .header::after {
             content: '';
-            position: absolute;
-            bottom: 0; left: 0; right: 0;
+            position: absolute; bottom: 0; left: 0; right: 0;
             height: 4px;
             background: linear-gradient(90deg, var(--hot-3) 0%, var(--warm-3) 100%);
         }
-
         .header h1 { font-size: 28px; font-weight: 400; color: #FFFFFF; letter-spacing: -0.5px; margin-bottom: 6px; }
         .header-subtitle { font-size: 14px; color: rgba(255,255,255,0.7); font-style: italic; }
 
-        .header-meta {
+        .header-actions {
             position: absolute; right: 60px; top: 50%; transform: translateY(-50%);
-            text-align: right; color: rgba(255,255,255,0.9); font-size: 13px;
+            text-align: right;
         }
+        .header-meta { color: rgba(255,255,255,0.9); font-size: 13px; margin-bottom: 12px; }
         .header-meta strong { font-size: 24px; display: block; color: #FFFFFF; }
+
+        .sync-btn {
+            padding: 8px 18px; background: transparent;
+            border: 1px solid rgba(255,255,255,0.3); color: rgba(255,255,255,0.7);
+            font-size: 11px; font-weight: 600; letter-spacing: 1px;
+            text-transform: uppercase; cursor: pointer;
+            transition: all 0.2s;
+        }
+        .sync-btn:hover { border-color: var(--mckinsey-accent); color: var(--mckinsey-accent); }
+        .sync-btn:disabled { opacity: 0.4; cursor: default; }
+        .sync-msg { font-size: 11px; margin-top: 6px; color: rgba(255,255,255,0.5); }
 
         .container { max-width: 1600px; margin: 0 auto; padding: 40px 60px; }
 
@@ -71,7 +153,6 @@
             display: flex; gap: 0; margin-bottom: 40px;
             border: 1px solid var(--border-light); background: var(--bg-card);
         }
-
         .summary-item {
             flex: 1; padding: 24px 32px;
             border-right: 1px solid var(--border-light); position: relative;
@@ -238,17 +319,44 @@
     </style>
 </head>
 <body>
-    <header class="header">
-        <h1>Hot & Warm Proposal Heat Map</h1>
-        <p class="header-subtitle">Pipeline opportunities organized by expected closure timeline — FY 2026-27</p>
-        <div class="header-meta">
-            <strong id="total-value">Loading...</strong>
-            Total Pipeline Value
-        </div>
-    </header>
 
-    <div class="container" id="app">
-        <div class="loading">Loading proposals from database...</div>
+    <!-- ─── Auth Cover Page ─── -->
+    <div id="auth-overlay">
+        <div class="auth-box">
+            <div class="auth-logo">McKinsey &amp; Company · AM</div>
+            <h2 class="auth-title">Proposal Heat Map</h2>
+            <p class="auth-subtitle">FY 2026-27 · Restricted Access</p>
+            <div class="auth-label">Access Code</div>
+            <input
+                type="password"
+                id="password-input"
+                class="auth-input"
+                placeholder="Enter access code"
+                autocomplete="current-password"
+            />
+            <button id="login-btn" class="auth-btn">Access Dashboard</button>
+            <p id="auth-error" class="auth-error">Incorrect access code. Please try again.</p>
+        </div>
+    </div>
+
+    <!-- ─── Main App ─── -->
+    <div id="main-app">
+        <header class="header">
+            <h1>Hot &amp; Warm Proposal Heat Map</h1>
+            <p class="header-subtitle">Pipeline opportunities organized by expected closure timeline — FY 2026-27</p>
+            <div class="header-actions">
+                <div class="header-meta">
+                    <strong id="total-value">Loading...</strong>
+                    Total Pipeline Value
+                </div>
+                <button id="sync-btn" class="sync-btn">↻ Sync from Google Sheets</button>
+                <div id="sync-msg" class="sync-msg"></div>
+            </div>
+        </header>
+
+        <div class="container" id="app">
+            <div class="loading">Loading proposals from database...</div>
+        </div>
     </div>
 
     <div class="tooltip" id="tooltip">
@@ -270,9 +378,92 @@
             { key: 'june_plus', label: 'June+',      current: false },
         ];
 
+        let authToken = sessionStorage.getItem('heatmap_token');
+
+        // ─── Auth ───
+        async function login() {
+            const password = document.getElementById('password-input').value;
+            const btn = document.getElementById('login-btn');
+            const err = document.getElementById('auth-error');
+            if (!password) return;
+
+            btn.disabled = true;
+            btn.textContent = 'Verifying...';
+            err.classList.remove('visible');
+
+            try {
+                const res = await fetch('/api/auth', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ password }),
+                });
+                if (!res.ok) throw new Error('invalid');
+                const { token } = await res.json();
+                authToken = token;
+                sessionStorage.setItem('heatmap_token', token);
+                showApp();
+            } catch {
+                err.classList.add('visible');
+                btn.disabled = false;
+                btn.textContent = 'Access Dashboard';
+                document.getElementById('password-input').value = '';
+                document.getElementById('password-input').focus();
+            }
+        }
+
+        function showApp() {
+            document.getElementById('auth-overlay').classList.add('hidden');
+            document.getElementById('main-app').classList.add('visible');
+            init();
+        }
+
+        document.getElementById('login-btn').addEventListener('click', login);
+        document.getElementById('password-input').addEventListener('keydown', e => {
+            if (e.key === 'Enter') login();
+        });
+
+        // If token already in session, skip login screen
+        if (authToken) showApp();
+
+        // ─── Authenticated fetch ───
+        function apiFetch(url, options = {}) {
+            return fetch(url, {
+                ...options,
+                headers: {
+                    ...(options.headers || {}),
+                    'Authorization': `Bearer ${authToken}`,
+                    'Content-Type': 'application/json',
+                },
+            });
+        }
+
+        // ─── Sync button ───
+        document.getElementById('sync-btn').addEventListener('click', async () => {
+            const btn = document.getElementById('sync-btn');
+            const msg = document.getElementById('sync-msg');
+            btn.disabled = true;
+            btn.textContent = '↻ Syncing...';
+            msg.textContent = '';
+            try {
+                const res = await apiFetch('/api/sync', { method: 'POST' });
+                const data = await res.json();
+                if (!res.ok) throw new Error(data.error || 'Sync failed');
+                msg.style.color = 'rgba(255,255,255,0.6)';
+                msg.textContent = data.message;
+                await init(); // Reload data
+            } catch (err) {
+                msg.style.color = '#EF4444';
+                msg.textContent = err.message;
+            } finally {
+                btn.disabled = false;
+                btn.textContent = '↻ Sync from Google Sheets';
+            }
+        });
+
+        // ─── Helpers ───
         function parseValue(v) {
             if (!v || v === 'TBD') return 0;
-            const n = parseFloat(v.replace(/[₹L\s]/g, ''));
+            const n = parseFloat(v.replace(/[₹L\s,]/g, ''));
             return isNaN(n) ? 0 : n;
         }
 
@@ -282,12 +473,12 @@
             const total = proposals.reduce((s, p) => s + parseValue(p.value), 0);
             const type = hasHot ? 'hot' : 'warm';
             let level;
-            if (total === 0) level = 1;
-            else if (total < 5) level = 1;
-            else if (total < 15) level = 2;
-            else if (total < 30) level = 3;
-            else if (total < 60) level = 4;
-            else level = 5;
+            if (total === 0)       level = 1;
+            else if (total < 5)    level = 1;
+            else if (total < 15)   level = 2;
+            else if (total < 30)   level = 3;
+            else if (total < 60)   level = 4;
+            else                   level = 5;
             return `${type}-${level}`;
         }
 
@@ -309,11 +500,10 @@
         }
 
         function renderHeatmap(proposals) {
-            const companies = [...new Set(proposals.filter(p => p.time_period).map(p => p.company))];
             const scheduled = proposals.filter(p => p.time_period);
             const unscheduled = proposals.filter(p => !p.time_period);
+            const companies = [...new Set(scheduled.map(p => p.company))];
 
-            // Build rows
             const rows = companies.map(company => {
                 const cells = PERIODS.map(period => {
                     const cellProposals = scheduled.filter(p => p.company === company && p.time_period === period.key);
@@ -329,12 +519,10 @@
                     </div>`;
             }).join('');
 
-            // Period headers
             const periodHeaders = PERIODS.map(p =>
                 `<div class="period-label ${p.current ? 'current' : ''}">${p.label}</div>`
             ).join('');
 
-            // Unscheduled
             const unscheduledCards = unscheduled.map(p => `
                 <div class="unscheduled-card ${p.type}">
                     <div class="unscheduled-company">${p.company}</div>
@@ -419,18 +607,25 @@
         }
 
         async function init() {
+            document.getElementById('app').innerHTML = '<div class="loading">Loading proposals from database...</div>';
             try {
                 const [proposalsRes, summaryRes] = await Promise.all([
-                    fetch('/api/proposals'),
-                    fetch('/api/summary'),
+                    apiFetch('/api/proposals'),
+                    apiFetch('/api/summary'),
                 ]);
+
+                // Handle session expiry
+                if (proposalsRes.status === 401) {
+                    sessionStorage.removeItem('heatmap_token');
+                    location.reload();
+                    return;
+                }
 
                 const proposals = await proposalsRes.json();
                 const summary = await summaryRes.json();
 
                 document.getElementById('app').innerHTML = renderHeatmap(proposals);
 
-                // Fill summary
                 document.getElementById('hot-count').textContent = summary.hot_count;
                 document.getElementById('hot-value').textContent = `₹${summary.hot_value.toFixed(2)} L pipeline value`;
                 document.getElementById('warm-count').textContent = summary.warm_count;
@@ -463,8 +658,6 @@
                 card.addEventListener('mouseleave', () => tooltip.classList.remove('visible'));
             });
         }
-
-        init();
     </script>
 </body>
 </html>
