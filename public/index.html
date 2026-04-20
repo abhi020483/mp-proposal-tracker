@@ -417,16 +417,12 @@
             'Zydus':          'zyduslife.com',
         };
 
-        function logoImg(company, size = 28) {
+        function logoImg(company, size = 32) {
             const domain = Object.entries(COMPANY_LOGOS).find(([k]) =>
                 company.toLowerCase().includes(k.toLowerCase())
             )?.[1];
             if (!domain) return '';
-            const goog = `https://www.google.com/s2/favicons?domain=${domain}&sz=64`;
-            return `<img class="co-logo" src="https://logo.clearbit.com/${domain}"
-                width="${size}" height="${size}"
-                onerror="this.src='${goog}';this.onerror=null;"
-                alt="${company}">`;
+            return `<img class="co-logo" src="https://www.google.com/s2/favicons?domain=${domain}&sz=128" width="${size}" height="${size}" alt="${company}">`;
         }
 
         const PERIODS = [
