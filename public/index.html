@@ -266,7 +266,9 @@
         .deal-card:hover { transform: translateX(2px); }
 
         .deal-name { font-weight: 600; margin-bottom: 2px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-        .deal-value { font-size: 10px; opacity: 0.8; }
+        .deal-value { font-size: 12px; font-weight: 700; color: var(--mckinsey-blue); background: rgba(5,28,44,0.07); display: inline-block; padding: 1px 5px; border-radius: 2px; margin-bottom: 2px; }
+        .deal-card.hot .deal-value { color: var(--hot-4); background: rgba(185,28,28,0.1); }
+        .deal-card.warm .deal-value { color: var(--warm-4); background: rgba(217,119,6,0.1); }
         .deal-client { font-size: 9px; opacity: 0.6; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 
         .status-pill {
