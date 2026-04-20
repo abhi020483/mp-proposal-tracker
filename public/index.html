@@ -123,10 +123,11 @@
 
         .header-actions {
             position: absolute; right: 60px; top: 50%; transform: translateY(-50%);
-            text-align: right;
+            text-align: right; display: flex; flex-direction: column; align-items: flex-end; gap: 16px;
         }
-        .header-meta { color: rgba(255,255,255,0.9); font-size: 13px; margin-bottom: 12px; }
-        .header-meta strong { font-size: 24px; display: block; color: #FFFFFF; }
+        .header-meta { color: rgba(255,255,255,0.6); font-size: 12px; letter-spacing: 1px; text-transform: uppercase; }
+        .header-meta strong { font-size: 52px; font-weight: 700; display: block; color: #FFFFFF; line-height: 1; margin-bottom: 4px; letter-spacing: -1px; }
+        .header-btns { display: flex; align-items: center; gap: 8px; }
 
         .sync-btn {
             padding: 8px 18px; background: transparent;
@@ -367,7 +368,7 @@
                     <strong id="total-value">Loading...</strong>
                     Total Pipeline Value
                 </div>
-                <div style="display:flex;align-items:center;gap:8px;margin-top:4px;">
+                <div class="header-btns">
                     <a class="sheet-link" href="https://docs.google.com/spreadsheets/d/1LqPp8lbv13kXGfZJZnRWrO_AZmV5iwlGk66JgqcSNm8/edit#gid=942230714" target="_blank">⬡ Pipeline Sheet</a>
                     <button id="sync-btn" class="sync-btn">↻ Sync Data</button>
                 </div>
