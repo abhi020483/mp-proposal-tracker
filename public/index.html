@@ -109,8 +109,11 @@
         /* ─── Header ─── */
         .header {
             background: var(--mckinsey-blue);
-            padding: 40px 60px;
+            padding: 36px 60px;
             position: relative;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
         }
         .header::after {
             content: '';
@@ -118,12 +121,12 @@
             height: 4px;
             background: linear-gradient(90deg, var(--hot-3) 0%, var(--warm-3) 100%);
         }
+        .header-left {}
         .header h1 { font-size: 28px; font-weight: 400; color: #FFFFFF; letter-spacing: -0.5px; margin-bottom: 6px; }
         .header-subtitle { font-size: 14px; color: rgba(255,255,255,0.7); font-style: italic; }
 
         .header-actions {
-            position: absolute; right: 60px; top: 50%; transform: translateY(-50%);
-            text-align: right; display: flex; flex-direction: column; align-items: flex-end; gap: 16px;
+            text-align: right; display: flex; flex-direction: column; align-items: flex-end; gap: 14px; flex-shrink: 0;
         }
         .header-meta { color: rgba(255,255,255,0.6); font-size: 12px; letter-spacing: 1px; text-transform: uppercase; }
         .header-meta strong { font-size: 52px; font-weight: 700; display: block; color: #FFFFFF; line-height: 1; margin-bottom: 4px; letter-spacing: -1px; }
@@ -361,8 +364,10 @@
     <!-- ─── Main App ─── -->
     <div id="main-app">
         <header class="header">
-            <h1>Hot &amp; Warm Proposal Heat Map</h1>
-            <p class="header-subtitle">Pipeline opportunities organized by expected closure timeline — FY 2026-27</p>
+            <div class="header-left">
+                <h1>Hot &amp; Warm Proposal Heat Map</h1>
+                <p class="header-subtitle">Pipeline opportunities organized by expected closure timeline — FY 2026-27</p>
+            </div>
             <div class="header-actions">
                 <div class="header-meta">
                     <strong id="total-value">Loading...</strong>
