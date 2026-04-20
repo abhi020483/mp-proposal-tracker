@@ -295,7 +295,15 @@
         .unscheduled-deliverable { font-size: 12px; color: var(--text-secondary); margin-bottom: 8px; }
         .unscheduled-meta { display: flex; justify-content: space-between; align-items: center; }
         .unscheduled-client { font-size: 11px; color: var(--text-light); }
-        .unscheduled-value { font-size: 13px; font-weight: 600; color: var(--mckinsey-blue); }
+        .unscheduled-value {
+            font-size: 14px; font-weight: 700;
+            padding: 3px 10px; border-radius: 3px;
+            color: #fff; letter-spacing: 0.3px;
+        }
+        .unscheduled-card.hot .unscheduled-value { background: var(--hot-3); }
+        .unscheduled-card.warm .unscheduled-value { background: var(--warm-3); color: #fff; }
+        .unscheduled-card.hot .unscheduled-value[data-tbd="true"],
+        .unscheduled-card.warm .unscheduled-value[data-tbd="true"] { background: #9CA3AF; }
 
         .footer {
             margin-top: 60px; padding-top: 24px;
@@ -538,7 +546,7 @@
                     <div class="unscheduled-deliverable">${p.deliverable}</div>
                     <div class="unscheduled-meta">
                         <span class="unscheduled-client">${p.client_contact || '—'}</span>
-                        <span class="unscheduled-value">${p.value || 'TBD'}</span>
+                        <span class="unscheduled-value" data-tbd="${!p.value || p.value==='TBD' ? 'true' : 'false'}">${p.value || 'TBD'}</span>
                     </div>
                 </div>`).join('');
 
