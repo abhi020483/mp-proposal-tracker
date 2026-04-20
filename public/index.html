@@ -228,8 +228,13 @@
             padding: 16px; font-size: 13px; font-weight: 600;
             color: var(--text-primary); background: var(--bg-card);
             border: 1px solid var(--border-light); border-top: none;
-            display: flex; align-items: center;
+            display: flex; align-items: center; gap: 8px;
         }
+        .co-logo {
+            width: 24px; height: 24px; object-fit: contain;
+            border-radius: 3px; flex-shrink: 0; background: #fff;
+        }
+        .unscheduled-company { font-size: 14px; font-weight: 600; color: var(--mckinsey-blue); display: flex; align-items: center; gap: 8px; margin-bottom: 4px; }
 
         .company-cells {
             display: grid; grid-template-columns: repeat(8, 1fr);
@@ -291,7 +296,6 @@
         .unscheduled-card.warm { border-left-color: var(--warm-3); }
         .unscheduled-card:hover { box-shadow: 0 4px 12px rgba(0,0,0,0.08); transform: translateY(-2px); }
 
-        .unscheduled-company { font-size: 14px; font-weight: 600; color: var(--mckinsey-blue); margin-bottom: 4px; }
         .unscheduled-deliverable { font-size: 12px; color: var(--text-secondary); margin-bottom: 8px; }
         .unscheduled-meta { display: flex; justify-content: space-between; align-items: center; }
         .unscheduled-client { font-size: 11px; color: var(--text-light); }
@@ -384,6 +388,34 @@
     </div>
 
     <script>
+        const COMPANY_LOGOS = {
+            'Amneal':        'amneal.com',
+            'Aristo':        'aristopharma.com',
+            'Astra':         'astrazeneca.com',
+            'Bayer':         'bayer.com',
+            'Biological E':  'biologicale.com',
+            'Cipla':         'cipla.com',
+            'DRL':           'drreddys.com',
+            'GSK':           'gsk.com',
+            'Hetero':        'heterodrugs.com',
+            'Himalaya':      'himalayawellness.com',
+            'KOITA':         'koita.com',
+            'Lupin':         'lupin.com',
+            'Manipal College':'manipal.edu',
+            'Mankind':       'mankindpharma.com',
+            'Mega JK':       'megajk.com',
+            'Novo Nordisk':  'novonordisk.com',
+            'Zydus':         'zyduslife.com',
+        };
+
+        function logoImg(company, size = 24) {
+            const domain = Object.entries(COMPANY_LOGOS).find(([k]) =>
+                company.toLowerCase().includes(k.toLowerCase())
+            )?.[1];
+            if (!domain) return '';
+            return `<img class="co-logo" src="https://logo.clearbit.com/${domain}" width="${size}" height="${size}" onerror="this.style.display='none'" alt="">`;
+        }
+
         const PERIODS = [
             { key: 'march_wk3', label: 'March Wk-3', current: false },
             { key: 'march_wk4', label: 'March Wk-4', current: false },
@@ -531,7 +563,7 @@
 
                 return `
                     <div class="company-row">
-                        <div class="company-name">${company}</div>
+                        <div class="company-name">${logoImg(company)}${company}</div>
                         <div class="company-cells">${cells}</div>
                     </div>`;
             }).join('');
@@ -542,7 +574,7 @@
 
             const unscheduledCards = unscheduled.map(p => `
                 <div class="unscheduled-card ${p.type}">
-                    <div class="unscheduled-company">${p.company}</div>
+                    <div class="unscheduled-company">${logoImg(p.company, 28)}${p.company}</div>
                     <div class="unscheduled-deliverable">${p.deliverable}</div>
                     <div class="unscheduled-meta">
                         <span class="unscheduled-client">${p.client_contact || '—'}</span>
