@@ -421,8 +421,16 @@
             const domain = Object.entries(COMPANY_LOGOS).find(([k]) =>
                 company.toLowerCase().includes(k.toLowerCase())
             )?.[1];
-            if (!domain) return '';
-            return `<img class="co-logo" src="https://www.google.com/s2/favicons?domain=${domain}&sz=128" width="${size}" height="${size}" alt="${company}">`;
+
+            // Always generate an initials SVG as guaranteed fallback
+            const initials = company.split(/[\s\/]+/).map(w => w[0] || '').join('').toUpperCase().slice(0, 2);
+            const palette = ['#051C2C','#B91C1C','#B45309','#059669','#1D4ED8','#7C3AED','#BE185D','#0369A1'];
+            const bg = palette[company.charCodeAt(0) % palette.length];
+            const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="32" height="32"><rect width="32" height="32" rx="4" fill="${bg}"/><text x="16" y="22" text-anchor="middle" font-family="Arial" font-size="13" font-weight="bold" fill="white">${initials}</text></svg>`;
+            const fallback = 'data:image/svg+xml;base64,' + btoa(svg);
+
+            const src = domain ? `https://logo.clearbit.com/${domain}` : fallback;
+            return `<img class="co-logo" src="${src}" width="${size}" height="${size}" onerror="this.onerror=null;this.src='${fallback}'" alt="${company}">`;
         }
 
         const PERIODS = [
