@@ -395,31 +395,35 @@
 
     <script>
         const COMPANY_LOGOS = {
-            'Amneal':        'amneal.com',
-            'Aristo':        'aristopharma.com',
-            'Astra':         'astrazeneca.com',
-            'Bayer':         'bayer.com',
-            'Biological E':  'biologicale.com',
-            'Cipla':         'cipla.com',
-            'DRL':           'drreddys.com',
-            'GSK':           'gsk.com',
-            'Hetero':        'heterodrugs.com',
-            'Himalaya':      'himalayawellness.com',
-            'KOITA':         'koita.com',
-            'Lupin':         'lupin.com',
+            'Amneal':         'amneal.com',
+            'Aristo':         'aristopharma.com',
+            'Astra':          'astrazeneca.com',
+            'Bayer':          'bayer.com',
+            'Biological E':   'biologicale.com',
+            'Cipla':          'cipla.com',
+            'DRL':            'drreddys.com',
+            'GSK':            'gsk.com',
+            'Hetero':         'heterodrugs.com',
+            'Himalaya':       'himalayawellness.com',
+            'KOITA':          'koita.com',
+            'Lupin':          'lupin.com',
             'Manipal College':'manipal.edu',
-            'Mankind':       'mankindpharma.com',
-            'Mega JK':       'megajk.com',
-            'Novo Nordisk':  'novonordisk.com',
-            'Zydus':         'zyduslife.com',
+            'Mankind':        'mankindpharma.com',
+            'Mega JK':        'megajk.com',
+            'Novo Nordisk':   'novonordisk.com',
+            'Zydus':          'zyduslife.com',
         };
 
-        function logoImg(company, size = 24) {
+        function logoImg(company, size = 28) {
             const domain = Object.entries(COMPANY_LOGOS).find(([k]) =>
                 company.toLowerCase().includes(k.toLowerCase())
             )?.[1];
             if (!domain) return '';
-            return `<img class="co-logo" src="https://logo.clearbit.com/${domain}" width="${size}" height="${size}" onerror="this.style.display='none'" alt="">`;
+            const goog = `https://www.google.com/s2/favicons?domain=${domain}&sz=64`;
+            return `<img class="co-logo" src="https://logo.clearbit.com/${domain}"
+                width="${size}" height="${size}"
+                onerror="this.src='${goog}';this.onerror=null;"
+                alt="${company}">`;
         }
 
         const PERIODS = [
