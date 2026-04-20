@@ -1,0 +1,470 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Hot & Warm Proposal Heat Map | FY 2026-27</title>
+    <style>
+        :root {
+            --mckinsey-blue: #051C2C;
+            --mckinsey-blue-light: #0D3B66;
+            --mckinsey-accent: #00A9E0;
+            --hot-5: #7F1D1D;
+            --hot-4: #991B1B;
+            --hot-3: #B91C1C;
+            --hot-2: #DC2626;
+            --hot-1: #EF4444;
+            --warm-5: #92400E;
+            --warm-4: #B45309;
+            --warm-3: #D97706;
+            --warm-2: #F59E0B;
+            --warm-1: #FBBF24;
+            --bg-primary: #FAFAFA;
+            --bg-card: #FFFFFF;
+            --text-primary: #051C2C;
+            --text-secondary: #4A5568;
+            --text-light: #9CA3AF;
+            --border-light: #E5E7EB;
+        }
+
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+
+        body {
+            font-family: Georgia, 'Times New Roman', serif;
+            background: var(--bg-primary);
+            color: var(--text-primary);
+            line-height: 1.5;
+            min-height: 100vh;
+        }
+
+        .header {
+            background: var(--mckinsey-blue);
+            padding: 40px 60px;
+            position: relative;
+        }
+
+        .header::after {
+            content: '';
+            position: absolute;
+            bottom: 0; left: 0; right: 0;
+            height: 4px;
+            background: linear-gradient(90deg, var(--hot-3) 0%, var(--warm-3) 100%);
+        }
+
+        .header h1 { font-size: 28px; font-weight: 400; color: #FFFFFF; letter-spacing: -0.5px; margin-bottom: 6px; }
+        .header-subtitle { font-size: 14px; color: rgba(255,255,255,0.7); font-style: italic; }
+
+        .header-meta {
+            position: absolute; right: 60px; top: 50%; transform: translateY(-50%);
+            text-align: right; color: rgba(255,255,255,0.9); font-size: 13px;
+        }
+        .header-meta strong { font-size: 24px; display: block; color: #FFFFFF; }
+
+        .container { max-width: 1600px; margin: 0 auto; padding: 40px 60px; }
+
+        .loading {
+            text-align: center; padding: 80px; color: var(--text-secondary);
+            font-size: 16px; font-style: italic;
+        }
+
+        .summary-strip {
+            display: flex; gap: 0; margin-bottom: 40px;
+            border: 1px solid var(--border-light); background: var(--bg-card);
+        }
+
+        .summary-item {
+            flex: 1; padding: 24px 32px;
+            border-right: 1px solid var(--border-light); position: relative;
+        }
+        .summary-item:last-child { border-right: none; }
+        .summary-item::before {
+            content: ''; position: absolute; top: 0; left: 0; width: 100%; height: 3px;
+        }
+        .summary-item.hot::before { background: var(--hot-3); }
+        .summary-item.warm::before { background: var(--warm-3); }
+        .summary-item.total::before { background: var(--mckinsey-blue); }
+        .summary-item.urgent::before { background: linear-gradient(90deg, var(--hot-3), var(--warm-3)); }
+
+        .summary-label { font-size: 11px; text-transform: uppercase; letter-spacing: 1.5px; color: var(--text-secondary); margin-bottom: 8px; }
+        .summary-value { font-size: 32px; font-weight: 400; color: var(--mckinsey-blue); }
+        .summary-detail { font-size: 12px; color: var(--text-light); margin-top: 4px; }
+
+        .legend-bar {
+            display: flex; align-items: center; justify-content: space-between;
+            margin-bottom: 32px; padding: 16px 24px;
+            background: var(--bg-card); border: 1px solid var(--border-light);
+        }
+        .legend-title { font-size: 13px; font-weight: 600; color: var(--text-primary); text-transform: uppercase; letter-spacing: 1px; }
+        .legend-items { display: flex; gap: 24px; }
+        .legend-item { display: flex; align-items: center; gap: 8px; font-size: 12px; color: var(--text-secondary); }
+        .legend-dot { width: 16px; height: 16px; border-radius: 2px; }
+        .legend-gradient { display: flex; align-items: center; gap: 8px; }
+        .gradient-bar { width: 120px; height: 12px; border-radius: 2px; }
+        .gradient-bar.hot { background: linear-gradient(90deg, var(--hot-1), var(--hot-5)); }
+        .gradient-bar.warm { background: linear-gradient(90deg, var(--warm-1), var(--warm-5)); }
+        .gradient-label { font-size: 10px; color: var(--text-light); }
+
+        .heatmap-section { margin-bottom: 48px; }
+
+        .section-header {
+            display: flex; align-items: center; gap: 16px; margin-bottom: 20px;
+            padding-bottom: 12px; border-bottom: 2px solid var(--border-light);
+        }
+        .section-title { font-size: 18px; font-weight: 600; color: var(--mckinsey-blue); }
+        .section-count { font-size: 13px; color: var(--text-secondary); font-style: italic; }
+
+        .timeline-grid { display: grid; grid-template-columns: 140px 1fr; gap: 0; }
+
+        .timeline-corner {
+            background: #F3F4F6; padding: 12px 16px;
+            font-size: 11px; font-weight: 600; text-transform: uppercase;
+            letter-spacing: 1px; color: var(--text-secondary);
+            border: 1px solid var(--border-light);
+        }
+
+        .timeline-periods {
+            display: grid; grid-template-columns: repeat(8, 1fr);
+            background: #F3F4F6;
+            border: 1px solid var(--border-light); border-left: none;
+        }
+
+        .period-label {
+            padding: 12px 8px; font-size: 10px; font-weight: 600;
+            text-transform: uppercase; letter-spacing: 0.5px;
+            color: var(--text-secondary); text-align: center;
+            border-right: 1px solid var(--border-light);
+        }
+        .period-label:last-child { border-right: none; }
+        .period-label.current { background: var(--mckinsey-blue); color: #FFFFFF; }
+
+        .company-row { display: contents; }
+
+        .company-name {
+            padding: 16px; font-size: 13px; font-weight: 600;
+            color: var(--text-primary); background: var(--bg-card);
+            border: 1px solid var(--border-light); border-top: none;
+            display: flex; align-items: center;
+        }
+
+        .company-cells {
+            display: grid; grid-template-columns: repeat(8, 1fr);
+            border: 1px solid var(--border-light); border-left: none; border-top: none;
+        }
+
+        .heat-cell {
+            min-height: 60px; padding: 8px;
+            border-right: 1px solid var(--border-light);
+            display: flex; flex-direction: column; gap: 4px;
+            background: var(--bg-card);
+            transition: all 0.2s ease;
+        }
+        .heat-cell:last-child { border-right: none; }
+        .heat-cell:hover { transform: scale(1.02); z-index: 10; box-shadow: 0 4px 12px rgba(0,0,0,0.15); }
+
+        .heat-cell.hot-1 { background: rgba(239,68,68,0.15); }
+        .heat-cell.hot-2 { background: rgba(220,38,38,0.25); }
+        .heat-cell.hot-3 { background: rgba(185,28,28,0.35); }
+        .heat-cell.hot-4 { background: rgba(153,27,27,0.45); }
+        .heat-cell.hot-5 { background: rgba(127,29,29,0.55); }
+        .heat-cell.warm-1 { background: rgba(251,191,36,0.15); }
+        .heat-cell.warm-2 { background: rgba(245,158,11,0.25); }
+        .heat-cell.warm-3 { background: rgba(217,119,6,0.35); }
+        .heat-cell.warm-4 { background: rgba(180,83,9,0.45); }
+        .heat-cell.warm-5 { background: rgba(146,64,14,0.55); }
+
+        .deal-card {
+            padding: 6px 8px; border-radius: 3px; font-size: 11px;
+            cursor: pointer; transition: all 0.15s ease; border-left: 3px solid;
+        }
+        .deal-card.hot { background: rgba(185,28,28,0.12); border-left-color: var(--hot-3); color: var(--hot-5); }
+        .deal-card.warm { background: rgba(217,119,6,0.12); border-left-color: var(--warm-3); color: var(--warm-5); }
+        .deal-card:hover { transform: translateX(2px); }
+
+        .deal-name { font-weight: 600; margin-bottom: 2px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+        .deal-value { font-size: 10px; opacity: 0.8; }
+        .deal-client { font-size: 9px; opacity: 0.6; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+
+        .status-pill {
+            display: inline-block; padding: 2px 6px; font-size: 8px; font-weight: 600;
+            text-transform: uppercase; letter-spacing: 0.5px; border-radius: 2px; margin-top: 3px;
+        }
+        .status-pill.won { background: #059669; color: #FFFFFF; }
+        .status-pill.shared { background: var(--mckinsey-accent); color: #FFFFFF; }
+        .status-pill.discussion { background: #8B5CF6; color: #FFFFFF; }
+
+        .unscheduled-section { margin-top: 48px; }
+        .unscheduled-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 12px; }
+
+        .unscheduled-card {
+            padding: 16px; background: var(--bg-card);
+            border: 1px solid var(--border-light); border-left: 4px solid;
+            transition: all 0.2s ease;
+        }
+        .unscheduled-card.hot { border-left-color: var(--hot-3); }
+        .unscheduled-card.warm { border-left-color: var(--warm-3); }
+        .unscheduled-card:hover { box-shadow: 0 4px 12px rgba(0,0,0,0.08); transform: translateY(-2px); }
+
+        .unscheduled-company { font-size: 14px; font-weight: 600; color: var(--mckinsey-blue); margin-bottom: 4px; }
+        .unscheduled-deliverable { font-size: 12px; color: var(--text-secondary); margin-bottom: 8px; }
+        .unscheduled-meta { display: flex; justify-content: space-between; align-items: center; }
+        .unscheduled-client { font-size: 11px; color: var(--text-light); }
+        .unscheduled-value { font-size: 13px; font-weight: 600; color: var(--mckinsey-blue); }
+
+        .footer {
+            margin-top: 60px; padding-top: 24px;
+            border-top: 1px solid var(--border-light);
+            display: flex; justify-content: space-between;
+            font-size: 11px; color: var(--text-light);
+        }
+
+        .tooltip {
+            display: none; position: fixed;
+            background: var(--mckinsey-blue); color: #FFFFFF;
+            padding: 12px 16px; border-radius: 4px; font-size: 12px;
+            max-width: 280px; z-index: 1000;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.25);
+        }
+        .tooltip.visible { display: block; }
+        .tooltip-title { font-weight: 600; margin-bottom: 6px; font-size: 14px; }
+        .tooltip-row { display: flex; justify-content: space-between; margin-bottom: 3px; opacity: 0.9; }
+        .tooltip-label { opacity: 0.7; }
+
+        @media (max-width: 1200px) {
+            .container { padding: 24px; }
+            .header { padding: 24px; }
+            .timeline-periods { grid-template-columns: repeat(4, 1fr); }
+            .company-cells { grid-template-columns: repeat(4, 1fr); }
+        }
+    </style>
+</head>
+<body>
+    <header class="header">
+        <h1>Hot & Warm Proposal Heat Map</h1>
+        <p class="header-subtitle">Pipeline opportunities organized by expected closure timeline — FY 2026-27</p>
+        <div class="header-meta">
+            <strong id="total-value">Loading...</strong>
+            Total Pipeline Value
+        </div>
+    </header>
+
+    <div class="container" id="app">
+        <div class="loading">Loading proposals from database...</div>
+    </div>
+
+    <div class="tooltip" id="tooltip">
+        <div class="tooltip-title"></div>
+        <div class="tooltip-row"><span class="tooltip-label">Client:</span><span class="tooltip-client"></span></div>
+        <div class="tooltip-row"><span class="tooltip-label">Value:</span><span class="tooltip-value"></span></div>
+        <div class="tooltip-row"><span class="tooltip-label">Status:</span><span class="tooltip-status"></span></div>
+    </div>
+
+    <script>
+        const PERIODS = [
+            { key: 'march_wk3', label: 'March Wk-3', current: false },
+            { key: 'march_wk4', label: 'March Wk-4', current: false },
+            { key: 'april_wk1', label: 'April Wk-1', current: true },
+            { key: 'april_wk2', label: 'April Wk-2', current: true },
+            { key: 'april_wk3', label: 'April Wk-3', current: false },
+            { key: 'april_wk4', label: 'April Wk-4', current: false },
+            { key: 'may',       label: 'May',        current: false },
+            { key: 'june_plus', label: 'June+',      current: false },
+        ];
+
+        function parseValue(v) {
+            if (!v || v === 'TBD') return 0;
+            const n = parseFloat(v.replace(/[₹L\s]/g, ''));
+            return isNaN(n) ? 0 : n;
+        }
+
+        function cellIntensity(proposals) {
+            if (!proposals.length) return null;
+            const hasHot = proposals.some(p => p.type === 'hot');
+            const total = proposals.reduce((s, p) => s + parseValue(p.value), 0);
+            const type = hasHot ? 'hot' : 'warm';
+            let level;
+            if (total === 0) level = 1;
+            else if (total < 5) level = 1;
+            else if (total < 15) level = 2;
+            else if (total < 30) level = 3;
+            else if (total < 60) level = 4;
+            else level = 5;
+            return `${type}-${level}`;
+        }
+
+        function renderDealCard(p) {
+            const statusHtml = p.status ? `<span class="status-pill ${p.status}">${p.status}</span>` : '';
+            const clientHtml = p.client_contact ? `<div class="deal-client">${p.client_contact}</div>` : '';
+            return `
+                <div class="deal-card ${p.type}"
+                     data-company="${p.company}"
+                     data-deliverable="${p.deliverable}"
+                     data-value="${p.value || 'TBD'}"
+                     data-client="${p.client_contact || '—'}"
+                     data-status="${p.status || 'Proposal Shared'}">
+                    <div class="deal-name">${p.deliverable}</div>
+                    <div class="deal-value">${p.value || 'TBD'}</div>
+                    ${clientHtml}
+                    ${statusHtml}
+                </div>`;
+        }
+
+        function renderHeatmap(proposals) {
+            const companies = [...new Set(proposals.filter(p => p.time_period).map(p => p.company))];
+            const scheduled = proposals.filter(p => p.time_period);
+            const unscheduled = proposals.filter(p => !p.time_period);
+
+            // Build rows
+            const rows = companies.map(company => {
+                const cells = PERIODS.map(period => {
+                    const cellProposals = scheduled.filter(p => p.company === company && p.time_period === period.key);
+                    const intensity = cellIntensity(cellProposals);
+                    const intensityClass = intensity ? `heat-cell ${intensity}` : 'heat-cell';
+                    return `<div class="${intensityClass}">${cellProposals.map(renderDealCard).join('')}</div>`;
+                }).join('');
+
+                return `
+                    <div class="company-row">
+                        <div class="company-name">${company}</div>
+                        <div class="company-cells">${cells}</div>
+                    </div>`;
+            }).join('');
+
+            // Period headers
+            const periodHeaders = PERIODS.map(p =>
+                `<div class="period-label ${p.current ? 'current' : ''}">${p.label}</div>`
+            ).join('');
+
+            // Unscheduled
+            const unscheduledCards = unscheduled.map(p => `
+                <div class="unscheduled-card ${p.type}">
+                    <div class="unscheduled-company">${p.company}</div>
+                    <div class="unscheduled-deliverable">${p.deliverable}</div>
+                    <div class="unscheduled-meta">
+                        <span class="unscheduled-client">${p.client_contact || '—'}</span>
+                        <span class="unscheduled-value">${p.value || 'TBD'}</span>
+                    </div>
+                </div>`).join('');
+
+            return `
+                <div class="summary-strip" id="summary-strip">
+                    <div class="summary-item hot">
+                        <div class="summary-label">Hot Proposals</div>
+                        <div class="summary-value" id="hot-count">—</div>
+                        <div class="summary-detail" id="hot-value">loading...</div>
+                    </div>
+                    <div class="summary-item warm">
+                        <div class="summary-label">Warm Proposals</div>
+                        <div class="summary-value" id="warm-count">—</div>
+                        <div class="summary-detail" id="warm-value">loading...</div>
+                    </div>
+                    <div class="summary-item urgent">
+                        <div class="summary-label">Closing This Week</div>
+                        <div class="summary-value" id="closing-now">—</div>
+                        <div class="summary-detail">April Wk-1 &amp; Wk-2</div>
+                    </div>
+                    <div class="summary-item total">
+                        <div class="summary-label">Closed Won (YTD)</div>
+                        <div class="summary-value" id="won-count">—</div>
+                        <div class="summary-detail" id="won-value">loading...</div>
+                    </div>
+                </div>
+
+                <div class="legend-bar">
+                    <div class="legend-title">Heat Intensity by Value</div>
+                    <div class="legend-items">
+                        <div class="legend-gradient">
+                            <span class="gradient-label">Low</span>
+                            <div class="gradient-bar hot"></div>
+                            <span class="gradient-label">High</span>
+                            <span style="margin-left:8px;font-weight:600;color:var(--hot-3)">HOT</span>
+                        </div>
+                        <div class="legend-gradient">
+                            <span class="gradient-label">Low</span>
+                            <div class="gradient-bar warm"></div>
+                            <span class="gradient-label">High</span>
+                            <span style="margin-left:8px;font-weight:600;color:var(--warm-3)">WARM</span>
+                        </div>
+                        <div class="legend-item">
+                            <div class="legend-dot" style="background:#059669"></div>
+                            <span>Closed Won</span>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="heatmap-section">
+                    <div class="section-header">
+                        <div class="section-title">Closure Timeline Heat Map</div>
+                        <div class="section-count">Showing ${scheduled.length} active proposals across 8 time periods</div>
+                    </div>
+                    <div class="timeline-grid">
+                        <div class="timeline-corner">Company</div>
+                        <div class="timeline-periods">${periodHeaders}</div>
+                        ${rows}
+                    </div>
+                </div>
+
+                ${unscheduled.length ? `
+                <div class="unscheduled-section">
+                    <div class="section-header">
+                        <div class="section-title">Proposals Without Closure Date</div>
+                        <div class="section-count">Requires follow-up for timeline confirmation</div>
+                    </div>
+                    <div class="unscheduled-grid">${unscheduledCards}</div>
+                </div>` : ''}
+
+                <div class="footer">
+                    <div><strong>Heat Intensity:</strong> Darker shades indicate higher deal values within the cell</div>
+                    <div><span style="font-style:italic">Data Source: AM Sales Pipeline FY 2026-27 — Hot &amp; Warm Proposals</span></div>
+                </div>`;
+        }
+
+        async function init() {
+            try {
+                const [proposalsRes, summaryRes] = await Promise.all([
+                    fetch('/api/proposals'),
+                    fetch('/api/summary'),
+                ]);
+
+                const proposals = await proposalsRes.json();
+                const summary = await summaryRes.json();
+
+                document.getElementById('app').innerHTML = renderHeatmap(proposals);
+
+                // Fill summary
+                document.getElementById('hot-count').textContent = summary.hot_count;
+                document.getElementById('hot-value').textContent = `₹${summary.hot_value.toFixed(2)} L pipeline value`;
+                document.getElementById('warm-count').textContent = summary.warm_count;
+                document.getElementById('warm-value').textContent = `₹${summary.warm_value.toFixed(2)} L pipeline value`;
+                document.getElementById('closing-now').textContent = summary.closing_now;
+                document.getElementById('won-count').textContent = summary.won_count;
+                document.getElementById('won-value').textContent = `₹${summary.won_value.toFixed(2)} L converted`;
+                document.getElementById('total-value').textContent = `₹${summary.total_value.toFixed(2)} L`;
+
+                setupTooltips();
+            } catch (err) {
+                document.getElementById('app').innerHTML = `<div class="loading" style="color:red">Error loading data: ${err.message}</div>`;
+            }
+        }
+
+        function setupTooltips() {
+            const tooltip = document.getElementById('tooltip');
+            document.querySelectorAll('.deal-card').forEach(card => {
+                card.addEventListener('mouseenter', () => {
+                    tooltip.querySelector('.tooltip-title').textContent = `${card.dataset.company} — ${card.dataset.deliverable}`;
+                    tooltip.querySelector('.tooltip-client').textContent = card.dataset.client;
+                    tooltip.querySelector('.tooltip-value').textContent = card.dataset.value;
+                    tooltip.querySelector('.tooltip-status').textContent = card.dataset.status;
+                    tooltip.classList.add('visible');
+                });
+                card.addEventListener('mousemove', e => {
+                    tooltip.style.left = (e.pageX + 15) + 'px';
+                    tooltip.style.top = (e.pageY + 15) + 'px';
+                });
+                card.addEventListener('mouseleave', () => tooltip.classList.remove('visible'));
+            });
+        }
+
+        init();
+    </script>
+</body>
+</html>
