@@ -63,7 +63,7 @@ app.get('/api/summary', requireAuth, async (req, res) => {
   const hot = data.filter(p => p.type === 'hot');
   const warm = data.filter(p => p.type === 'warm');
   const won = data.filter(p => p.status === 'won');
-  const closingNow = data.filter(p => ['april_wk1', 'april_wk2'].includes(p.time_period));
+  const closingNow = data.filter(p => ['april_wk3', 'april_wk4'].includes(p.time_period));
 
   res.json({
     hot_count: hot.length,
@@ -113,7 +113,7 @@ function mapTimePeriod(val) {
 function mapStatus(val) {
   if (!val) return null;
   const v = val.toLowerCase().trim();
-  if (v === 'won') return 'won';
+  if (v === 'won' || v === 'closed' || v === 'closed won' || v === 'close' || v === 'completed') return 'won';
   if (v === 'shared') return 'shared';
   if (v === 'discussion') return 'discussion';
   return null;

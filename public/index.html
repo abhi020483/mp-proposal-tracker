@@ -436,10 +436,10 @@
         const PERIODS = [
             { key: 'march_wk3', label: 'March Wk-3', current: false },
             { key: 'march_wk4', label: 'March Wk-4', current: false },
-            { key: 'april_wk1', label: 'April Wk-1', current: true },
-            { key: 'april_wk2', label: 'April Wk-2', current: true },
-            { key: 'april_wk3', label: 'April Wk-3', current: false },
-            { key: 'april_wk4', label: 'April Wk-4', current: false },
+            { key: 'april_wk1', label: 'April Wk-1', current: false },
+            { key: 'april_wk2', label: 'April Wk-2', current: false },
+            { key: 'april_wk3', label: 'April Wk-3', current: true },
+            { key: 'april_wk4', label: 'April Wk-4', current: true },
             { key: 'may',       label: 'May',        current: false },
             { key: 'june_plus', label: 'June+',      current: false },
         ];
@@ -566,8 +566,9 @@
         }
 
         function renderHeatmap(proposals) {
-            const scheduled = proposals.filter(p => p.time_period);
-            const unscheduled = proposals.filter(p => !p.time_period);
+            const active = proposals.filter(p => p.status !== 'won');
+            const scheduled = active.filter(p => p.time_period);
+            const unscheduled = active.filter(p => !p.time_period);
             const companies = [...new Set(scheduled.map(p => p.company))];
 
             const rows = companies.map(company => {
@@ -614,7 +615,7 @@
                     <div class="summary-item urgent">
                         <div class="summary-label">Closing This Week</div>
                         <div class="summary-value" id="closing-now">—</div>
-                        <div class="summary-detail">April Wk-1 &amp; Wk-2</div>
+                        <div class="summary-detail">April Wk-3 &amp; Wk-4</div>
                     </div>
                     <div class="summary-item total">
                         <div class="summary-label">Closed Won (YTD)</div>
