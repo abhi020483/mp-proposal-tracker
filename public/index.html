@@ -40,14 +40,15 @@
         /* ─── Cover / Auth Overlay ─── */
         #auth-overlay {
             position: fixed; inset: 0; z-index: 9999;
-            background: var(--mckinsey-blue);
+            background: #FFFFFF;
             display: flex; align-items: center; justify-content: center;
         }
         #auth-overlay.hidden { display: none; }
 
         .auth-box {
-            background: #0D2B40;
-            border: 1px solid rgba(255,255,255,0.12);
+            background: #FFFFFF;
+            border: 1px solid var(--border-light);
+            box-shadow: 0 8px 40px rgba(0,0,0,0.10);
             padding: 56px 64px;
             width: 440px;
             position: relative;
@@ -60,29 +61,29 @@
 
         .auth-logo-img { margin-bottom: 32px; }
         .auth-title {
-            font-size: 24px; font-weight: 400; color: #FFFFFF;
+            font-size: 24px; font-weight: 400; color: var(--mckinsey-blue);
             margin-bottom: 6px; letter-spacing: -0.3px;
         }
         .auth-subtitle {
-            font-size: 13px; color: rgba(255,255,255,0.5);
+            font-size: 13px; color: var(--text-secondary);
             font-style: italic; margin-bottom: 40px;
         }
 
         .auth-label {
             font-size: 10px; font-weight: 600; letter-spacing: 1.5px;
-            text-transform: uppercase; color: rgba(255,255,255,0.5);
+            text-transform: uppercase; color: var(--text-secondary);
             margin-bottom: 8px;
         }
         .auth-input {
             width: 100%; padding: 14px 16px;
-            background: rgba(255,255,255,0.06);
-            border: 1px solid rgba(255,255,255,0.15);
-            color: #FFFFFF; font-size: 16px; font-family: Georgia, serif;
+            background: #F9FAFB;
+            border: 1px solid var(--border-light);
+            color: var(--text-primary); font-size: 16px; font-family: Georgia, serif;
             outline: none; margin-bottom: 20px;
             transition: border-color 0.2s;
         }
-        .auth-input:focus { border-color: var(--mckinsey-accent); }
-        .auth-input::placeholder { color: rgba(255,255,255,0.25); }
+        .auth-input:focus { border-color: var(--mckinsey-accent); background: #FFFFFF; }
+        .auth-input::placeholder { color: var(--text-light); }
 
         .auth-btn {
             width: 100%; padding: 14px;
