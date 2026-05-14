@@ -60,10 +60,11 @@ app.get('/api/summary', requireAuth, async (req, res) => {
     return isNaN(n) ? 0 : n;
   };
 
-  const hot = data.filter(p => p.type === 'hot');
-  const warm = data.filter(p => p.type === 'warm');
   const won = data.filter(p => p.status === 'won');
-  const closingNow = data.filter(p => ['april_wk3', 'april_wk4'].includes(p.time_period));
+  const active = data.filter(p => p.status !== 'won');
+  const hot = active.filter(p => p.type === 'hot');
+  const warm = active.filter(p => p.type === 'warm');
+  const closingNow = active.filter(p => p.time_period === 'may');
 
   res.json({
     hot_count: hot.length,
@@ -73,7 +74,7 @@ app.get('/api/summary', requireAuth, async (req, res) => {
     closing_now: closingNow.length,
     won_count: won.length,
     won_value: won.reduce((s, p) => s + parseValue(p.value), 0),
-    total_value: data.reduce((s, p) => s + parseValue(p.value), 0),
+    total_value: active.reduce((s, p) => s + parseValue(p.value), 0),
   });
 });
 
@@ -113,9 +114,9 @@ function mapTimePeriod(val) {
 function mapStatus(val) {
   if (!val) return null;
   const v = val.toLowerCase().trim();
-  if (v === 'won' || v === 'closed' || v === 'closed won' || v === 'close' || v === 'completed') return 'won';
-  if (v === 'shared') return 'shared';
-  if (v === 'discussion') return 'discussion';
+  if (v.includes('won') || v.includes('closed') || v === 'completed') return 'won';
+  if (v.includes('shared') || v.includes('requested')) return 'shared';
+  if (v.includes('discussion')) return 'discussion';
   return null;
 }
 
@@ -163,14 +164,18 @@ app.post('/api/sync', requireAuth, async (req, res) => {
       const deliverable = (cols[idx.deliverable] || '').trim();
       if (!company || !deliverable) continue;
 
+      // Some rows have extra blank columns — fall back to cols 10/11 if primary status/closure cols are empty
+      const rawStatus = cols[idx.status]?.trim() || cols[10]?.trim() || '';
+      const rawClosure = cols[idx.closure]?.trim() || cols[11]?.trim() || '';
+
       proposals.push({
         type,
         company,
         client_contact: cols[idx.client]?.trim() || null,
         deliverable,
         value: cols[idx.value]?.trim() || null,
-        status: mapStatus(cols[idx.status]),
-        time_period: mapTimePeriod(cols[idx.closure]),
+        status: mapStatus(rawStatus),
+        time_period: mapTimePeriod(rawClosure),
       });
     }
 
