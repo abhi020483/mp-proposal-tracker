@@ -604,6 +604,33 @@ input  { font-family: inherit; }
 .won-banner__val .u { font-size: 14px; color: var(--won); opacity: .6; font-weight: 500; margin-left: 4px; }
 .won-banner__sub { font-size: 13px; color: var(--won); opacity: .75; }
 
+/* ─── Won stats strip ────────────────────────────────────── */
+.won-stats {
+  display: grid; grid-template-columns: repeat(3,1fr);
+  border: 1px solid var(--line); background: var(--surface);
+  border-radius: var(--radius); overflow: hidden; margin-bottom: 4px;
+}
+.won-stat {
+  padding: 16px 20px; border-right: 1px solid var(--line);
+  display: flex; flex-direction: column; gap: 5px;
+}
+.won-stat:last-child { border-right: none; }
+.won-stat__label {
+  font-size: 11px; color: var(--ink-3); letter-spacing: 0.06em;
+  text-transform: uppercase; font-weight: 500;
+  display: flex; align-items: center; gap: 7px;
+}
+.won-stat__label .ddot { width: 7px; height: 7px; border-radius: 50%; flex-shrink: 0; }
+.won-stat__value {
+  font-family: var(--font-mono); font-size: 26px; font-weight: 600;
+  letter-spacing: -0.03em; color: var(--won); line-height: 1;
+  display: flex; align-items: baseline; gap: 3px;
+}
+.won-stat__value .u { font-size: 13px; color: var(--won); opacity: .6; font-weight: 500; margin-left: 2px; }
+.won-stat__sub { font-size: 12px; color: var(--ink-3); }
+.won-stat--avg .won-stat__value { color: var(--ink); }
+.won-stat--avg .won-stat__value .u { color: var(--ink-3); opacity: 1; }
+
 /* ─── Data table ─────────────────────────────────────────── */
 .table-wrap { overflow-x: auto; }
 .data-table {
@@ -645,6 +672,7 @@ input  { font-family: inherit; }
 .chart-row__bar { height: 100%; }
 .chart-row__bar--hot  { background: var(--hot); }
 .chart-row__bar--warm { background: var(--warm); }
+.chart-row__bar--won  { background: var(--won); }
 .chart-row__total { font-family: var(--font-mono); font-size: 12px; text-align: right; color: var(--ink); font-weight: 600; }
 
 /* ─── Tooltip ────────────────────────────────────────────── */

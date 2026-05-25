@@ -422,14 +422,75 @@ function tplKanban() {
   </div>`;
 }
 
+function tplWonChart(deals) {
+  const byCompany = {};
+  for (const d of deals) {
+    if (!byCompany[d.company]) byCompany[d.company] = { hot: 0, warm: 0 };
+    byCompany[d.company][d.type] = (byCompany[d.company][d.type] || 0) + (d._val || 0);
+  }
+  const rows = Object.entries(byCompany)
+    .map(([co, v]) => ({ co, hot: v.hot || 0, warm: v.warm || 0, total: (v.hot || 0) + (v.warm || 0) }))
+    .filter(r => r.total > 0)
+    .sort((a, b) => b.total - a.total);
+  if (!rows.length) return '';
+  const max = rows[0].total || 1;
+  return `<div class="chart">
+    ${rows.map(r => `<div class="chart-row">
+      <div>${coAvatar(r.co)}</div>
+      <div class="chart-row__bars">
+        ${r.hot  > 0 ? `<div class="chart-row__bar chart-row__bar--won" style="width:${(r.hot/max*100).toFixed(1)}%" title="Hot won ₹${r.hot}L"></div>` : ''}
+        ${r.warm > 0 ? `<div class="chart-row__bar chart-row__bar--won" style="width:${(r.warm/max*100).toFixed(1)}%;opacity:.6" title="Warm won ₹${r.warm}L"></div>` : ''}
+      </div>
+      <div class="chart-row__total">₹${fmtNum(r.total)}<span class="muted" style="margin-left:3px">L</span></div>
+    </div>`).join('')}
+  </div>`;
+}
+
 function tplWon(deals) {
   if (!deals.length) return `<div class="empty">No closed won deals yet.</div>`;
   const sorted = [...deals].sort((a, b) => (b._val || 0) - (a._val || 0));
-  const total = sumVals(sorted);
+  const total  = sumVals(sorted);
+  const hot    = sorted.filter(d => d.type === 'hot');
+  const warm   = sorted.filter(d => d.type === 'warm');
+  const hv     = sumVals(hot);
+  const wv     = sumVals(warm);
+
+  // Group by company for the count
+  const companies = [...new Set(sorted.map(d => d.company))];
+
   return `
     <div class="won-banner">
       <span class="won-banner__val">₹${fmtNum(total) || '0'}<span class="u">L</span></span>
-      <span class="won-banner__sub">${sorted.length} deal${sorted.length !== 1 ? 's' : ''} closed won</span>
+      <span class="won-banner__sub">${sorted.length} deal${sorted.length !== 1 ? 's' : ''} closed · ${companies.length} compan${companies.length !== 1 ? 'ies' : 'y'}</span>
+    </div>
+
+    <div class="won-stats">
+      <div class="won-stat">
+        <div class="won-stat__label"><span class="ddot" style="background:var(--hot)"></span>Hot won</div>
+        <div class="won-stat__value">₹${fmtNum(hv) || '0'}<span class="u">L</span></div>
+        <div class="won-stat__sub">${hot.length} deal${hot.length !== 1 ? 's' : ''}</div>
+      </div>
+      <div class="won-stat">
+        <div class="won-stat__label"><span class="ddot" style="background:var(--warm)"></span>Warm won</div>
+        <div class="won-stat__value">₹${fmtNum(wv) || '0'}<span class="u">L</span></div>
+        <div class="won-stat__sub">${warm.length} deal${warm.length !== 1 ? 's' : ''}</div>
+      </div>
+      <div class="won-stat won-stat--avg">
+        <div class="won-stat__label">Avg deal size</div>
+        <div class="won-stat__value">₹${fmtNum(total / sorted.length) || '—'}<span class="u">L</span></div>
+        <div class="won-stat__sub">across ${sorted.length} deals</div>
+      </div>
+    </div>
+
+    <div class="section-head">
+      <h2>Won by company</h2>
+      <span class="muted">Total value closed per account</span>
+    </div>
+    ${tplWonChart(sorted)}
+
+    <div class="section-head">
+      <h2>Closed deals</h2>
+      <span class="muted">${sorted.length} deal${sorted.length !== 1 ? 's' : ''} · sorted by value</span>
     </div>
     <div class="pipeline">
       ${sorted.map(d => {
