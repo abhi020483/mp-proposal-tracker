@@ -630,7 +630,7 @@
             { key: 'june_plus', label: 'June+',     current: false, past: false },
         ];
 
-        let authToken = sessionStorage.getItem('heatmap_token');
+        let authToken = localStorage.getItem('heatmap_token');
 
         // ─── Auth ───
         async function login() {
@@ -652,7 +652,7 @@
                 if (!res.ok) throw new Error('invalid');
                 const { token } = await res.json();
                 authToken = token;
-                sessionStorage.setItem('heatmap_token', token);
+                localStorage.setItem('heatmap_token', token);
                 showApp();
             } catch {
                 err.classList.add('visible');
@@ -678,8 +678,8 @@
         if (authToken) showApp();
 
         // ─── Authenticated fetch ───
-        function apiFetch(url, options = {}) {
-            return fetch(url, {
+        async function apiFetch(url, options = {}) {
+            const res = await fetch(url, {
                 ...options,
                 headers: {
                     ...(options.headers || {}),
@@ -687,6 +687,16 @@
                     'Content-Type': 'application/json',
                 },
             });
+            // If token is stale (server restarted), clear it and return to login
+            if (res.status === 401) {
+                localStorage.removeItem('heatmap_token');
+                authToken = null;
+                document.getElementById('main-app').classList.remove('visible');
+                document.getElementById('auth-overlay').classList.remove('hidden');
+                document.getElementById('auth-error').textContent = 'Session expired — please log in again.';
+                document.getElementById('auth-error').classList.add('visible');
+            }
+            return res;
         }
 
         // ─── Sync button ───
@@ -1119,7 +1129,7 @@
 
                 // Handle session expiry
                 if (proposalsRes.status === 401) {
-                    sessionStorage.removeItem('heatmap_token');
+                    localStorage.removeItem('heatmap_token');
                     location.reload();
                     return;
                 }
