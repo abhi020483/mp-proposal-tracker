@@ -315,7 +315,7 @@ input  { font-family: inherit; }
 
 /* ─── KPI strip ─────────────────────────────────────────── */
 .kpis {
-  display: grid; grid-template-columns: repeat(4,1fr);
+  display: grid; grid-template-columns: repeat(5,1fr);
   border: 1px solid var(--line); background: var(--surface);
   border-radius: var(--radius); overflow: hidden;
 }
@@ -340,6 +340,7 @@ input  { font-family: inherit; }
 .kpi__delta strong { color: var(--ink-2); font-weight: 500; }
 .kpi--hot  .kpi__value { color: var(--hot); }
 .kpi--warm .kpi__value { color: var(--warm); }
+.kpi--cold .kpi__value { color: var(--cold); }
 .kpi__spark {
   position: absolute; right: 16px; bottom: 14px;
   width: 64px; height: 22px; opacity: .8;
@@ -729,9 +730,9 @@ input  { font-family: inherit; }
 
 /* ─── Responsive ─────────────────────────────────────────── */
 @media (max-width: 900px) {
-  .kpis { grid-template-columns: repeat(2,1fr); }
+  .kpis { grid-template-columns: repeat(3,1fr); }
   .kpi { border-bottom: 1px solid var(--line); }
-  .kpi:nth-child(2n) { border-right: none; }
+  .kpi:nth-child(3n) { border-right: none; }
   .kanban { grid-template-columns: repeat(2,1fr); }
   .filterbar { top: auto; position: relative; }
   .tabs { top: 53px; }

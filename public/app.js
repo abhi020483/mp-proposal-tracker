@@ -197,18 +197,18 @@ function sparkSvg(vals, color) {
 
 function tplKpis(deals) {
   // deals = activeDeals() → used for Active Pipeline (non-won, non-cold)
-  // Hot/Warm tiles count ALL deals of that type (incl. won) — matches sheet total
-  const allNonCold = state.deals.filter(d => d.type !== 'cold');
-  const hot  = allNonCold.filter(d => d.type === 'hot');
-  const warm = allNonCold.filter(d => d.type === 'warm');
+  // Hot/Warm/Cold tiles count ALL deals of that type (incl. won) — matches sheet total
+  const hot  = state.deals.filter(d => d.type === 'hot');
+  const warm = state.deals.filter(d => d.type === 'warm');
+  const cold = state.deals.filter(d => d.type === 'cold');
   const tv  = sumVals(deals);
   const hv  = sumVals(hot);
   const wv  = sumVals(warm);
+  const cv  = sumVals(cold);
   const wonHot  = hot.filter(d => d.status === 'won').length;
   const wonWarm = warm.filter(d => d.status === 'won').length;
-  const allTotal  = sumVals(state.deals);
-  const wonCount  = state.deals.filter(d => d.status === 'won').length;
-  const coldCount = state.deals.filter(d => d.type === 'cold').length;
+  const allTotal = sumVals(state.deals);
+  const wonCount = state.deals.filter(d => d.status === 'won').length;
   return `<div class="kpis">
     <div class="kpi">
       <div class="kpi__label">Active pipeline</div>
@@ -228,10 +228,15 @@ function tplKpis(deals) {
       <div class="kpi__delta"><strong>${warm.length}</strong> deals${wonWarm ? ` · ${wonWarm} won` : ''}</div>
       ${sparkSvg([4,4,5,6,5,6,6,7,7],'var(--warm)')}
     </div>
+    <div class="kpi kpi--cold">
+      <div class="kpi__label"><span class="ddot" style="background:var(--cold)"></span>Cold</div>
+      <div class="kpi__value" style="font-size:28px">₹${fmtNum(cv) || '0'}<span class="kpi__unit">L</span></div>
+      <div class="kpi__delta"><strong>${cold.length}</strong> deals · nurture stage</div>
+    </div>
     <div class="kpi">
       <div class="kpi__label">Total pipeline value</div>
-      <div class="kpi__value" style="font-size:28px">₹${fmtNum(allTotal) || '0'}<span class="kpi__unit">L</span></div>
-      <div class="kpi__delta">incl. <strong>${wonCount} won</strong> · <strong>${coldCount} cold</strong></div>
+      <div class="kpi__value" style="font-size:24px">₹${fmtNum(allTotal) || '0'}<span class="kpi__unit">L</span></div>
+      <div class="kpi__delta">incl. <strong>${wonCount} won</strong> · <strong>${cold.length} cold</strong></div>
     </div>
   </div>`;
 }
