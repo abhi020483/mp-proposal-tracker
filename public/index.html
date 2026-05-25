@@ -271,26 +271,76 @@
         .heat-cell.warm-5 { background: rgba(146,64,14,0.55); }
 
         .deal-card {
-            padding: 6px 8px; border-radius: 3px; font-size: 11px;
-            cursor: pointer; transition: all 0.15s ease; border-left: 3px solid;
+            padding: 8px 10px; border-radius: 3px;
+            cursor: pointer; transition: all 0.15s ease;
+            border-left: 3px solid; margin-bottom: 4px;
+            position: relative;
         }
-        .deal-card.hot { background: rgba(185,28,28,0.12); border-left-color: var(--hot-3); color: var(--hot-5); }
-        .deal-card.warm { background: rgba(217,119,6,0.12); border-left-color: var(--warm-3); color: var(--warm-5); }
-        .deal-card:hover { transform: translateX(2px); }
+        .deal-card.hot { background: rgba(185,28,28,0.09); border-left-color: var(--hot-3); }
+        .deal-card.warm { background: rgba(217,119,6,0.09); border-left-color: var(--warm-3); }
+        .deal-card:hover { transform: translateX(2px); box-shadow: 0 2px 8px rgba(0,0,0,0.12); }
 
-        .deal-name { font-weight: 600; margin-bottom: 2px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-        .deal-value { font-size: 12px; font-weight: 700; color: var(--mckinsey-blue); background: rgba(5,28,44,0.07); display: inline-block; padding: 1px 5px; border-radius: 2px; margin-bottom: 2px; }
-        .deal-card.hot .deal-value { color: var(--hot-4); background: rgba(185,28,28,0.1); }
-        .deal-card.warm .deal-value { color: var(--warm-4); background: rgba(217,119,6,0.1); }
-        .deal-client { font-size: 9px; opacity: 0.6; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+        .deal-value {
+            font-size: 14px; font-weight: 800; line-height: 1;
+            margin-bottom: 3px; letter-spacing: -0.3px;
+        }
+        .deal-card.hot .deal-value { color: var(--hot-3); }
+        .deal-card.warm .deal-value { color: var(--warm-4); }
+        .deal-name {
+            font-size: 10px; font-weight: 500; color: var(--text-secondary);
+            white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 120px;
+        }
+        .deal-client { display: none; }
 
         .status-pill {
-            display: inline-block; padding: 2px 6px; font-size: 8px; font-weight: 600;
+            display: inline-block; padding: 2px 6px; font-size: 8px; font-weight: 700;
             text-transform: uppercase; letter-spacing: 0.5px; border-radius: 2px; margin-top: 3px;
         }
         .status-pill.won { background: #059669; color: #FFFFFF; }
         .status-pill.shared { background: var(--mckinsey-accent); color: #FFFFFF; }
         .status-pill.discussion { background: #8B5CF6; color: #FFFFFF; }
+
+        .cell-overflow-btn {
+            font-size: 10px; font-weight: 600; color: var(--text-light);
+            padding: 3px 6px; text-align: center; cursor: pointer;
+            border-top: 1px dashed var(--border-light); margin-top: 4px;
+            transition: color 0.15s;
+        }
+        .cell-overflow-btn:hover { color: var(--mckinsey-blue); }
+
+        /* ─── CRM Pipeline Cards ─── */
+        .pipeline-cards-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
+            gap: 16px;
+        }
+        .pcard {
+            background: var(--bg-card);
+            border: 1px solid var(--border-light);
+            border-top: 4px solid;
+            padding: 20px;
+            position: relative;
+            transition: box-shadow 0.2s, transform 0.2s;
+            cursor: default;
+        }
+        .pcard.hot { border-top-color: var(--hot-3); }
+        .pcard.warm { border-top-color: var(--warm-3); }
+        .pcard:hover { box-shadow: 0 6px 24px rgba(0,0,0,0.10); transform: translateY(-2px); }
+
+        .pcard-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; }
+        .pcard-company { display: flex; align-items: center; gap: 8px; font-size: 12px; font-weight: 700; color: var(--text-secondary); text-transform: uppercase; letter-spacing: 0.5px; }
+        .pcard-badge { font-size: 9px; font-weight: 800; padding: 3px 8px; letter-spacing: 1px; text-transform: uppercase; }
+        .pcard-badge.hot { background: rgba(185,28,28,0.1); color: var(--hot-3); }
+        .pcard-badge.warm { background: rgba(217,119,6,0.1); color: var(--warm-4); }
+
+        .pcard-deal { font-size: 15px; font-weight: 700; color: var(--mckinsey-blue); line-height: 1.3; margin-bottom: 14px; min-height: 38px; }
+        .pcard-value { font-size: 32px; font-weight: 800; color: var(--mckinsey-blue); letter-spacing: -1px; line-height: 1; margin-bottom: 14px; }
+        .pcard-value.tbd { font-size: 18px; font-style: italic; font-weight: 400; color: var(--text-light); }
+
+        .pcard-footer { display: flex; align-items: center; justify-content: space-between; padding-top: 12px; border-top: 1px solid var(--border-light); }
+        .pcard-period { font-size: 11px; font-weight: 600; color: var(--text-secondary); background: var(--bg-primary); padding: 3px 8px; border: 1px solid var(--border-light); }
+        .pcard-status-wrap { font-size: 10px; }
+        .pcard-client { font-size: 11px; color: var(--text-light); margin-top: 4px; }
 
         .unscheduled-section { margin-top: 48px; }
         .unscheduled-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 12px; }
@@ -677,19 +727,16 @@
         }
 
         function renderDealCard(p) {
-            const statusHtml = p.status ? `<span class="status-pill ${p.status}">${p.status}</span>` : '';
-            const clientHtml = p.client_contact ? `<div class="deal-client">${p.client_contact}</div>` : '';
+            const valDisplay = p.value && p.value !== 'TBD' ? `₹${p.value}` : 'TBD';
             return `
                 <div class="deal-card ${p.type}"
                      data-company="${p.company}"
                      data-deliverable="${p.deliverable}"
                      data-value="${p.value || 'TBD'}"
                      data-client="${p.client_contact || '—'}"
-                     data-status="${p.status || 'Proposal Shared'}">
+                     data-status="${p.status || 'Active'}">
+                    <div class="deal-value">${valDisplay}</div>
                     <div class="deal-name">${p.deliverable}</div>
-                    <div class="deal-value">${p.value || 'TBD'}</div>
-                    ${clientHtml}
-                    ${statusHtml}
                 </div>`;
         }
 
@@ -711,7 +758,11 @@
                     const cellProposals = scheduled.filter(p => p.company === company && p.time_period === period.key);
                     const intensity = cellIntensity(cellProposals);
                     const intensityClass = intensity ? `heat-cell ${intensity}` : 'heat-cell';
-                    return `<div class="${intensityClass}">${cellProposals.map(renderDealCard).join('')}</div>`;
+                    const MAX = 2;
+                    const visible = cellProposals.slice(0, MAX);
+                    const extra = cellProposals.length - MAX;
+                    const overflowHtml = extra > 0 ? `<div class="cell-overflow-btn">+${extra} more</div>` : '';
+                    return `<div class="${intensityClass}">${visible.map(renderDealCard).join('')}${overflowHtml}</div>`;
                 }).join('');
 
                 return `
@@ -808,6 +859,41 @@
                 </div>`;
         }
 
+        // ─── CRM Pipeline Cards builder ───
+        function buildPipelineCards(proposals) {
+            const sorted = [...proposals].sort((a, b) => parseValue(b.value) - parseValue(a.value));
+            if (!sorted.length) return '<div style="color:var(--text-light);font-style:italic;padding:20px 0">No proposals match the current filter.</div>';
+
+            const periodLabel = key => {
+                if (!key) return 'No date set';
+                const p = PERIODS.find(pe => pe.key === key);
+                return p ? p.label.replace(' ★','') : key.replace(/_/g,' ');
+            };
+
+            return `<div class="pipeline-cards-grid">${sorted.map(p => {
+                const val = parseValue(p.value);
+                const valHtml = val > 0
+                    ? `<div class="pcard-value">₹${val % 1 === 0 ? val : val.toFixed(1)}<span style="font-size:18px;font-weight:400;opacity:0.5"> L</span></div>`
+                    : `<div class="pcard-value tbd">Value TBD</div>`;
+                const statusHtml = p.status
+                    ? `<span class="status-pill ${p.status}">${p.status}</span>`
+                    : `<span style="font-size:10px;color:var(--text-light)">Active</span>`;
+                return `<div class="pcard ${p.type}">
+                    <div class="pcard-header">
+                        <div class="pcard-company">${logoImg(p.company, 22)}<span>${p.company}</span></div>
+                        <span class="pcard-badge ${p.type}">${p.type}</span>
+                    </div>
+                    <div class="pcard-deal">${p.deliverable}</div>
+                    ${valHtml}
+                    <div class="pcard-client">${p.client_contact || '—'}</div>
+                    <div class="pcard-footer">
+                        <span class="pcard-period">${periodLabel(p.time_period)}</span>
+                        <span class="pcard-status-wrap">${statusHtml}</span>
+                    </div>
+                </div>`;
+            }).join('')}</div>`;
+        }
+
         // ─── Tab Switching ───
         document.querySelectorAll('.tab-btn').forEach(btn => {
             btn.addEventListener('click', () => {
@@ -836,6 +922,10 @@
                     <button class="filter-btn${_filter==='warm'?' warm-active':''}" data-f="warm">🟡 Warm Only</button>
                 </div>
                 <div class="analytics-section">
+                    <div class="analytics-section-title">Deal Cards — Active Pipeline</div>
+                    ${buildPipelineCards(filtered)}
+                </div>
+                <div class="analytics-section">
                     <div class="analytics-section-title">Pipeline Value by Company</div>
                     ${buildChart(filtered)}
                 </div>
@@ -844,7 +934,7 @@
                     ${buildCompanySummary(filtered)}
                 </div>
                 <div class="analytics-section">
-                    <div class="analytics-section-title">Pipeline by Status</div>
+                    <div class="analytics-section-title">Pipeline by Status (Kanban)</div>
                     ${buildKanban(proposals)}
                 </div>
                 <div class="analytics-section">
