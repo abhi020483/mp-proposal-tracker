@@ -14,12 +14,19 @@ const supabase = createClient(
   process.env.SUPABASE_ANON_KEY
 );
 
-const sessions = new Set();
+// Derive a stable token from the password — same password always gives same token,
+// so server restarts don't invalidate existing browser sessions.
+function deriveToken(password) {
+  return crypto.createHmac('sha256', password)
+    .update(process.env.APP_PASSWORD)
+    .digest('hex');
+}
 
 function requireAuth(req, res, next) {
   const auth = req.headers.authorization || '';
   const token = auth.replace('Bearer ', '').trim();
-  if (!sessions.has(token)) return res.status(401).json({ error: 'Unauthorized' });
+  const expected = deriveToken(process.env.APP_PASSWORD);
+  if (!token || token !== expected) return res.status(401).json({ error: 'Unauthorized' });
   next();
 }
 
@@ -29,8 +36,7 @@ app.post('/api/auth', (req, res) => {
   if (!password || password !== process.env.APP_PASSWORD) {
     return res.status(401).json({ error: 'Invalid password' });
   }
-  const token = crypto.randomBytes(32).toString('hex');
-  sessions.add(token);
+  const token = deriveToken(password);
   res.json({ token });
 });
 
