@@ -196,19 +196,18 @@ function sparkSvg(vals, color) {
 // ─── Templates ────────────────────────────────────────────────────────────────
 
 function tplKpis(deals) {
-  // deals = activeDeals() → used for Active Pipeline (non-won, non-cold)
-  // Hot/Warm/Cold tiles count ALL deals of that type (incl. won) — matches sheet total
-  const hot  = state.deals.filter(d => d.type === 'hot');
-  const warm = state.deals.filter(d => d.type === 'warm');
+  // deals = activeDeals() → non-won, non-cold, with current filters applied
+  // Hot/Warm tiles use same active pool so Hot + Warm = Active Pipeline
+  const hot  = deals.filter(d => d.type === 'hot');
+  const warm = deals.filter(d => d.type === 'warm');
   const cold = state.deals.filter(d => d.type === 'cold');
   const tv  = sumVals(deals);
   const hv  = sumVals(hot);
   const wv  = sumVals(warm);
   const cv  = sumVals(cold);
-  const wonHot  = hot.filter(d => d.status === 'won').length;
-  const wonWarm = warm.filter(d => d.status === 'won').length;
   const allTotal = sumVals(state.deals);
   const wonCount = state.deals.filter(d => d.status === 'won').length;
+  const wonVal   = sumVals(state.deals.filter(d => d.status === 'won'));
   return `<div class="kpis">
     <div class="kpi">
       <div class="kpi__label">Active pipeline</div>
@@ -219,13 +218,13 @@ function tplKpis(deals) {
     <div class="kpi kpi--hot">
       <div class="kpi__label"><span class="ddot" style="background:var(--hot)"></span>Hot</div>
       <div class="kpi__value">₹${fmtNum(hv) || '0'}<span class="kpi__unit">L</span></div>
-      <div class="kpi__delta"><strong>${hot.length}</strong> deals${wonHot ? ` · ${wonHot} won` : ''}</div>
+      <div class="kpi__delta"><strong>${hot.length}</strong> open deals</div>
       ${sparkSvg([2,3,3,5,6,5,7,8,8],'var(--hot)')}
     </div>
     <div class="kpi kpi--warm">
       <div class="kpi__label"><span class="ddot" style="background:var(--warm)"></span>Warm</div>
       <div class="kpi__value">₹${fmtNum(wv) || '0'}<span class="kpi__unit">L</span></div>
-      <div class="kpi__delta"><strong>${warm.length}</strong> deals${wonWarm ? ` · ${wonWarm} won` : ''}</div>
+      <div class="kpi__delta"><strong>${warm.length}</strong> open deals</div>
       ${sparkSvg([4,4,5,6,5,6,6,7,7],'var(--warm)')}
     </div>
     <div class="kpi kpi--cold">
@@ -236,7 +235,7 @@ function tplKpis(deals) {
     <div class="kpi">
       <div class="kpi__label">Total pipeline value</div>
       <div class="kpi__value" style="font-size:24px">₹${fmtNum(allTotal) || '0'}<span class="kpi__unit">L</span></div>
-      <div class="kpi__delta">incl. <strong>${wonCount} won</strong> · <strong>${cold.length} cold</strong></div>
+      <div class="kpi__delta"><strong>${wonCount} won</strong> · ₹${fmtNum(wonVal) || '0'}L closed</div>
     </div>
   </div>`;
 }
