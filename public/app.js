@@ -196,30 +196,36 @@ function sparkSvg(vals, color) {
 // ─── Templates ────────────────────────────────────────────────────────────────
 
 function tplKpis(deals) {
-  const hot   = deals.filter(d => d.type === 'hot');
-  const warm  = deals.filter(d => d.type === 'warm');
-  const tv = sumVals(deals), hv = sumVals(hot), wv = sumVals(warm);
-  // Total = everything in DB (hot + warm + won + cold)
-  const allTotal = sumVals(state.deals);
-  const wonCount = state.deals.filter(d => d.status === 'won').length;
+  // deals = activeDeals() → used for Active Pipeline (non-won, non-cold)
+  // Hot/Warm tiles count ALL deals of that type (incl. won) — matches sheet total
+  const allNonCold = state.deals.filter(d => d.type !== 'cold');
+  const hot  = allNonCold.filter(d => d.type === 'hot');
+  const warm = allNonCold.filter(d => d.type === 'warm');
+  const tv  = sumVals(deals);
+  const hv  = sumVals(hot);
+  const wv  = sumVals(warm);
+  const wonHot  = hot.filter(d => d.status === 'won').length;
+  const wonWarm = warm.filter(d => d.status === 'won').length;
+  const allTotal  = sumVals(state.deals);
+  const wonCount  = state.deals.filter(d => d.status === 'won').length;
   const coldCount = state.deals.filter(d => d.type === 'cold').length;
   return `<div class="kpis">
     <div class="kpi">
       <div class="kpi__label">Active pipeline</div>
       <div class="kpi__value">₹${fmtNum(tv) || '0'}<span class="kpi__unit">L</span></div>
-      <div class="kpi__delta"><strong>${deals.length}</strong> hot + warm proposals</div>
+      <div class="kpi__delta"><strong>${deals.length}</strong> open hot + warm</div>
       ${sparkSvg([3,4,5,7,6,8,10,9,12],'var(--ink-2)')}
     </div>
     <div class="kpi kpi--hot">
       <div class="kpi__label"><span class="ddot" style="background:var(--hot)"></span>Hot</div>
       <div class="kpi__value">₹${fmtNum(hv) || '0'}<span class="kpi__unit">L</span></div>
-      <div class="kpi__delta"><strong>${hot.length}</strong> deals · high intent</div>
+      <div class="kpi__delta"><strong>${hot.length}</strong> deals${wonHot ? ` · ${wonHot} won` : ''}</div>
       ${sparkSvg([2,3,3,5,6,5,7,8,8],'var(--hot)')}
     </div>
     <div class="kpi kpi--warm">
       <div class="kpi__label"><span class="ddot" style="background:var(--warm)"></span>Warm</div>
       <div class="kpi__value">₹${fmtNum(wv) || '0'}<span class="kpi__unit">L</span></div>
-      <div class="kpi__delta"><strong>${warm.length}</strong> deals · exploring</div>
+      <div class="kpi__delta"><strong>${warm.length}</strong> deals${wonWarm ? ` · ${wonWarm} won` : ''}</div>
       ${sparkSvg([4,4,5,6,5,6,6,7,7],'var(--warm)')}
     </div>
     <div class="kpi">
