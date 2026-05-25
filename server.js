@@ -194,7 +194,22 @@ app.post('/api/sync', requireAuth, async (req, res) => {
 
     if (proposals.length > 0) {
       const { error: insError } = await supabase.from('proposals').insert(proposals);
-      if (insError) throw new Error(insError.message);
+      if (insError) {
+        // If DB still has the old type constraint (hot/warm only), retry without cold rows
+        if (insError.message.includes('type_check') || insError.message.includes('violates check')) {
+          const filtered = proposals.filter(p => p.type !== 'cold');
+          if (filtered.length > 0) {
+            const { error: retryErr } = await supabase.from('proposals').insert(filtered);
+            if (retryErr) throw new Error(retryErr.message);
+          }
+          return res.json({
+            synced: filtered.length,
+            cold_skipped: proposals.length - filtered.length,
+            message: `Synced ${filtered.length} proposals. ${proposals.length - filtered.length} cold proposals skipped — update the DB type constraint to include 'cold' to enable cold sync.`,
+          });
+        }
+        throw new Error(insError.message);
+      }
     }
 
     res.json({ synced: proposals.length, message: `Successfully synced ${proposals.length} proposals` });
