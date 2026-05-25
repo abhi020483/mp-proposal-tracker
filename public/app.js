@@ -23,13 +23,14 @@ const CO_PALETTE = [
 // ─── State ────────────────────────────────────────────────────────────────────
 
 const state = {
-  tab:         'overview',
-  query:       '',
-  type:        'all',
-  period:      'all',
-  sortBy:      'value',
-  sortDir:     'desc',
-  deals:       [],
+  tab:            'overview',
+  query:          '',
+  type:           'all',
+  period:         'all',
+  closingPeriod:  'may',
+  sortBy:         'value',
+  sortDir:        'desc',
+  deals:          [],
   lastSyncedAt: localStorage.getItem('lastSyncedAt')
     ? parseInt(localStorage.getItem('lastSyncedAt')) : null,
 };
@@ -240,9 +241,8 @@ function tplKpis(deals) {
   </div>`;
 }
 
-function tplClosingWeek(deals) {
-  const closing = deals.filter(d => d.time_period === 'may');
-  if (!closing.length) return `<div class="empty">No proposals closing in May.</div>`;
+function tplClosingWeek(closing, periodLabel) {
+  if (!closing.length) return `<div class="empty">No proposals closing in ${periodLabel}.</div>`;
   return `<div class="closing-week">
     ${closing.map(d => {
       const v = d._val;
@@ -592,14 +592,32 @@ function tplColdSegment() {
 // ─── Tab views ────────────────────────────────────────────────────────────────
 
 function viewOverview(deals) {
+  // Periods that actually have deals, in PERIODS order
+  const periodsWithDeals = PERIODS.filter(p =>
+    deals.some(d => d.time_period === p.key)
+  );
+  // Fallback: if saved closingPeriod has no deals, pick first available
+  if (periodsWithDeals.length && !periodsWithDeals.some(p => p.key === state.closingPeriod)) {
+    state.closingPeriod = periodsWithDeals[0].key;
+  }
+  const selPeriod = PERIODS.find(p => p.key === state.closingPeriod) ||
+                    { key: state.closingPeriod, label: state.closingPeriod };
+  const closingDeals = deals.filter(d => d.time_period === state.closingPeriod);
+
+  const periodOpts = periodsWithDeals.map(p =>
+    `<option value="${p.key}" ${p.key === state.closingPeriod ? 'selected' : ''}>${p.label}</option>`
+  ).join('');
+
   return `
     <div class="section-head" style="margin-top:0"><h2>Key metrics</h2></div>
     ${tplKpis(deals)}
     <div class="section-head">
-      <h2>Closing in May</h2>
-      <span class="muted">${deals.filter(d => d.time_period === 'may').length} proposals</span>
+      <h2 class="section-head__pick">Closing in
+        <select id="closing-period-select" class="period-select">${periodOpts}</select>
+      </h2>
+      <span class="muted">${closingDeals.length} proposal${closingDeals.length !== 1 ? 's' : ''}</span>
     </div>
-    ${tplClosingWeek(deals)}
+    ${tplClosingWeek(closingDeals, selPeriod.label)}
     <div class="section-head">
       <h2>Closure timeline</h2>
       <span class="muted">Heat map by company × period · click any cell to expand</span>
@@ -668,6 +686,16 @@ function wirePerRender() {
   wireTooltips();
   wireCellClicks();
   wireTableSort();
+  wireClosingPeriodSelect();
+}
+
+function wireClosingPeriodSelect() {
+  const sel = document.getElementById('closing-period-select');
+  if (!sel) return;
+  sel.addEventListener('change', () => {
+    state.closingPeriod = sel.value;
+    render();
+  });
 }
 
 function wireTooltips() {

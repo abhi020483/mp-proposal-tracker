@@ -313,6 +313,25 @@ input  { font-family: inherit; }
 }
 .section-head .muted { font-size: 12px; color: var(--ink-3); font-family: var(--font-mono); }
 
+/* Inline period picker inside section head */
+.section-head__pick { display: inline-flex; align-items: center; gap: 6px; }
+.period-select {
+  font-family: var(--font-sans); font-size: 12px; font-weight: 600;
+  letter-spacing: 0.06em; text-transform: uppercase;
+  color: var(--ink); background: var(--surface-2);
+  border: 1px solid var(--line-2); border-radius: var(--radius-sm);
+  padding: 2px 22px 2px 8px; cursor: pointer; outline: none;
+  appearance: none; -webkit-appearance: none;
+  background-image: url("data:image/svg+xml,%3Csvg width='10' height='6' viewBox='0 0 10 6' fill='none' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M1 1L5 5L9 1' stroke='%238A8A82' stroke-width='1.5' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
+  background-repeat: no-repeat; background-position: right 7px center;
+  transition: border-color .12s, background-color .12s;
+}
+.period-select:hover { border-color: var(--ink); background-color: var(--bg-2); }
+.period-select:focus { border-color: var(--ink); }
+[data-theme="dark"] .period-select {
+  background-image: url("data:image/svg+xml,%3Csvg width='10' height='6' viewBox='0 0 10 6' fill='none' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M1 1L5 5L9 1' stroke='%2375736C' stroke-width='1.5' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
+}
+
 /* ─── KPI strip ─────────────────────────────────────────── */
 .kpis {
   display: grid; grid-template-columns: repeat(5,1fr);
