@@ -64,6 +64,7 @@ app.get('/api/summary', requireAuth, async (req, res) => {
   const active = data.filter(p => p.status !== 'won');
   const hot = active.filter(p => p.type === 'hot');
   const warm = active.filter(p => p.type === 'warm');
+  const cold = data.filter(p => p.type === 'cold');
   const closingNow = active.filter(p => p.time_period === 'may');
 
   res.json({
@@ -71,6 +72,8 @@ app.get('/api/summary', requireAuth, async (req, res) => {
     hot_value: hot.reduce((s, p) => s + parseValue(p.value), 0),
     warm_count: warm.length,
     warm_value: warm.reduce((s, p) => s + parseValue(p.value), 0),
+    cold_count: cold.length,
+    cold_value: cold.reduce((s, p) => s + parseValue(p.value), 0),
     closing_now: closingNow.length,
     won_count: won.length,
     won_value: won.reduce((s, p) => s + parseValue(p.value), 0),
@@ -159,7 +162,7 @@ app.post('/api/sync', requireAuth, async (req, res) => {
     for (const line of lines.slice(1)) {
       const cols = parseCSVLine(line);
       const type = (cols[idx.type] || '').toLowerCase().trim();
-      if (type !== 'hot' && type !== 'warm') continue;
+      if (type !== 'hot' && type !== 'warm' && type !== 'cold') continue;
       const company = (cols[idx.company] || '').trim();
       const deliverable = (cols[idx.deliverable] || '').trim();
       if (!company) continue; // allow empty deliverable (e.g. Viatris)

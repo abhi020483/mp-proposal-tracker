@@ -19,6 +19,9 @@
             --warm-3: #D97706;
             --warm-2: #F59E0B;
             --warm-1: #FBBF24;
+            --cold-3: #2563EB;
+            --cold-2: #3B82F6;
+            --cold-1: #60A5FA;
             --bg-primary: #FAFAFA;
             --bg-card: #FFFFFF;
             --text-primary: #051C2C;
@@ -171,6 +174,7 @@
         }
         .summary-item.hot::before { background: var(--hot-3); }
         .summary-item.warm::before { background: var(--warm-3); }
+        .summary-item.cold::before { background: var(--cold-3); }
         .summary-item.total::before { background: var(--mckinsey-blue); }
         .summary-item.urgent::before { background: linear-gradient(90deg, var(--hot-3), var(--warm-3)); }
 
@@ -278,6 +282,7 @@
         }
         .deal-card.hot { background: rgba(185,28,28,0.09); border-left-color: var(--hot-3); }
         .deal-card.warm { background: rgba(217,119,6,0.09); border-left-color: var(--warm-3); }
+        .deal-card.cold { background: rgba(37,99,235,0.07); border-left-color: var(--cold-3); }
         .deal-card:hover { transform: translateX(2px); box-shadow: 0 2px 8px rgba(0,0,0,0.12); }
 
         .deal-value {
@@ -286,6 +291,7 @@
         }
         .deal-card.hot .deal-value { color: var(--hot-3); }
         .deal-card.warm .deal-value { color: var(--warm-4); }
+        .deal-card.cold .deal-value { color: var(--cold-3); }
         .deal-name {
             font-size: 10px; font-weight: 500; color: var(--text-secondary);
             white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 120px;
@@ -325,6 +331,7 @@
         }
         .pcard.hot { border-top-color: var(--hot-3); }
         .pcard.warm { border-top-color: var(--warm-3); }
+        .pcard.cold { border-top-color: var(--cold-3); opacity: 0.85; }
         .pcard:hover { box-shadow: 0 6px 24px rgba(0,0,0,0.10); transform: translateY(-2px); }
 
         .pcard-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; }
@@ -332,6 +339,7 @@
         .pcard-badge { font-size: 9px; font-weight: 800; padding: 3px 8px; letter-spacing: 1px; text-transform: uppercase; }
         .pcard-badge.hot { background: rgba(185,28,28,0.1); color: var(--hot-3); }
         .pcard-badge.warm { background: rgba(217,119,6,0.1); color: var(--warm-4); }
+        .pcard-badge.cold { background: rgba(37,99,235,0.1); color: var(--cold-3); }
 
         .pcard-deal { font-size: 15px; font-weight: 700; color: var(--mckinsey-blue); line-height: 1.3; margin-bottom: 14px; min-height: 38px; }
         .pcard-value { font-size: 32px; font-weight: 800; color: var(--mckinsey-blue); letter-spacing: -1px; line-height: 1; margin-bottom: 14px; }
@@ -741,7 +749,8 @@
         }
 
         function renderHeatmap(proposals) {
-            const active = proposals.filter(p => p.status !== 'won');
+            const coldProposals = proposals.filter(p => p.type === 'cold');
+            const active = proposals.filter(p => p.status !== 'won' && p.type !== 'cold');
             const scheduled = active.filter(p => p.time_period);
             const unscheduled = active.filter(p => !p.time_period);
             const companies = [...new Set(scheduled.map(p => p.company))];
@@ -789,14 +798,19 @@
             return `
                 <div class="summary-strip" id="summary-strip">
                     <div class="summary-item hot">
-                        <div class="summary-label">Hot Proposals</div>
+                        <div class="summary-label">🔴 Hot Proposals</div>
                         <div class="summary-value" id="hot-count">—</div>
                         <div class="summary-detail" id="hot-value">loading...</div>
                     </div>
                     <div class="summary-item warm">
-                        <div class="summary-label">Warm Proposals</div>
+                        <div class="summary-label">🟡 Warm Proposals</div>
                         <div class="summary-value" id="warm-count">—</div>
                         <div class="summary-detail" id="warm-value">loading...</div>
+                    </div>
+                    <div class="summary-item cold">
+                        <div class="summary-label">🔵 Cold Proposals</div>
+                        <div class="summary-value" id="cold-count">—</div>
+                        <div class="summary-detail" id="cold-value">loading...</div>
                     </div>
                     <div class="summary-item urgent">
                         <div class="summary-label">Closing in May</div>
@@ -851,6 +865,24 @@
                         <div class="section-count">Requires follow-up for timeline confirmation</div>
                     </div>
                     <div class="unscheduled-grid">${unscheduledCards}</div>
+                </div>` : ''}
+
+                ${coldProposals.length ? `
+                <div class="unscheduled-section" style="margin-top:48px">
+                    <div class="section-header">
+                        <div class="section-title" style="color:var(--cold-3)">🔵 Cold Pipeline — Nurture Stage</div>
+                        <div class="section-count">${coldProposals.length} proposal${coldProposals.length>1?'s':''} · ₹${coldProposals.reduce((s,p)=>s+parseValue(p.value),0).toFixed(1)}L potential · Not included in active pipeline</div>
+                    </div>
+                    <div class="unscheduled-grid">${coldProposals.map(p => `
+                        <div class="unscheduled-card cold" style="border-left-color:var(--cold-3)">
+                            <div class="unscheduled-company" style="color:var(--cold-3)">${logoImg(p.company, 28)}${p.company}</div>
+                            <div class="unscheduled-deliverable">${p.deliverable}</div>
+                            <div class="unscheduled-meta">
+                                <span class="unscheduled-client">${p.client_contact || '—'}</span>
+                                <span class="unscheduled-value" style="background:var(--cold-3)" data-tbd="${!p.value||p.value==='TBD'?'true':'false'}">${p.value || 'TBD'}</span>
+                            </div>
+                        </div>`).join('')}
+                    </div>
                 </div>` : ''}
 
                 <div class="footer">
@@ -914,17 +946,26 @@
             _allProposals = proposals;
             const app = document.getElementById('analytics-app');
             if (!app) return;
-            const filtered = _filter === 'all' ? proposals : proposals.filter(p => p.type === _filter);
+            const activeProposals = proposals.filter(p => p.type !== 'cold');
+            const coldOnly = proposals.filter(p => p.type === 'cold');
+            const filtered = _filter === 'all' ? activeProposals : activeProposals.filter(p => p.type === _filter);
+
             app.innerHTML = `
                 <div class="analytics-filters">
-                    <button class="filter-btn${_filter==='all'?' active':''}" data-f="all">All Proposals</button>
+                    <button class="filter-btn${_filter==='all'?' active':''}" data-f="all">All Active</button>
                     <button class="filter-btn${_filter==='hot'?' hot-active':''}" data-f="hot">🔴 Hot Only</button>
                     <button class="filter-btn${_filter==='warm'?' warm-active':''}" data-f="warm">🟡 Warm Only</button>
                 </div>
                 <div class="analytics-section">
-                    <div class="analytics-section-title">Deal Cards — Active Pipeline</div>
+                    <div class="analytics-section-title">Deal Cards — Active Pipeline (Hot &amp; Warm)</div>
                     ${buildPipelineCards(filtered)}
                 </div>
+                ${coldOnly.length ? `
+                <div class="analytics-section">
+                    <div class="analytics-section-title" style="color:var(--cold-3)">🔵 Cold Pipeline — Nurture Stage</div>
+                    <div style="font-size:12px;color:var(--text-secondary);margin-bottom:12px">${coldOnly.length} proposal${coldOnly.length>1?'s':''} · ₹${coldOnly.reduce((s,p)=>s+parseValue(p.value),0).toFixed(1)}L potential · Tracked separately from active pipeline</div>
+                    ${buildPipelineCards(coldOnly)}
+                </div>` : ''}
                 <div class="analytics-section">
                     <div class="analytics-section-title">Pipeline Value by Company</div>
                     ${buildChart(filtered)}
@@ -1093,6 +1134,8 @@
                 document.getElementById('hot-value').textContent = `₹${summary.hot_value.toFixed(2)} L pipeline value`;
                 document.getElementById('warm-count').textContent = summary.warm_count;
                 document.getElementById('warm-value').textContent = `₹${summary.warm_value.toFixed(2)} L pipeline value`;
+                document.getElementById('cold-count').textContent = summary.cold_count || 0;
+                document.getElementById('cold-value').textContent = `₹${(summary.cold_value || 0).toFixed(2)} L pipeline value`;
                 document.getElementById('closing-now').textContent = summary.closing_now;
                 document.getElementById('won-count').textContent = summary.won_count;
                 document.getElementById('won-value').textContent = `₹${summary.won_value.toFixed(2)} L converted`;
