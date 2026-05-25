@@ -103,7 +103,16 @@ function matchesSearch(d) {
 }
 
 function activeDeals() {
-  // Hot + Warm, not won, not cold — with all filters
+  // Hot + Warm open deals — respects type chip (incl. cold chip), period, search
+  // When type chip = 'cold', returns cold deals instead of hot+warm
+  if (state.type === 'cold') {
+    return state.deals.filter(d => {
+      if (d.type !== 'cold') return false;
+      if (state.period === 'may'  && d.time_period !== 'may')       return false;
+      if (state.period === 'june' && d.time_period !== 'june_plus') return false;
+      return matchesSearch(d);
+    });
+  }
   return state.deals.filter(d => {
     if (d.type === 'cold' || d.status === 'won') return false;
     if (state.type !== 'all' && d.type !== state.type) return false;
@@ -118,14 +127,14 @@ function wonDeals() {
 }
 
 function coldDeals() {
-  return state.deals.filter(d => d.type === 'cold');
+  return state.deals.filter(d => d.type === 'cold' && matchesSearch(d));
 }
 
 function allNonCold() {
   // For data table: hot+warm+won, searchable, type-filterable
   return state.deals.filter(d => {
     if (d.type === 'cold') return false;
-    if (state.type !== 'all' && d.type !== state.type) return false;
+    if (state.type !== 'all' && state.type !== 'cold' && d.type !== state.type) return false;
     return matchesSearch(d);
   });
 }
