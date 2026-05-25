@@ -198,13 +198,16 @@ function sparkSvg(vals, color) {
 function tplKpis(deals) {
   const hot   = deals.filter(d => d.type === 'hot');
   const warm  = deals.filter(d => d.type === 'warm');
-  const close = deals.filter(d => d.time_period === 'may' || d.time_period === 'june_plus');
-  const tv = sumVals(deals), hv = sumVals(hot), wv = sumVals(warm), cv = sumVals(close);
+  const tv = sumVals(deals), hv = sumVals(hot), wv = sumVals(warm);
+  // Total = everything in DB (hot + warm + won + cold)
+  const allTotal = sumVals(state.deals);
+  const wonCount = state.deals.filter(d => d.status === 'won').length;
+  const coldCount = state.deals.filter(d => d.type === 'cold').length;
   return `<div class="kpis">
     <div class="kpi">
       <div class="kpi__label">Active pipeline</div>
       <div class="kpi__value">₹${fmtNum(tv) || '0'}<span class="kpi__unit">L</span></div>
-      <div class="kpi__delta"><strong>${deals.length}</strong> open proposals</div>
+      <div class="kpi__delta"><strong>${deals.length}</strong> hot + warm proposals</div>
       ${sparkSvg([3,4,5,7,6,8,10,9,12],'var(--ink-2)')}
     </div>
     <div class="kpi kpi--hot">
@@ -220,9 +223,9 @@ function tplKpis(deals) {
       ${sparkSvg([4,4,5,6,5,6,6,7,7],'var(--warm)')}
     </div>
     <div class="kpi">
-      <div class="kpi__label">Closing May–Jun</div>
-      <div class="kpi__value">₹${fmtNum(cv) || '0'}<span class="kpi__unit">L</span></div>
-      <div class="kpi__delta"><strong>${close.length}</strong> deals · next 35 days</div>
+      <div class="kpi__label">Total pipeline value</div>
+      <div class="kpi__value" style="font-size:28px">₹${fmtNum(allTotal) || '0'}<span class="kpi__unit">L</span></div>
+      <div class="kpi__delta">incl. <strong>${wonCount} won</strong> · <strong>${coldCount} cold</strong></div>
     </div>
   </div>`;
 }
