@@ -424,16 +424,22 @@ function tplKanban() {
         </div>
         ${items.map(d => {
           const pInfo = periodInfo(d.time_period);
+          const hasTitle = d.deliverable && d.deliverable !== '—';
           return `<div class="kb-card">
             <div class="kb-card__head">
               ${coAvatar(d.company)}
               ${typeBadge(d.type)}
             </div>
-            <div class="kb-card__title">${d.deliverable && d.deliverable !== '—' ? esc(d.deliverable) : 'Untitled'}</div>
+            <div class="kb-card__title ${!hasTitle ? 'is-empty' : ''}">${hasTitle ? esc(d.deliverable) : 'Untitled'}</div>
+            ${d.client_contact ? `<div class="kb-card__contact">
+              <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+              ${esc(d.client_contact)}
+            </div>` : ''}
             <div class="kb-card__foot">
-              <span class="mono" style="font-size:11px">${pInfo.label || '—'}</span>
+              <span class="kb-card__period">${pInfo.label || '—'}</span>
               <span class="kb-card__value ${d._val == null ? 'is-tbd' : ''}">${d._val != null ? '₹' + fmtNum(d._val) + 'L' : 'TBD'}</span>
             </div>
+            ${d.status ? `<div class="kb-card__status">${statusBadge(d.status)}</div>` : ''}
           </div>`;
         }).join('')}
       </div>`;
