@@ -699,8 +699,15 @@
             const unscheduled = active.filter(p => !p.time_period);
             const companies = [...new Set(scheduled.map(p => p.company))];
 
+            // Only show past periods that actually have proposals; always show current/future
+            const visiblePeriods = PERIODS.filter(p =>
+                !p.past || scheduled.some(prop => prop.time_period === p.key)
+            );
+            const colCount = visiblePeriods.length;
+            const gridCols = `repeat(${colCount}, 1fr)`;
+
             const rows = companies.map(company => {
-                const cells = PERIODS.map(period => {
+                const cells = visiblePeriods.map(period => {
                     const cellProposals = scheduled.filter(p => p.company === company && p.time_period === period.key);
                     const intensity = cellIntensity(cellProposals);
                     const intensityClass = intensity ? `heat-cell ${intensity}` : 'heat-cell';
@@ -710,11 +717,11 @@
                 return `
                     <div class="company-row">
                         <div class="company-name">${logoImg(company)}${company}</div>
-                        <div class="company-cells">${cells}</div>
+                        <div class="company-cells" style="grid-template-columns:${gridCols}">${cells}</div>
                     </div>`;
             }).join('');
 
-            const periodHeaders = PERIODS.map(p =>
+            const periodHeaders = visiblePeriods.map(p =>
                 `<div class="period-label ${p.current ? 'current' : p.past ? 'past' : ''}">${p.label}</div>`
             ).join('');
 
@@ -777,11 +784,11 @@
                 <div class="heatmap-section">
                     <div class="section-header">
                         <div class="section-title">Closure Timeline Heat Map</div>
-                        <div class="section-count">Showing ${scheduled.length} active proposals · Past periods greyed out · May is current</div>
+                        <div class="section-count">Showing ${scheduled.length} active proposals across ${colCount} period${colCount !== 1 ? 's' : ''} · empty past periods hidden</div>
                     </div>
                     <div class="timeline-grid">
                         <div class="timeline-corner">Company</div>
-                        <div class="timeline-periods">${periodHeaders}</div>
+                        <div class="timeline-periods" style="grid-template-columns:${gridCols}">${periodHeaders}</div>
                         ${rows}
                     </div>
                 </div>
