@@ -225,6 +225,7 @@
         }
         .period-label:last-child { border-right: none; }
         .period-label.current { background: var(--mckinsey-blue); color: #FFFFFF; }
+        .period-label.past { background: #F5F5F5; color: #BABFC7; text-decoration: line-through; }
 
         .company-row { display: contents; }
 
@@ -561,14 +562,14 @@
         }
 
         const PERIODS = [
-            { key: 'march_wk3', label: 'March Wk-3', current: false },
-            { key: 'march_wk4', label: 'March Wk-4', current: false },
-            { key: 'april_wk1', label: 'April Wk-1', current: false },
-            { key: 'april_wk2', label: 'April Wk-2', current: false },
-            { key: 'april_wk3', label: 'April Wk-3', current: false },
-            { key: 'april_wk4', label: 'April Wk-4', current: false },
-            { key: 'may',       label: 'May',        current: true },
-            { key: 'june_plus', label: 'June+',      current: false },
+            { key: 'march_wk3', label: 'Mar Wk-3', current: false, past: true },
+            { key: 'march_wk4', label: 'Mar Wk-4', current: false, past: true },
+            { key: 'april_wk1', label: 'Apr Wk-1', current: false, past: true },
+            { key: 'april_wk2', label: 'Apr Wk-2', current: false, past: true },
+            { key: 'april_wk3', label: 'Apr Wk-3', current: false, past: true },
+            { key: 'april_wk4', label: 'Apr Wk-4', current: false, past: true },
+            { key: 'may',       label: 'May ★',    current: true,  past: false },
+            { key: 'june_plus', label: 'June+',     current: false, past: false },
         ];
 
         let authToken = sessionStorage.getItem('heatmap_token');
@@ -714,7 +715,7 @@
             }).join('');
 
             const periodHeaders = PERIODS.map(p =>
-                `<div class="period-label ${p.current ? 'current' : ''}">${p.label}</div>`
+                `<div class="period-label ${p.current ? 'current' : p.past ? 'past' : ''}">${p.label}</div>`
             ).join('');
 
             const unscheduledCards = unscheduled.map(p => `
@@ -776,7 +777,7 @@
                 <div class="heatmap-section">
                     <div class="section-header">
                         <div class="section-title">Closure Timeline Heat Map</div>
-                        <div class="section-count">Showing ${scheduled.length} active proposals across 8 time periods</div>
+                        <div class="section-count">Showing ${scheduled.length} active proposals · Past periods greyed out · May is current</div>
                     </div>
                     <div class="timeline-grid">
                         <div class="timeline-corner">Company</div>
