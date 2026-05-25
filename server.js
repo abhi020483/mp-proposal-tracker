@@ -162,7 +162,7 @@ app.post('/api/sync', requireAuth, async (req, res) => {
       if (type !== 'hot' && type !== 'warm') continue;
       const company = (cols[idx.company] || '').trim();
       const deliverable = (cols[idx.deliverable] || '').trim();
-      if (!company || !deliverable) continue;
+      if (!company) continue; // allow empty deliverable (e.g. Viatris)
 
       // Some rows have extra blank columns — fall back to cols 10/11 if primary status/closure cols are empty
       const rawStatus = cols[idx.status]?.trim() || cols[10]?.trim() || '';
@@ -172,7 +172,7 @@ app.post('/api/sync', requireAuth, async (req, res) => {
         type,
         company,
         client_contact: cols[idx.client]?.trim() || null,
-        deliverable,
+        deliverable: deliverable || '—',
         value: cols[idx.value]?.trim() || null,
         status: mapStatus(rawStatus),
         time_period: mapTimePeriod(rawClosure),
