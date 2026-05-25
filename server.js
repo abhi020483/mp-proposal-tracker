@@ -74,7 +74,7 @@ app.get('/api/summary', requireAuth, async (req, res) => {
     closing_now: closingNow.length,
     won_count: won.length,
     won_value: won.reduce((s, p) => s + parseValue(p.value), 0),
-    total_value: active.reduce((s, p) => s + parseValue(p.value), 0),
+    total_value: data.reduce((s, p) => s + parseValue(p.value), 0),
   });
 });
 
