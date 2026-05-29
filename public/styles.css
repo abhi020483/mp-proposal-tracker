@@ -490,6 +490,7 @@ input  { font-family: inherit; }
 .h-warm-5 { background-color: var(--warm-h5); }
 .h-mix-3  { background-image: linear-gradient(135deg, var(--hot-h3) 50%, var(--warm-h3) 50%); }
 .h-mix-4  { background-image: linear-gradient(135deg, var(--hot-h4) 50%, var(--warm-h4) 50%); }
+.h-mix-5  { background-image: linear-gradient(135deg, var(--hot-h5) 50%, var(--warm-h5) 50%); }
 
 .heatmap__rowtotal {
   display: flex; align-items: center; justify-content: flex-end;
@@ -580,7 +581,7 @@ input  { font-family: inherit; }
 .pl-card__contact { font-family: var(--font-mono); font-size: 11px; color: var(--ink-3); }
 
 /* ─── Kanban ─────────────────────────────────────────────── */
-.kanban { display: grid; grid-template-columns: repeat(4,1fr); gap: 12px; }
+.kanban { display: grid; grid-template-columns: repeat(5,1fr); gap: 12px; }
 .kb-col {
   background: var(--surface-2); border-radius: var(--radius);
   padding: 10px; min-height: 360px;
@@ -762,7 +763,7 @@ input  { font-family: inherit; }
   .kpis { grid-template-columns: repeat(3,1fr); }
   .kpi { border-bottom: 1px solid var(--line); }
   .kpi:nth-child(3n) { border-right: none; }
-  .kanban { grid-template-columns: repeat(2,1fr); }
+  .kanban { grid-template-columns: repeat(3,1fr); }
   .filterbar { top: auto; position: relative; }
   .tabs { top: 53px; }
   .brand-sub { display: none; }

@@ -5,6 +5,16 @@ const crypto = require('crypto');
 const { createClient } = require('@supabase/supabase-js');
 const path = require('path');
 
+// [C-2] Guard: fail fast if critical env vars are missing
+if (!process.env.APP_PASSWORD) {
+  console.error('FATAL: APP_PASSWORD env var is not set. Exiting.');
+  process.exit(1);
+}
+if (!process.env.SUPABASE_URL || !process.env.SUPABASE_ANON_KEY) {
+  console.error('FATAL: SUPABASE_URL or SUPABASE_ANON_KEY env var is not set. Exiting.');
+  process.exit(1);
+}
+
 const app = express();
 app.use(cors());
 app.use(express.json());
@@ -16,6 +26,8 @@ const supabase = createClient(
 
 // Derive a stable token from the password — same password always gives same token,
 // so server restarts don't invalidate existing browser sessions.
+// [C-1 partial] Uses APP_PASSWORD as both key and data — acceptable for single-password
+// internal tool; upgrade to separate TOKEN_SECRET if the app grows.
 function deriveToken(password) {
   return crypto.createHmac('sha256', password)
     .update(process.env.APP_PASSWORD)
@@ -55,7 +67,8 @@ app.get('/api/proposals', requireAuth, async (req, res) => {
   res.json(data);
 });
 
-// GET summary stats (protected)
+// [D-1] /api/summary is kept for backwards compat but client no longer calls it.
+// It remains available for debugging / curl inspection.
 app.get('/api/summary', requireAuth, async (req, res) => {
   const { data, error } = await supabase.from('proposals').select('*');
   if (error) return res.status(500).json({ error: error.message });
@@ -66,23 +79,24 @@ app.get('/api/summary', requireAuth, async (req, res) => {
     return isNaN(n) ? 0 : n;
   };
 
-  const won = data.filter(p => p.status === 'won');
+  const won  = data.filter(p => p.status === 'won');
   const active = data.filter(p => p.status !== 'won');
-  const hot = active.filter(p => p.type === 'hot');
+  const hot  = active.filter(p => p.type === 'hot');
   const warm = active.filter(p => p.type === 'warm');
-  const cold = data.filter(p => p.type === 'cold');
+  // [L-3] Cold excludes won deals to be consistent with hot/warm treatment
+  const cold = data.filter(p => p.type === 'cold' && p.status !== 'won');
   const closingNow = active.filter(p => p.time_period === 'may');
 
   res.json({
-    hot_count: hot.length,
-    hot_value: hot.reduce((s, p) => s + parseValue(p.value), 0),
-    warm_count: warm.length,
-    warm_value: warm.reduce((s, p) => s + parseValue(p.value), 0),
-    cold_count: cold.length,
-    cold_value: cold.reduce((s, p) => s + parseValue(p.value), 0),
+    hot_count:   hot.length,
+    hot_value:   hot.reduce((s, p) => s + parseValue(p.value), 0),
+    warm_count:  warm.length,
+    warm_value:  warm.reduce((s, p) => s + parseValue(p.value), 0),
+    cold_count:  cold.length,
+    cold_value:  cold.reduce((s, p) => s + parseValue(p.value), 0),
     closing_now: closingNow.length,
-    won_count: won.length,
-    won_value: won.reduce((s, p) => s + parseValue(p.value), 0),
+    won_count:   won.length,
+    won_value:   won.reduce((s, p) => s + parseValue(p.value), 0),
     total_value: data.reduce((s, p) => s + parseValue(p.value), 0),
   });
 });
@@ -93,13 +107,20 @@ function parseCSVLine(line) {
   let current = '';
   let inQuotes = false;
   for (let i = 0; i < line.length; i++) {
-    if (line[i] === '"') {
-      inQuotes = !inQuotes;
-    } else if (line[i] === ',' && !inQuotes) {
+    const ch = line[i];
+    if (ch === '"') {
+      // [L-9] Handle RFC 4180 escaped double-quotes ("")
+      if (inQuotes && line[i + 1] === '"') {
+        current += '"';
+        i++;
+      } else {
+        inQuotes = !inQuotes;
+      }
+    } else if (ch === ',' && !inQuotes) {
       result.push(current.trim());
       current = '';
     } else {
-      current += line[i];
+      current += ch;
     }
   }
   result.push(current.trim());
@@ -117,6 +138,7 @@ function mapTimePeriod(val) {
   if (/apr.*wk?4|april.*4/.test(v)) return 'april_wk4';
   if (/^may/.test(v)) return 'may';
   if (/^jun/.test(v)) return 'june_plus';
+  // [E-9] Unknown periods return null — row still inserted, appears in "All periods" only
   return null;
 }
 
@@ -126,12 +148,15 @@ function mapStatus(val) {
   if (v.includes('won') || v.includes('closed') || v === 'completed') return 'won';
   if (v.includes('shared') || v.includes('requested')) return 'shared';
   if (v.includes('discussion')) return 'discussion';
+  // [L-10] Log unrecognized statuses so they can be diagnosed
+  if (v.length > 0) console.warn(`[sync] Unrecognized status value: "${val}" — stored as null`);
   return null;
 }
 
 // Sync from Google Sheets — Pipeline tracker tab (protected)
 app.post('/api/sync', requireAuth, async (req, res) => {
-  const SHEET_URL = 'https://docs.google.com/spreadsheets/d/1LqPp8lbv13kXGfZJZnRWrO_AZmV5iwlGk66JgqcSNm8/export?format=csv&gid=942230714';
+  const SHEET_URL = process.env.SHEET_URL ||
+    'https://docs.google.com/spreadsheets/d/1LqPp8lbv13kXGfZJZnRWrO_AZmV5iwlGk66JgqcSNm8/export?format=csv&gid=942230714';
 
   try {
     const response = await fetch(SHEET_URL);
@@ -171,20 +196,20 @@ app.post('/api/sync', requireAuth, async (req, res) => {
       if (type !== 'hot' && type !== 'warm' && type !== 'cold') continue;
       const company = (cols[idx.company] || '').trim();
       const deliverable = (cols[idx.deliverable] || '').trim();
-      if (!company) continue; // allow empty deliverable (e.g. Viatris)
+      if (!company) continue;
 
-      // Some rows have extra blank columns — fall back to cols 10/11 if primary status/closure cols are empty
-      const rawStatus = cols[idx.status]?.trim() || cols[10]?.trim() || '';
+      // Some rows have extra blank columns — fall back to cols 10/11 if primary cols empty
+      const rawStatus  = cols[idx.status]?.trim()  || cols[10]?.trim() || '';
       const rawClosure = cols[idx.closure]?.trim() || cols[11]?.trim() || '';
 
       proposals.push({
         type,
         company,
         client_contact: cols[idx.client]?.trim() || null,
-        deliverable: deliverable || '—',
-        value: cols[idx.value]?.trim() || null,
-        status: mapStatus(rawStatus),
-        time_period: mapTimePeriod(rawClosure),
+        deliverable:    deliverable || '—',
+        value:          cols[idx.value]?.trim() || null,
+        status:         mapStatus(rawStatus),
+        time_period:    mapTimePeriod(rawClosure),
       });
     }
 
@@ -195,7 +220,7 @@ app.post('/api/sync', requireAuth, async (req, res) => {
     if (proposals.length > 0) {
       const { error: insError } = await supabase.from('proposals').insert(proposals);
       if (insError) {
-        // If DB still has the old type constraint (hot/warm only), retry without cold rows
+        // If DB still has old type constraint (hot/warm only), retry without cold rows
         if (insError.message.includes('type_check') || insError.message.includes('violates check')) {
           const filtered = proposals.filter(p => p.type !== 'cold');
           if (filtered.length > 0) {

@@ -47,7 +47,7 @@ function parseValue(v) {
 }
 
 function fmtNum(n) {
-  if (n == null) return null;
+  if (n == null || isNaN(n)) return null;
   return n % 1 === 0 ? String(n) : n.toFixed(1);
 }
 
@@ -64,8 +64,9 @@ function coColor(name) {
 }
 
 function coShort(name) {
-  return name.replace(/[^A-Za-z\s]/g, '').trim()
-    .split(/\s+/).map(w => w[0]).join('').toUpperCase().slice(0, 2) || '??';
+  const letters = name.replace(/[^A-Za-z\s]/g, '').trim();
+  const initials = letters.split(/\s+/).map(w => w[0]).join('').toUpperCase().slice(0, 2);
+  return initials || name.slice(0, 2).toUpperCase() || '??';
 }
 
 function periodInfo(key) {
@@ -108,6 +109,7 @@ function activeDeals() {
   if (state.type === 'cold') {
     return state.deals.filter(d => {
       if (d.type !== 'cold') return false;
+      if (d.status === 'won') return false;
       if (state.period === 'may'  && d.time_period !== 'may')       return false;
       if (state.period === 'june' && d.time_period !== 'june_plus') return false;
       return matchesSearch(d);
@@ -132,9 +134,13 @@ function coldDeals() {
 
 function allNonCold() {
   // For data table: hot+warm+won, searchable, type-filterable
+  // Cold chip on Data tab shows only cold deals (not all non-cold)
+  if (state.type === 'cold') {
+    return state.deals.filter(d => d.type === 'cold' && matchesSearch(d));
+  }
   return state.deals.filter(d => {
     if (d.type === 'cold') return false;
-    if (state.type !== 'all' && state.type !== 'cold' && d.type !== state.type) return false;
+    if (state.type !== 'all' && d.type !== state.type) return false;
     return matchesSearch(d);
   });
 }
@@ -151,7 +157,12 @@ function coAvatar(name, showName = true) {
 }
 
 function esc(s) {
-  return String(s || '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+  return String(s || '')
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#039;');
 }
 
 function statusBadge(status) {
@@ -186,11 +197,12 @@ function heatClass(deals) {
   else if (total >= 80)  lvl = 4;
   else if (total >= 50)  lvl = 3;
   else if (total >= 25)  lvl = 2;
-  if (hasHot && hasWarm && lvl >= 3) return `h-mix-${Math.min(lvl, 4)}`;
+  if (hasHot && hasWarm && lvl >= 3) return `h-mix-${lvl}`;
   return hasHot ? `h-hot-${lvl}` : `h-warm-${lvl}`;
 }
 
 function sparkSvg(vals, color) {
+  if (!vals || vals.length < 2) return '';
   const max = Math.max(...vals, 1);
   const pts = vals.map((v, i) => {
     const x = (i / (vals.length - 1)) * 64;
@@ -222,7 +234,7 @@ function tplKpis(deals) {
     <div class="kpi">
       <div class="kpi__label">Active pipeline</div>
       <div class="kpi__value">₹${fmtNum(tv) || '0'}<span class="kpi__unit">L</span></div>
-      <div class="kpi__delta"><strong>${deals.length}</strong> open hot + warm</div>
+      <div class="kpi__delta"><strong>${deals.length}</strong> ${state.type === 'cold' ? 'cold deals' : 'open hot + warm'}</div>
       ${sparkSvg([3,4,5,7,6,8,10,9,12],'var(--ink-2)')}
     </div>
     <div class="kpi kpi--hot">
@@ -401,18 +413,29 @@ function tplChart(deals) {
 }
 
 function tplKanban() {
-  const all = state.deals.filter(d => d.type !== 'cold' && matchesSearch(d));
+  // [L-5] Use the dynamically-current period rather than hardcoded 'may'
+  const currentPeriodKey = PERIODS.find(p => p.state === 'current')?.key || 'may';
+  const deals4kanban = state.deals.filter(d => d.type !== 'cold' && matchesSearch(d));
+  // [U-1] Apply period filter to Kanban (same as other tabs)
+  const periodFiltered = deals4kanban.filter(d => {
+    if (state.period === 'may'  && d.time_period !== 'may')       return false;
+    if (state.period === 'june' && d.time_period !== 'june_plus') return false;
+    return true;
+  });
+  const all = periodFiltered;
   const bucket = d => {
     if (d.status === 'won')        return 'won';
-    if (d.status === 'shared' && d.time_period === 'may') return 'closing';
+    if (d.status === 'shared' && d.time_period === currentPeriodKey) return 'closing';
     if (d.status === 'shared')     return 'shared';
-    return 'discussion';  // null status + 'discussion' status
+    if (d.status === 'discussion') return 'discussion';
+    return 'new';  // [L-4] null status gets its own bucket instead of mixing with discussion
   };
   const cols = [
-    { key: 'discussion', label: 'In discussion',   dot: 'var(--discuss)' },
-    { key: 'shared',     label: 'Proposal shared', dot: 'var(--shared)' },
-    { key: 'closing',    label: 'Closing now',     dot: 'var(--hot)' },
-    { key: 'won',        label: 'Closed won',      dot: 'var(--won)' },
+    { key: 'new',        label: 'New / No status',  dot: 'var(--ink-3)' },
+    { key: 'discussion', label: 'In discussion',    dot: 'var(--discuss)' },
+    { key: 'shared',     label: 'Proposal shared',  dot: 'var(--shared)' },
+    { key: 'closing',    label: 'Closing now',      dot: 'var(--hot)' },
+    { key: 'won',        label: 'Closed won',       dot: 'var(--won)' },
   ];
   return `<div class="kanban">
     ${cols.map(col => {
@@ -502,8 +525,8 @@ function tplWon(deals) {
       </div>
       <div class="won-stat won-stat--avg">
         <div class="won-stat__label">Avg deal size</div>
-        <div class="won-stat__value">₹${fmtNum(total / sorted.length) || '—'}<span class="u">L</span></div>
-        <div class="won-stat__sub">across ${sorted.length} deals</div>
+        <div class="won-stat__value">${sorted.some(d => d._val != null) ? `₹${fmtNum(total / sorted.filter(d => d._val != null).length) || '—'}<span class="u">L</span>` : '<span style="color:var(--ink-3)">—</span>'}</div>
+        <div class="won-stat__sub">across ${sorted.filter(d => d._val != null).length} valued deals</div>
       </div>
     </div>
 
@@ -611,25 +634,29 @@ function viewOverview(deals) {
   const periodsWithDeals = PERIODS.filter(p =>
     deals.some(d => d.time_period === p.key)
   );
-  // Fallback: if saved closingPeriod has no deals, pick first available
-  if (periodsWithDeals.length && !periodsWithDeals.some(p => p.key === state.closingPeriod)) {
-    state.closingPeriod = periodsWithDeals[0].key;
-  }
-  const selPeriod = PERIODS.find(p => p.key === state.closingPeriod) ||
-                    { key: state.closingPeriod, label: state.closingPeriod };
-  const closingDeals = deals.filter(d => d.time_period === state.closingPeriod);
+  // [L-6] Don't mutate state inside render — compute display period locally
+  const displayPeriodKey = periodsWithDeals.some(p => p.key === state.closingPeriod)
+    ? state.closingPeriod
+    : (periodsWithDeals[0]?.key || state.closingPeriod);
+  const selPeriod = PERIODS.find(p => p.key === displayPeriodKey) ||
+                    { key: displayPeriodKey, label: displayPeriodKey };
+  const closingDeals = deals.filter(d => d.time_period === displayPeriodKey);
 
   const periodOpts = periodsWithDeals.map(p =>
-    `<option value="${p.key}" ${p.key === state.closingPeriod ? 'selected' : ''}>${p.label}</option>`
+    `<option value="${p.key}" ${p.key === displayPeriodKey ? 'selected' : ''}>${p.label}</option>`
   ).join('');
+
+  const closingHeading = periodsWithDeals.length > 0
+    ? `<h2 class="section-head__pick">Closing in
+        <select id="closing-period-select" class="period-select">${periodOpts}</select>
+       </h2>`
+    : `<h2>Closing deals</h2>`;
 
   return `
     <div class="section-head" style="margin-top:0"><h2>Key metrics</h2></div>
     ${tplKpis(deals)}
     <div class="section-head">
-      <h2 class="section-head__pick">Closing in
-        <select id="closing-period-select" class="period-select">${periodOpts}</select>
-      </h2>
+      ${closingHeading}
       <span class="muted">${closingDeals.length} proposal${closingDeals.length !== 1 ? 's' : ''}</span>
     </div>
     ${tplClosingWeek(closingDeals, selPeriod.label)}
@@ -651,7 +678,9 @@ function viewPipeline(deals) {
     <div class="section-head">
       <h2>Value by company</h2>
     </div>
-    ${tplChart(deals)}
+    ${state.type === 'cold'
+      ? `<div class="empty" style="padding:20px;text-align:left;color:var(--ink-3)">Cold deals are shown in the cold segment below — no bar chart for nurture stage.</div>`
+      : tplChart(deals)}
     ${tplColdSegment()}`;
 }
 
@@ -669,7 +698,7 @@ function render() {
   document.getElementById('tc-data').textContent = state.deals.filter(d => d.type !== 'cold').length;
 
   // Results count
-  const countMap = { overview: active.length, pipeline: active.length, kanban: allNonCold().length, won: won.length, data: all.length };
+  const countMap = { overview: active.length, pipeline: active.length, kanban: all.length, won: won.length, data: all.length };
   document.getElementById('results-count').textContent = `${countMap[state.tab] || 0} proposals`;
 
   // Active tab highlight
@@ -714,35 +743,36 @@ function wireClosingPeriodSelect() {
 }
 
 function wireTooltips() {
-  const tip = document.getElementById('tooltip');
   document.querySelectorAll('.heat-mini[data-tip]').forEach(el => {
     el.addEventListener('mouseenter', e => {
       document.getElementById('tt-title').textContent   = el.dataset.tip;
       document.getElementById('tt-value').textContent   = el.dataset.val;
       document.getElementById('tt-status').textContent  = el.dataset.status;
       document.getElementById('tt-contact').textContent = el.dataset.contact;
-      tip.style.display = 'block';
+      _TIP.style.display = 'block';
       moveTip(e);
     });
     el.addEventListener('mousemove', moveTip);
-    el.addEventListener('mouseleave', () => { tip.style.display = 'none'; });
+    el.addEventListener('mouseleave', () => { _TIP.style.display = 'none'; });
   });
 }
 
+// [P-3] Cache tooltip element once rather than querying on every mousemove
+const _TIP = document.getElementById('tooltip');
+
 function moveTip(e) {
-  const tip = document.getElementById('tooltip');
-  let x = e.pageX + 14, y = e.pageY + 14;
-  if (x + 280 > window.innerWidth)  x = e.pageX - 280 - 10;
-  if (y + 120 > window.innerHeight) y = e.pageY - 120 - 10;
-  tip.style.left = x + 'px';
-  tip.style.top  = y + 'px';
+  let x = e.clientX + 14, y = e.clientY + 14;
+  if (x + 280 > window.innerWidth)  x = e.clientX - 280 - 10;
+  if (y + 120 > window.innerHeight) y = e.clientY - 120 - 10;
+  _TIP.style.left = x + 'px';
+  _TIP.style.top  = y + 'px';
 }
 
 function wireCellClicks() {
   document.querySelectorAll('.heatmap__cell.is-clickable, .heat-more').forEach(el => {
     el.addEventListener('click', e => {
       e.stopPropagation();
-      const co     = el.dataset.cellCo || el.dataset.cellCo;
+      const co     = el.dataset.cellCo || el.closest('[data-cell-co]')?.dataset.cellCo;
       const period = el.dataset.cellPeriod;
       if (!co || !period) return;
       openPopover(el.closest('.heatmap__cell')?.getBoundingClientRect() || el.getBoundingClientRect(), co, period);
@@ -765,6 +795,9 @@ function wireTableSort() {
 }
 
 // ─── Cell popover ─────────────────────────────────────────────────────────────
+
+// [E-6] Store popover keydown handler at module level to prevent listener leaks
+let _popKeyHandler = null;
 
 function openPopover(rect, company, periodKey) {
   closePopover();
@@ -827,14 +860,16 @@ function openPopover(rect, company, periodKey) {
   document.body.appendChild(pop);
 
   document.getElementById('cpop-close').addEventListener('click', closePopover);
-  const onKey = e => { if (e.key === 'Escape') closePopover(); };
-  document.addEventListener('keydown', onKey);
-  pop._onKey = onKey;
+  _popKeyHandler = e => { if (e.key === 'Escape') closePopover(); };
+  document.addEventListener('keydown', _popKeyHandler);
 }
 
 function closePopover() {
-  const pop = document.getElementById('cpop');
-  if (pop) { document.removeEventListener('keydown', pop._onKey); pop.remove(); }
+  if (_popKeyHandler) {
+    document.removeEventListener('keydown', _popKeyHandler);
+    _popKeyHandler = null;
+  }
+  document.getElementById('cpop')?.remove();
   document.getElementById('cpop-bg')?.remove();
 }
 
@@ -848,8 +883,6 @@ function updateSyncPill() {
   label.textContent = t ? `Synced ${t}` : 'Never synced';
   if (state.lastSyncedAt) pill.title = new Date(state.lastSyncedAt).toLocaleString('en-IN');
 }
-
-setInterval(updateSyncPill, 30000);
 
 // ─── Theme ────────────────────────────────────────────────────────────────────
 
@@ -893,9 +926,10 @@ async function apiFetch(url, opts = {}) {
 }
 
 async function loadData() {
-  const [pRes, sRes] = await Promise.all([apiFetch('/api/proposals'), apiFetch('/api/summary')]);
-  if (!pRes || !sRes || !pRes.ok || !sRes.ok) return;
-  const proposals = await pRes.json();
+  const res = await apiFetch('/api/proposals');
+  if (!res) return; // 401 handled inside apiFetch
+  if (!res.ok) throw new Error(`Failed to load proposals (HTTP ${res.status})`);
+  const proposals = await res.json();
   state.deals = proposals.map(mapDeal);
   render();
 }
@@ -979,6 +1013,10 @@ async function showApp() {
   updateThemeIcon(document.documentElement.getAttribute('data-theme') || 'light');
   updateSyncPill();
   wireStaticEvents();
+  // [P-4] Start the sync-pill refresh interval only after login, not at module load
+  if (!window._syncPillInterval) {
+    window._syncPillInterval = setInterval(updateSyncPill, 30000);
+  }
 
   document.getElementById('main').innerHTML = '<div class="empty">Loading proposals…</div>';
   try {
