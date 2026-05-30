@@ -3,6 +3,9 @@
   "version": "1.0.0",
   "description": "Hot & Warm Proposal Heat Map — FY 2026-27",
   "main": "server.js",
+  "engines": {
+    "node": ">=18.0.0"
+  },
   "scripts": {
     "start": "node server.js",
     "dev": "node --watch server.js",

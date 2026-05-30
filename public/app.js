@@ -56,10 +56,14 @@ function sumVals(deals) {
 }
 
 const _colorCache = {};
+let _colorCacheSize = 0;
 function coColor(name) {
   if (_colorCache[name]) return _colorCache[name];
   let h = 0;
   for (let i = 0; i < name.length; i++) h = (h * 31 + name.charCodeAt(i)) & 0x7FFFFFFF;
+  // [P-7] Cap the cache so it can't grow unbounded over a long-lived session
+  if (_colorCacheSize > 500) { for (const k in _colorCache) delete _colorCache[k]; _colorCacheSize = 0; }
+  _colorCacheSize++;
   return (_colorCache[name] = CO_PALETTE[h % CO_PALETTE.length]);
 }
 
@@ -199,20 +203,6 @@ function heatClass(deals) {
   else if (total >= 25)  lvl = 2;
   if (hasHot && hasWarm && lvl >= 3) return `h-mix-${lvl}`;
   return hasHot ? `h-hot-${lvl}` : `h-warm-${lvl}`;
-}
-
-function sparkSvg(vals, color) {
-  if (!vals || vals.length < 2) return '';
-  const max = Math.max(...vals, 1);
-  const pts = vals.map((v, i) => {
-    const x = (i / (vals.length - 1)) * 64;
-    const y = 22 - (v / max) * 18 - 2;
-    return `${x.toFixed(1)},${y.toFixed(1)}`;
-  }).join(' ');
-  return `<svg class="kpi__spark" viewBox="0 0 64 22" fill="none">
-    <polyline points="${pts}" stroke="${color}" stroke-width="1.25"
-      stroke-linecap="round" stroke-linejoin="round"/>
-  </svg>`;
 }
 
 // ─── Templates ────────────────────────────────────────────────────────────────
@@ -388,9 +378,12 @@ function tplPipelineCards(deals) {
   </div>`;
 }
 
-function tplChart(deals) {
+// [D-5] Unified value-by-company chart. mode: 'active' (color by type, exclude won)
+// or 'won' (won deals; hot-won solid green, warm-won striped green — [U-10]).
+function tplValueChart(deals, mode = 'active') {
+  const src = mode === 'won' ? deals : deals.filter(d => d.status !== 'won');
   const byCompany = {};
-  for (const d of deals.filter(d => d.status !== 'won')) {
+  for (const d of src) {
     if (!byCompany[d.company]) byCompany[d.company] = { hot: 0, warm: 0 };
     byCompany[d.company][d.type] = (byCompany[d.company][d.type] || 0) + (d._val || 0);
   }
@@ -400,17 +393,23 @@ function tplChart(deals) {
     .sort((a, b) => b.total - a.total);
   if (!rows.length) return '';
   const max = rows[0].total || 1;
+  const hotCls  = mode === 'won' ? 'chart-row__bar--won'      : 'chart-row__bar--hot';
+  const warmCls = mode === 'won' ? 'chart-row__bar--won-warm' : 'chart-row__bar--warm';
+  const hotTip  = mode === 'won' ? 'Hot won'  : 'Hot';
+  const warmTip = mode === 'won' ? 'Warm won' : 'Warm';
   return `<div class="chart">
     ${rows.map(r => `<div class="chart-row">
       <div>${coAvatar(r.co)}</div>
       <div class="chart-row__bars">
-        ${r.hot  > 0 ? `<div class="chart-row__bar chart-row__bar--hot"  style="width:${(r.hot/max*100).toFixed(1)}%" title="Hot ₹${r.hot}L"></div>` : ''}
-        ${r.warm > 0 ? `<div class="chart-row__bar chart-row__bar--warm" style="width:${(r.warm/max*100).toFixed(1)}%" title="Warm ₹${r.warm}L"></div>` : ''}
+        ${r.hot  > 0 ? `<div class="chart-row__bar ${hotCls}"  style="width:${(r.hot/max*100).toFixed(1)}%" title="${hotTip} ₹${r.hot}L"></div>` : ''}
+        ${r.warm > 0 ? `<div class="chart-row__bar ${warmCls}" style="width:${(r.warm/max*100).toFixed(1)}%" title="${warmTip} ₹${r.warm}L"></div>` : ''}
       </div>
       <div class="chart-row__total">₹${fmtNum(r.total)}<span class="muted" style="margin-left:3px">L</span></div>
     </div>`).join('')}
   </div>`;
 }
+
+function tplChart(deals) { return tplValueChart(deals, 'active'); }
 
 function tplKanban() {
   // [L-5] Use the dynamically-current period rather than hardcoded 'may'
@@ -470,29 +469,7 @@ function tplKanban() {
   </div>`;
 }
 
-function tplWonChart(deals) {
-  const byCompany = {};
-  for (const d of deals) {
-    if (!byCompany[d.company]) byCompany[d.company] = { hot: 0, warm: 0 };
-    byCompany[d.company][d.type] = (byCompany[d.company][d.type] || 0) + (d._val || 0);
-  }
-  const rows = Object.entries(byCompany)
-    .map(([co, v]) => ({ co, hot: v.hot || 0, warm: v.warm || 0, total: (v.hot || 0) + (v.warm || 0) }))
-    .filter(r => r.total > 0)
-    .sort((a, b) => b.total - a.total);
-  if (!rows.length) return '';
-  const max = rows[0].total || 1;
-  return `<div class="chart">
-    ${rows.map(r => `<div class="chart-row">
-      <div>${coAvatar(r.co)}</div>
-      <div class="chart-row__bars">
-        ${r.hot  > 0 ? `<div class="chart-row__bar chart-row__bar--won" style="width:${(r.hot/max*100).toFixed(1)}%" title="Hot won ₹${r.hot}L"></div>` : ''}
-        ${r.warm > 0 ? `<div class="chart-row__bar chart-row__bar--won" style="width:${(r.warm/max*100).toFixed(1)}%;opacity:.6" title="Warm won ₹${r.warm}L"></div>` : ''}
-      </div>
-      <div class="chart-row__total">₹${fmtNum(r.total)}<span class="muted" style="margin-left:3px">L</span></div>
-    </div>`).join('')}
-  </div>`;
-}
+function tplWonChart(deals) { return tplValueChart(deals, 'won'); }
 
 function tplWon(deals) {
   if (!deals.length) return `<div class="empty">No closed won deals yet.</div>`;
@@ -742,18 +719,26 @@ function wireClosingPeriodSelect() {
   });
 }
 
+// [P-2] Single delegated listener on the heatmap instead of 3 listeners per mini.
 function wireTooltips() {
-  document.querySelectorAll('.heat-mini[data-tip]').forEach(el => {
-    el.addEventListener('mouseenter', e => {
-      document.getElementById('tt-title').textContent   = el.dataset.tip;
-      document.getElementById('tt-value').textContent   = el.dataset.val;
-      document.getElementById('tt-status').textContent  = el.dataset.status;
-      document.getElementById('tt-contact').textContent = el.dataset.contact;
-      _TIP.style.display = 'block';
-      moveTip(e);
-    });
-    el.addEventListener('mousemove', moveTip);
-    el.addEventListener('mouseleave', () => { _TIP.style.display = 'none'; });
+  const map = document.querySelector('.heatmap');
+  if (!map) return;
+  map.addEventListener('mouseover', e => {
+    const el = e.target.closest('.heat-mini[data-tip]');
+    if (!el) return;
+    document.getElementById('tt-title').textContent   = el.dataset.tip;
+    document.getElementById('tt-value').textContent   = el.dataset.val;
+    document.getElementById('tt-status').textContent  = el.dataset.status;
+    document.getElementById('tt-contact').textContent = el.dataset.contact;
+    _TIP.style.display = 'block';
+    moveTip(e);
+  });
+  map.addEventListener('mousemove', e => {
+    if (e.target.closest('.heat-mini[data-tip]')) moveTip(e);
+  });
+  map.addEventListener('mouseout', e => {
+    const to = e.relatedTarget;
+    if (!to || !to.closest || !to.closest('.heat-mini[data-tip]')) _TIP.style.display = 'none';
   });
 }
 
@@ -930,25 +915,33 @@ async function loadData() {
   if (!res) return; // 401 handled inside apiFetch
   if (!res.ok) throw new Error(`Failed to load proposals (HTTP ${res.status})`);
   const proposals = await res.json();
+  // [D-6] Only overwrite state once we have a valid array — preserves last-good data
+  if (!Array.isArray(proposals)) throw new Error('Malformed proposals response');
   state.deals = proposals.map(mapDeal);
   render();
 }
 
+let _syncing = false; // [E-10] guard against concurrent syncs
 async function doSync() {
+  if (_syncing) return;
+  _syncing = true;
   const btn = document.getElementById('sync-btn');
   btn.disabled = true;
   btn.textContent = '↻ Syncing…';
   try {
     const res = await apiFetch('/api/sync', { method: 'POST' });
+    if (!res) return; // 401 handled inside apiFetch
     const data = await res.json();
     if (!res.ok) throw new Error(data.error || 'Sync failed');
     state.lastSyncedAt = Date.now();
     localStorage.setItem('lastSyncedAt', state.lastSyncedAt);
     updateSyncPill();
     await loadData();
+    if (data.cold_skipped) alert(data.message); // surface partial-sync notice
   } catch (err) {
-    alert('Sync failed: ' + err.message);
+    alert('Sync failed: ' + err.message); // [D-6] state.deals untouched on failure
   } finally {
+    _syncing = false;
     btn.disabled = false;
     btn.textContent = '↻ Sync';
   }
@@ -1013,12 +1006,18 @@ async function showApp() {
   updateThemeIcon(document.documentElement.getAttribute('data-theme') || 'light');
   updateSyncPill();
   wireStaticEvents();
-  // [P-4] Start the sync-pill refresh interval only after login, not at module load
+  // [P-4] Start refresh interval only after login, not at module load.
+  // [U-4] Also refresh the displayed date so it doesn't go stale past midnight.
   if (!window._syncPillInterval) {
-    window._syncPillInterval = setInterval(updateSyncPill, 30000);
+    window._syncPillInterval = setInterval(() => {
+      updateSyncPill();
+      const { day, sub } = fmtDate();
+      const db = document.getElementById('date-block');
+      if (db) db.innerHTML = `<span class="date-block__day">${day}</span><span class="date-block__sub">${sub}</span>`;
+    }, 30000);
   }
 
-  document.getElementById('main').innerHTML = '<div class="empty">Loading proposals…</div>';
+  document.getElementById('main').innerHTML = '<div class="loading-state">Loading proposals…</div>';
   try {
     await loadData();
   } catch (e) {

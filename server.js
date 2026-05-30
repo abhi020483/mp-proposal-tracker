@@ -16,7 +16,21 @@ if (!process.env.SUPABASE_URL || !process.env.SUPABASE_ANON_KEY) {
 }
 
 const app = express();
-app.use(cors());
+
+// [S-2] Restrict CORS to a known origin when configured; otherwise reflect (dev default)
+const ALLOWED_ORIGIN = process.env.ALLOWED_ORIGIN;
+app.use(cors(ALLOWED_ORIGIN ? { origin: ALLOWED_ORIGIN } : {}));
+
+// [S-7] Security headers (manual — no helmet dependency)
+app.use((req, res, next) => {
+  res.setHeader('X-Content-Type-Options', 'nosniff');
+  res.setHeader('X-Frame-Options', 'DENY');
+  res.setHeader('Referrer-Policy', 'strict-origin-when-cross-origin');
+  res.setHeader('X-XSS-Protection', '0');
+  res.setHeader('Permissions-Policy', 'geolocation=(), microphone=(), camera=()');
+  next();
+});
+
 app.use(express.json());
 
 const supabase = createClient(
@@ -24,28 +38,64 @@ const supabase = createClient(
   process.env.SUPABASE_ANON_KEY
 );
 
-// Derive a stable token from the password — same password always gives same token,
-// so server restarts don't invalidate existing browser sessions.
-// [C-1 partial] Uses APP_PASSWORD as both key and data — acceptable for single-password
-// internal tool; upgrade to separate TOKEN_SECRET if the app grows.
+// [C-1] Derive a stable token using a dedicated server secret as the HMAC key,
+// and the password as the signed data. Falls back to APP_PASSWORD-derived secret
+// if TOKEN_SECRET is not set (keeps single-password tooling working).
+const TOKEN_SECRET = process.env.TOKEN_SECRET || (process.env.APP_PASSWORD + ':mp-tracker-hmac-key');
 function deriveToken(password) {
-  return crypto.createHmac('sha256', password)
-    .update(process.env.APP_PASSWORD)
+  return crypto.createHmac('sha256', TOKEN_SECRET)
+    .update(String(password))
     .digest('hex');
+}
+
+// [S-3 partial] Constant-time token comparison to avoid timing attacks
+function safeEqual(a, b) {
+  const ba = Buffer.from(String(a));
+  const bb = Buffer.from(String(b));
+  if (ba.length !== bb.length) return false;
+  return crypto.timingSafeEqual(ba, bb);
 }
 
 function requireAuth(req, res, next) {
   const auth = req.headers.authorization || '';
   const token = auth.replace('Bearer ', '').trim();
   const expected = deriveToken(process.env.APP_PASSWORD);
-  if (!token || token !== expected) return res.status(401).json({ error: 'Unauthorized' });
+  if (!token || !safeEqual(token, expected)) return res.status(401).json({ error: 'Unauthorized' });
   next();
 }
 
+// [S-1] Simple in-memory rate limiter for /api/auth (brute-force protection).
+// 8 attempts per IP per 15 min window. No external dependency.
+const authAttempts = new Map(); // ip -> { count, resetAt }
+const AUTH_WINDOW_MS = 15 * 60 * 1000;
+const AUTH_MAX_ATTEMPTS = 8;
+function rateLimitAuth(req, res, next) {
+  const ip = req.headers['x-forwarded-for']?.split(',')[0].trim() || req.socket.remoteAddress || 'unknown';
+  const now = Date.now();
+  let rec = authAttempts.get(ip);
+  if (!rec || now > rec.resetAt) {
+    rec = { count: 0, resetAt: now + AUTH_WINDOW_MS };
+    authAttempts.set(ip, rec);
+  }
+  if (rec.count >= AUTH_MAX_ATTEMPTS) {
+    const retrySec = Math.ceil((rec.resetAt - now) / 1000);
+    res.setHeader('Retry-After', retrySec);
+    return res.status(429).json({ error: `Too many attempts. Try again in ${Math.ceil(retrySec / 60)} min.` });
+  }
+  rec.count++;
+  next();
+}
+
+// Periodically prune expired rate-limit records to avoid unbounded growth
+setInterval(() => {
+  const now = Date.now();
+  for (const [ip, rec] of authAttempts) if (now > rec.resetAt) authAttempts.delete(ip);
+}, AUTH_WINDOW_MS).unref?.();
+
 // Auth
-app.post('/api/auth', (req, res) => {
+app.post('/api/auth', rateLimitAuth, (req, res) => {
   const { password } = req.body;
-  if (!password || password !== process.env.APP_PASSWORD) {
+  if (!password || !safeEqual(password, process.env.APP_PASSWORD)) {
     return res.status(401).json({ error: 'Invalid password' });
   }
   const token = deriveToken(password);

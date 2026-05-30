@@ -197,6 +197,9 @@ input  { font-family: inherit; }
   background: var(--won); opacity: .25;
   animation: pulse 2.4s ease-out infinite;
 }
+/* [U-5] When data isn't freshly synced, show a static muted dot (not "live") */
+.sync-dot--stale { background: var(--ink-3); }
+.sync-dot--stale::before { display: none; }
 @keyframes pulse {
   0%   { transform: scale(.8); opacity: .35; }
   70%  { transform: scale(1.9); opacity: 0; }
@@ -510,6 +513,7 @@ input  { font-family: inherit; }
   box-shadow: 0 12px 32px rgba(0,0,0,.12), 0 2px 6px rgba(0,0,0,.06);
   animation: pop-in .14s ease-out;
   overflow: hidden;
+  max-height: 75vh; /* [E-3] hard cap so content never overflows the estimate */
 }
 [data-theme="dark"] .cell-pop { box-shadow: 0 12px 32px rgba(0,0,0,.55), 0 2px 6px rgba(0,0,0,.35); }
 @keyframes pop-in {
@@ -704,6 +708,13 @@ input  { font-family: inherit; }
 .chart-row__bar--hot  { background: var(--hot); }
 .chart-row__bar--warm { background: var(--warm); }
 .chart-row__bar--won  { background: var(--won); }
+/* [U-10] Warm-won bars use a diagonal stripe so they're distinct from hot-won */
+.chart-row__bar--won-warm {
+  background-image: repeating-linear-gradient(45deg,
+    var(--won) 0, var(--won) 5px,
+    color-mix(in srgb, var(--won) 55%, transparent) 5px,
+    color-mix(in srgb, var(--won) 55%, transparent) 10px);
+}
 .chart-row__total { font-family: var(--font-mono); font-size: 12px; text-align: right; color: var(--ink); font-weight: 600; }
 
 /* ─── Tooltip ────────────────────────────────────────────── */
@@ -744,6 +755,18 @@ input  { font-family: inherit; }
 .muted { color: var(--ink-3); }
 .mono  { font-family: var(--font-mono); }
 .empty { padding: 40px; text-align: center; color: var(--ink-3); font-size: 13px; }
+
+/* [U-9] Distinct loading state — animated, clearly different from empty state */
+.loading-state {
+  padding: 48px; text-align: center; color: var(--ink-2); font-size: 13px;
+  display: flex; align-items: center; justify-content: center; gap: 10px;
+}
+.loading-state::before {
+  content: ""; width: 14px; height: 14px; border-radius: 50%;
+  border: 2px solid var(--line-2); border-top-color: var(--ink);
+  animation: spin .7s linear infinite;
+}
+@keyframes spin { to { transform: rotate(360deg); } }
 
 /* ─── Co avatar ──────────────────────────────────────────── */
 .co-avatar { display: inline-flex; align-items: center; gap: 7px; }
