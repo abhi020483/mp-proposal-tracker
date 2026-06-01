@@ -317,6 +317,19 @@ input  { font-family: inherit; }
 }
 .section-head .muted { font-size: 12px; color: var(--ink-3); font-family: var(--font-mono); }
 
+.sort-toggle {
+  font-size: 12px;
+  color: var(--ink-3);
+  font-family: var(--font-mono);
+  background: none;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  padding: 4px 10px;
+  cursor: pointer;
+  transition: background .12s, color .12s, border-color .12s;
+}
+.sort-toggle:hover { color: var(--ink-1); border-color: var(--ink-3); background: var(--surface-2); }
+
 /* Inline period picker inside section head */
 .section-head__pick { display: inline-flex; align-items: center; gap: 6px; }
 .period-select {

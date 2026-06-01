@@ -28,6 +28,7 @@ const state = {
   type:           'all',
   period:         'all',
   closingPeriod:  'may',
+  pipelineDir:    'desc',
   sortBy:         'value',
   sortDir:        'desc',
   deals:          [],
@@ -366,7 +367,8 @@ function tplHeatmap() {
 }
 
 function tplPipelineCards(deals) {
-  const sorted = [...deals].sort((a, b) => (b._val || 0) - (a._val || 0));
+  const dir = state.pipelineDir === 'asc' ? 1 : -1;
+  const sorted = [...deals].sort((a, b) => ((a._val || 0) - (b._val || 0)) * dir);
   if (!sorted.length) return `<div class="empty">No proposals match the current filter.</div>`;
   return `<div class="pipeline">
     ${sorted.map(d => {
@@ -663,7 +665,10 @@ function viewPipeline(deals) {
   return `
     <div class="section-head" style="margin-top:0">
       <h2>Active pipeline</h2>
-      <span class="muted">${deals.length} proposals · sorted by value</span>
+      <button id="pipeline-sort" class="sort-toggle" type="button"
+        title="Toggle value sort order">
+        ${deals.length} proposals · value ${state.pipelineDir === 'asc' ? '↑ ascending' : '↓ descending'}
+      </button>
     </div>
     ${tplPipelineCards(deals)}
     <div class="section-head">
@@ -722,6 +727,16 @@ function wirePerRender() {
   wireCellClicks();
   wireTableSort();
   wireClosingPeriodSelect();
+  wirePipelineSort();
+}
+
+function wirePipelineSort() {
+  const btn = document.getElementById('pipeline-sort');
+  if (!btn) return;
+  btn.addEventListener('click', () => {
+    state.pipelineDir = state.pipelineDir === 'asc' ? 'desc' : 'asc';
+    render();
+  });
 }
 
 function wireClosingPeriodSelect() {
