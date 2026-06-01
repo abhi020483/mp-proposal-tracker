@@ -205,6 +205,20 @@ function heatClass(deals) {
   return hasHot ? `h-hot-${lvl}` : `h-warm-${lvl}`;
 }
 
+function sparkSvg(vals, color) {
+  if (!vals || vals.length < 2) return '';
+  const max = Math.max(...vals, 1);
+  const pts = vals.map((v, i) => {
+    const x = (i / (vals.length - 1)) * 64;
+    const y = 22 - (v / max) * 18 - 2;
+    return `${x.toFixed(1)},${y.toFixed(1)}`;
+  }).join(' ');
+  return `<svg class="kpi__spark" viewBox="0 0 64 22" fill="none">
+    <polyline points="${pts}" stroke="${color}" stroke-width="1.25"
+      stroke-linecap="round" stroke-linejoin="round"/>
+  </svg>`;
+}
+
 // ─── Templates ────────────────────────────────────────────────────────────────
 
 function tplKpis(deals) {
