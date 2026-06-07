@@ -368,7 +368,15 @@ function tplHeatmap() {
 
 function tplPipelineCards(deals) {
   const dir = state.pipelineDir === 'asc' ? 1 : -1;
-  const sorted = [...deals].sort((a, b) => ((a._val || 0) - (b._val || 0)) * dir);
+  // [A-2] Keep TBD (no value) deals at the bottom in BOTH sort directions,
+  // rather than letting them sort as 0 and jump to the top when ascending.
+  const sorted = [...deals].sort((a, b) => {
+    const av = a._val, bv = b._val;
+    if (av == null && bv == null) return 0;
+    if (av == null) return 1;
+    if (bv == null) return -1;
+    return (av - bv) * dir;
+  });
   if (!sorted.length) return `<div class="empty">No proposals match the current filter.</div>`;
   return `<div class="pipeline">
     ${sorted.map(d => {
@@ -417,8 +425,8 @@ function tplValueChart(deals, mode = 'active') {
     ${rows.map(r => `<div class="chart-row">
       <div>${coAvatar(r.co)}</div>
       <div class="chart-row__bars">
-        ${r.hot  > 0 ? `<div class="chart-row__bar ${hotCls}"  style="width:${(r.hot/max*100).toFixed(1)}%" title="${hotTip} ₹${r.hot}L"></div>` : ''}
-        ${r.warm > 0 ? `<div class="chart-row__bar ${warmCls}" style="width:${(r.warm/max*100).toFixed(1)}%" title="${warmTip} ₹${r.warm}L"></div>` : ''}
+        ${r.hot  > 0 ? `<div class="chart-row__bar ${hotCls}"  style="width:${(r.hot/max*100).toFixed(1)}%" title="${hotTip} ₹${fmtNum(r.hot)}L"></div>` : ''}
+        ${r.warm > 0 ? `<div class="chart-row__bar ${warmCls}" style="width:${(r.warm/max*100).toFixed(1)}%" title="${warmTip} ₹${fmtNum(r.warm)}L"></div>` : ''}
       </div>
       <div class="chart-row__total">₹${fmtNum(r.total)}<span class="muted" style="margin-left:3px">L</span></div>
     </div>`).join('')}
@@ -935,6 +943,9 @@ async function apiFetch(url, opts = {}) {
     document.getElementById('auth-overlay').style.display = 'flex';
     const err = document.getElementById('auth-err');
     err.textContent = 'Session expired — please log in again.';
+    // [A-1] Return null so callers' `if (!res) return` guards actually fire,
+    // instead of falling through to throw/alert over the auth overlay.
+    return null;
   }
   return res;
 }
@@ -1071,13 +1082,22 @@ async function login() {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ password: pw }),
     });
-    if (!res.ok) throw new Error('invalid');
+    // [A-3] Tell apart a wrong password (401), rate-limit (429), and other
+    // server/network failures instead of always blaming the password.
+    if (res.status === 401) throw new Error('Incorrect password. Try again.');
+    if (res.status === 429) {
+      const body = await res.json().catch(() => ({}));
+      throw new Error(body.error || 'Too many attempts. Please wait and retry.');
+    }
+    if (!res.ok) throw new Error(`Login failed (HTTP ${res.status}). Try again.`);
     const { token } = await res.json();
     authToken = token;
     localStorage.setItem('heatmap_token', token);
     showApp();
-  } catch {
-    err.textContent = 'Incorrect password. Try again.';
+  } catch (e) {
+    err.textContent = (e instanceof TypeError)
+      ? 'Network error — check your connection and retry.'
+      : (e.message || 'Login failed. Try again.');
     btn.disabled = false;
     btn.textContent = 'Access dashboard →';
     document.getElementById('pw').value = '';
