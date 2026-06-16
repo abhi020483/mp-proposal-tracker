@@ -205,10 +205,12 @@ function mapTimePeriod(val) {
 function mapStatus(val) {
   if (!val) return null;
   const v = val.toLowerCase().trim();
-  // [B-2] Detect lost BEFORE won, so "closed lost" isn't swallowed by the
-  // 'closed' check on the won branch.
+  // [B-4] Won is ONLY "Closed won" (column I). Do NOT infer it from loose
+  // tokens like a bare "closed" or from the Type="Converted" column — those
+  // were the source of false "Won" cards. Lost is detected first so a future
+  // "closed lost" isn't mistaken for won.
   if (v.includes('lost') || v.includes('dropped') || v.includes('declined') || v.includes('dead')) return 'lost';
-  if (v.includes('won') || v.includes('closed') || v === 'completed') return 'won';
+  if (v.includes('won')) return 'won';
   if (v.includes('shared') || v.includes('requested')) return 'shared';
   if (v.includes('discussion')) return 'discussion';
   // [L-10] Log unrecognized statuses so they can be diagnosed
@@ -257,9 +259,10 @@ app.post('/api/sync', requireAuth, async (req, res) => {
       const cols = parseCSVLine(line);
       const rawType = (cols[idx.type] || '').toLowerCase().trim();
 
-      // Some rows have extra blank columns — fall back to cols 10/11 if primary cols empty
-      const rawStatus  = cols[idx.status]?.trim()  || cols[10]?.trim() || '';
-      const rawClosure = cols[idx.closure]?.trim() || cols[11]?.trim() || '';
+      // [B-4] Status is column I (idx.status) ONLY — the second "Status" column
+      // (K, index 10) holds junk (a stray number) and must not key won/lost.
+      const rawStatus  = cols[idx.status]?.trim()  || '';
+      const rawClosure = cols[idx.closure]?.trim() || '';
 
       // [B-1] Won is driven by the Status column ("Closed won"), NOT the Type
       // column. The sheet marks closed deals "Converted" in Type, which discards
