@@ -242,7 +242,15 @@ app.post('/api/sync', requireAuth, async (req, res) => {
     const proposals = [];
     for (const line of lines.slice(1)) {
       const cols = parseCSVLine(line);
-      const type = (cols[idx.type] || '').toLowerCase().trim();
+      let type = (cols[idx.type] || '').toLowerCase().trim();
+
+      // [B-1] "Converted" is the sheet's marker for a closed-won deal. The original
+      // hot/warm temperature is not retained once converted, so type it 'hot'
+      // (it closed) and force status=won. Without this, all won rows were dropped
+      // by the hot/warm/cold filter below → Won tab showed 0 despite real value.
+      const isConverted = type === 'converted';
+      if (isConverted) type = 'hot';
+
       if (type !== 'hot' && type !== 'warm' && type !== 'cold') continue;
       const company = (cols[idx.company] || '').trim();
       const deliverable = (cols[idx.deliverable] || '').trim();
@@ -258,7 +266,7 @@ app.post('/api/sync', requireAuth, async (req, res) => {
         client_contact: cols[idx.client]?.trim() || null,
         deliverable:    deliverable || '—',
         value:          cols[idx.value]?.trim() || null,
-        status:         mapStatus(rawStatus),
+        status:         isConverted ? 'won' : mapStatus(rawStatus),
         time_period:    mapTimePeriod(rawClosure),
       });
     }
