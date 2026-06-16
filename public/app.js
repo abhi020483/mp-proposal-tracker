@@ -668,17 +668,27 @@ function tplColdSegment() {
 // ─── Tab views ────────────────────────────────────────────────────────────────
 
 function viewOverview(deals) {
-  // Periods that actually have deals, in PERIODS order
-  const periodsWithDeals = PERIODS.filter(p =>
-    deals.some(d => d.time_period === p.key)
+  // The "Closing in" picker is its own month filter, sourced from every
+  // Expected-closure month (Column J) that has an open deal — including
+  // cold/nurture — so all sheet months are selectable, regardless of the
+  // global period chip. Won/Lost (closed) deals are excluded.
+  const closingPool = state.deals.filter(d =>
+    d.status !== 'won' && d.status !== 'lost' &&
+    (state.type === 'all' || d.type === state.type) &&
+    matchesSearch(d)
   );
-  // [L-6] Don't mutate state inside render — compute display period locally
-  const displayPeriodKey = periodsWithDeals.some(p => p.key === state.closingPeriod)
-    ? state.closingPeriod
+  const periodsWithDeals = PERIODS.filter(p =>
+    closingPool.some(d => d.time_period === p.key)
+  );
+  // [L-6] Don't mutate state inside render — compute display period locally.
+  // Default to the saved pick, else the current month, else the first month.
+  const displayPeriodKey =
+    periodsWithDeals.some(p => p.key === state.closingPeriod) ? state.closingPeriod
+    : periodsWithDeals.some(p => p.key === CURRENT_PERIOD)     ? CURRENT_PERIOD
     : (periodsWithDeals[0]?.key || state.closingPeriod);
   const selPeriod = PERIODS.find(p => p.key === displayPeriodKey) ||
                     { key: displayPeriodKey, label: displayPeriodKey };
-  const closingDeals = deals.filter(d => d.time_period === displayPeriodKey);
+  const closingDeals = closingPool.filter(d => d.time_period === displayPeriodKey);
 
   const periodPills = periodsWithDeals.map(p =>
     `<button class="mpick ${p.key === displayPeriodKey ? 'is-active' : ''}" data-closing="${p.key}">${p.label}</button>`
