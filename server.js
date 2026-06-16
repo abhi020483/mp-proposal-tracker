@@ -179,16 +179,26 @@ function parseCSVLine(line) {
 
 function mapTimePeriod(val) {
   if (!val) return null;
-  const v = val.toLowerCase().replace(/[\s\-_]+/g, '');
-  if (/mar.*wk?3|march.*3/.test(v)) return 'march_wk3';
-  if (/mar.*wk?4|march.*4/.test(v)) return 'march_wk4';
-  if (/apr.*wk?1|april.*1/.test(v)) return 'april_wk1';
-  if (/apr.*wk?2|april.*2/.test(v)) return 'april_wk2';
-  if (/apr.*wk?3|april.*3/.test(v)) return 'april_wk3';
-  if (/apr.*wk?4|april.*4/.test(v)) return 'april_wk4';
-  if (/^may/.test(v)) return 'may';
-  if (/^jun/.test(v)) return 'june_plus';
-  // [E-9] Unknown periods return null — row still inserted, appears in "All periods" only
+  const v = val.toLowerCase().trim();
+  // Legacy weekly Mar/Apr buckets (kept for backward compat with old sheets)
+  const w = v.replace(/[\s\-_]+/g, '');
+  if (/mar.*wk?3|march.*3/.test(w)) return 'march_wk3';
+  if (/mar.*wk?4|march.*4/.test(w)) return 'march_wk4';
+  if (/apr.*wk?1|april.*1/.test(w)) return 'april_wk1';
+  if (/apr.*wk?2|april.*2/.test(w)) return 'april_wk2';
+  if (/apr.*wk?3|april.*3/.test(w)) return 'april_wk3';
+  if (/apr.*wk?4|april.*4/.test(w)) return 'april_wk4';
+  // [B-3] Monthly buckets — match a month name/abbreviation anywhere in the
+  // free-text closure cell (e.g. "July", "June-Wk-4", "Connect after 24th June").
+  const MONTHS = [
+    ['may', /\bmay/],          ['june', /\bjun/],       ['july', /\bjul/],
+    ['august', /\baug/],       ['september', /\bsep/],  ['october', /\boct/],
+    ['november', /\bnov/],     ['december', /\bdec/],   ['january', /\bjan/],
+    ['february', /\bfeb/],
+  ];
+  for (const [key, re] of MONTHS) if (re.test(v)) return key;
+  // [E-9] Unknown/free-text closures return null — row still inserted, appears
+  // in "All periods" only.
   return null;
 }
 

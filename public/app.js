@@ -3,16 +3,44 @@
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 
+// Monthly closure buckets across the FY. Legacy weekly Mar/Apr buckets are
+// kept so already-synced historical rows still resolve to a label.
 const PERIODS = [
-  { key: 'march_wk3', label: 'Mar W3', state: 'past' },
-  { key: 'march_wk4', label: 'Mar W4', state: 'past' },
-  { key: 'april_wk1', label: 'Apr W1', state: 'past' },
-  { key: 'april_wk2', label: 'Apr W2', state: 'past' },
-  { key: 'april_wk3', label: 'Apr W3', state: 'past' },
-  { key: 'april_wk4', label: 'Apr W4', state: 'past' },
-  { key: 'may',       label: 'May',    state: 'current' },
-  { key: 'june_plus', label: 'June+',  state: 'future' },
+  { key: 'march_wk3', label: 'Mar W3' },
+  { key: 'march_wk4', label: 'Mar W4' },
+  { key: 'april_wk1', label: 'Apr W1' },
+  { key: 'april_wk2', label: 'Apr W2' },
+  { key: 'april_wk3', label: 'Apr W3' },
+  { key: 'april_wk4', label: 'Apr W4' },
+  { key: 'may',       label: 'May'   },
+  { key: 'june',      label: 'June'  },
+  { key: 'july',      label: 'July'  },
+  { key: 'august',    label: 'Aug'   },
+  { key: 'september', label: 'Sept'  },
+  { key: 'october',   label: 'Oct'   },
+  { key: 'november',  label: 'Nov'   },
+  { key: 'december',  label: 'Dec'   },
+  { key: 'january',   label: 'Jan'   },
+  { key: 'february',  label: 'Feb'   },
 ];
+
+// Current month resolved from today's date (not hardcoded), used for the
+// "current" column highlight and the Kanban "Closing now" bucket.
+const _MONTH_KEYS = ['january','february','march','april','may','june',
+                     'july','august','september','october','november','december'];
+const CURRENT_PERIOD = _MONTH_KEYS[new Date().getMonth()];
+
+// True when a deal's closure month falls within the active period chip.
+// 'june' chip means "June and later" (June+), so July/Aug/… are included.
+function matchesPeriod(d) {
+  if (state.period === 'all') return true;
+  if (state.period === 'may')  return d.time_period === 'may';
+  if (state.period === 'june') {
+    const i = PERIODS.findIndex(p => p.key === d.time_period);
+    return i >= 0 && i >= PERIODS.findIndex(p => p.key === 'june');
+  }
+  return true;
+}
 
 const CO_PALETTE = [
   '#1F4ED8','#7C3AED','#0E9F6E','#D97706',
@@ -29,6 +57,7 @@ const state = {
   period:         'all',
   closingPeriod:  'may',
   pipelineDir:    'desc',
+  pipelineCompany:'all',
   sortBy:         'value',
   sortDir:        'desc',
   deals:          [],
@@ -115,16 +144,14 @@ function activeDeals() {
     return state.deals.filter(d => {
       if (d.type !== 'cold') return false;
       if (d.status === 'won' || d.status === 'lost') return false;
-      if (state.period === 'may'  && d.time_period !== 'may')       return false;
-      if (state.period === 'june' && d.time_period !== 'june_plus') return false;
+      if (!matchesPeriod(d)) return false;
       return matchesSearch(d);
     });
   }
   return state.deals.filter(d => {
     if (d.type === 'cold' || d.status === 'won' || d.status === 'lost') return false;
     if (state.type !== 'all' && d.type !== state.type) return false;
-    if (state.period === 'may'  && d.time_period !== 'may')       return false;
-    if (state.period === 'june' && d.time_period !== 'june_plus') return false;
+    if (!matchesPeriod(d)) return false;
     return matchesSearch(d);
   });
 }
@@ -313,16 +340,17 @@ function tplHeatmap() {
     return matchesSearch(d);
   });
 
+  // Show the current month plus any period that actually has deals.
   const visiblePeriods = PERIODS.filter(p =>
-    p.state !== 'past' || forHeat.some(d => d.time_period === p.key)
+    p.key === CURRENT_PERIOD || forHeat.some(d => d.time_period === p.key)
   );
   const companies = [...new Set(forHeat.filter(d => d.time_period).map(d => d.company))];
 
   if (!companies.length) return `<div class="empty">No scheduled proposals.</div>`;
 
   const headCells = visiblePeriods.map(p =>
-    `<div class="heatmap__hcell ${p.state === 'current' ? 'is-current' : ''}">
-      ${p.state === 'current' ? '● ' : ''}${p.label}
+    `<div class="heatmap__hcell ${p.key === CURRENT_PERIOD ? 'is-current' : ''}">
+      ${p.key === CURRENT_PERIOD ? '● ' : ''}${p.label}
     </div>`
   ).join('');
 
@@ -354,7 +382,7 @@ function tplHeatmap() {
         ? `<button class="heat-more" data-cell-co="${esc(co)}" data-cell-period="${p.key}">+${overflow} more</button>`
         : '';
       const clickable = cellDeals.length > 0;
-      return `<div class="heatmap__cell ${cls} ${p.state === 'current' ? 'is-current' : ''} ${clickable ? 'is-clickable' : ''}"
+      return `<div class="heatmap__cell ${cls} ${p.key === CURRENT_PERIOD ? 'is-current' : ''} ${clickable ? 'is-clickable' : ''}"
         ${clickable ? `data-cell-co="${esc(co)}" data-cell-period="${p.key}"` : ''}>
         ${minis}${moreHtml}
       </div>`;
@@ -451,14 +479,10 @@ function tplChart(deals) { return tplValueChart(deals, 'active'); }
 
 function tplKanban() {
   // [L-5] Use the dynamically-current period rather than hardcoded 'may'
-  const currentPeriodKey = PERIODS.find(p => p.state === 'current')?.key || 'may';
+  const currentPeriodKey = CURRENT_PERIOD;
   const deals4kanban = state.deals.filter(d => d.type !== 'cold' && d.status !== 'lost' && matchesSearch(d));
   // [U-1] Apply period filter to Kanban (same as other tabs)
-  const periodFiltered = deals4kanban.filter(d => {
-    if (state.period === 'may'  && d.time_period !== 'may')       return false;
-    if (state.period === 'june' && d.time_period !== 'june_plus') return false;
-    return true;
-  });
+  const periodFiltered = deals4kanban.filter(matchesPeriod);
   const all = periodFiltered;
   const bucket = d => {
     if (d.status === 'won')        return 'won';
@@ -684,21 +708,37 @@ function viewOverview(deals) {
 }
 
 function viewPipeline(deals) {
+  // Company filter (pipeline-only). Companies are derived from the deals that
+  // already passed the type/period/search filters.
+  const companies = [...new Set(deals.map(d => d.company))].sort((a, b) => a.localeCompare(b));
+  const activeCo  = companies.includes(state.pipelineCompany) ? state.pipelineCompany : 'all';
+  const shown     = activeCo === 'all' ? deals : deals.filter(d => d.company === activeCo);
+
+  const coTabs = `<div class="co-tabs" id="co-tabs">
+    <button class="co-tab ${activeCo === 'all' ? 'is-active' : ''}" data-co="all">
+      All <span class="co-tab__n">${deals.length}</span>
+    </button>
+    ${companies.map(co => `<button class="co-tab ${activeCo === co ? 'is-active' : ''}" data-co="${esc(co)}">
+        ${esc(co)} <span class="co-tab__n">${deals.filter(d => d.company === co).length}</span>
+      </button>`).join('')}
+  </div>`;
+
   return `
     <div class="section-head" style="margin-top:0">
       <h2>Active pipeline</h2>
       <button id="pipeline-sort" class="sort-toggle" type="button"
         title="Toggle value sort order">
-        ${deals.length} proposals · value ${state.pipelineDir === 'asc' ? '↑ ascending' : '↓ descending'}
+        ${shown.length} proposals · value ${state.pipelineDir === 'asc' ? '↑ ascending' : '↓ descending'}
       </button>
     </div>
-    ${tplPipelineCards(deals)}
+    ${coTabs}
+    ${tplPipelineCards(shown)}
     <div class="section-head">
       <h2>Value by company</h2>
     </div>
     ${state.type === 'cold'
       ? `<div class="empty" style="padding:20px;text-align:left;color:var(--ink-3)">Cold deals are shown in the cold segment below — no bar chart for nurture stage.</div>`
-      : tplChart(deals)}
+      : tplChart(shown)}
     ${tplColdSegment()}`;
 }
 
@@ -750,6 +790,18 @@ function wirePerRender() {
   wireTableSort();
   wireClosingPeriodSelect();
   wirePipelineSort();
+  wireCompanyTabs();
+}
+
+function wireCompanyTabs() {
+  const bar = document.getElementById('co-tabs');
+  if (!bar) return;
+  bar.addEventListener('click', e => {
+    const t = e.target.closest('[data-co]');
+    if (!t) return;
+    state.pipelineCompany = t.dataset.co;
+    render();
+  });
 }
 
 function wirePipelineSort() {

@@ -330,6 +330,30 @@ input  { font-family: inherit; }
 }
 .sort-toggle:hover { color: var(--ink-1); border-color: var(--ink-3); background: var(--surface-2); }
 
+/* Pipeline company filter — compact pill row */
+.co-tabs {
+  display: flex; flex-wrap: wrap; gap: 6px;
+  margin: 0 0 16px;
+}
+.co-tab {
+  display: inline-flex; align-items: center; gap: 6px;
+  font-size: 12px; font-weight: 500; color: var(--ink-2);
+  background: var(--surface); border: 1px solid var(--line);
+  border-radius: 999px; padding: 5px 11px; cursor: pointer;
+  white-space: nowrap; line-height: 1;
+  transition: background .12s, color .12s, border-color .12s;
+}
+.co-tab:hover { border-color: var(--ink-3); background: var(--surface-2); }
+.co-tab__n {
+  font-family: var(--font-mono); font-size: 10px; font-weight: 600;
+  color: var(--ink-3); background: var(--surface-2);
+  border-radius: 999px; padding: 1px 6px; min-width: 16px; text-align: center;
+}
+.co-tab.is-active {
+  background: var(--ink); color: var(--surface); border-color: var(--ink);
+}
+.co-tab.is-active .co-tab__n { color: var(--surface); background: rgba(255,255,255,0.22); }
+
 /* Inline period picker inside section head */
 .section-head__pick { display: inline-flex; align-items: center; gap: 6px; }
 .period-select {
