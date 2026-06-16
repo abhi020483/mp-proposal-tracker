@@ -242,23 +242,30 @@ app.post('/api/sync', requireAuth, async (req, res) => {
     const proposals = [];
     for (const line of lines.slice(1)) {
       const cols = parseCSVLine(line);
-      let type = (cols[idx.type] || '').toLowerCase().trim();
-
-      // [B-1] "Converted" is the sheet's marker for a closed-won deal. The original
-      // hot/warm temperature is not retained once converted, so type it 'hot'
-      // (it closed) and force status=won. Without this, all won rows were dropped
-      // by the hot/warm/cold filter below → Won tab showed 0 despite real value.
-      const isConverted = type === 'converted';
-      if (isConverted) type = 'hot';
-
-      if (type !== 'hot' && type !== 'warm' && type !== 'cold') continue;
-      const company = (cols[idx.company] || '').trim();
-      const deliverable = (cols[idx.deliverable] || '').trim();
-      if (!company) continue;
+      const rawType = (cols[idx.type] || '').toLowerCase().trim();
 
       // Some rows have extra blank columns — fall back to cols 10/11 if primary cols empty
       const rawStatus  = cols[idx.status]?.trim()  || cols[10]?.trim() || '';
       const rawClosure = cols[idx.closure]?.trim() || cols[11]?.trim() || '';
+
+      // [B-1] Won is driven by the Status column ("Closed won"), NOT the Type
+      // column. The sheet marks closed deals "Converted" in Type, which discards
+      // the original hot/warm temperature. Resolve the two independently:
+      //   • genuine hot/warm/cold  → keep that temperature
+      //   • Converted + Closed won  → won deal, shown as 'hot' (temp lost)
+      //   • Converted but not won   → data quirk (e.g. "Qualified Lead") → 'cold'
+      //   • blank/unknown type      → skip
+      const mappedStatus = mapStatus(rawStatus);
+      const isWon = mappedStatus === 'won';
+      let type;
+      if (rawType === 'hot' || rawType === 'warm' || rawType === 'cold') type = rawType;
+      else if (isWon)                  type = 'hot';
+      else if (rawType === 'converted') type = 'cold';
+      else continue;
+
+      const company = (cols[idx.company] || '').trim();
+      const deliverable = (cols[idx.deliverable] || '').trim();
+      if (!company) continue;
 
       proposals.push({
         type,
@@ -266,7 +273,7 @@ app.post('/api/sync', requireAuth, async (req, res) => {
         client_contact: cols[idx.client]?.trim() || null,
         deliverable:    deliverable || '—',
         value:          cols[idx.value]?.trim() || null,
-        status:         isConverted ? 'won' : mapStatus(rawStatus),
+        status:         mappedStatus,
         time_period:    mapTimePeriod(rawClosure),
       });
     }
