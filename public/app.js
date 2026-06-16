@@ -680,13 +680,13 @@ function viewOverview(deals) {
                     { key: displayPeriodKey, label: displayPeriodKey };
   const closingDeals = deals.filter(d => d.time_period === displayPeriodKey);
 
-  const periodOpts = periodsWithDeals.map(p =>
-    `<option value="${p.key}" ${p.key === displayPeriodKey ? 'selected' : ''}>${p.label}</option>`
+  const periodPills = periodsWithDeals.map(p =>
+    `<button class="mpick ${p.key === displayPeriodKey ? 'is-active' : ''}" data-closing="${p.key}">${p.label}</button>`
   ).join('');
 
   const closingHeading = periodsWithDeals.length > 0
     ? `<h2 class="section-head__pick">Closing in
-        <select id="closing-period-select" class="period-select">${periodOpts}</select>
+        <span class="mpick-group" id="closing-pills">${periodPills}</span>
        </h2>`
     : `<h2>Closing deals</h2>`;
 
@@ -832,10 +832,12 @@ function wirePipelineSort() {
 }
 
 function wireClosingPeriodSelect() {
-  const sel = document.getElementById('closing-period-select');
-  if (!sel) return;
-  sel.addEventListener('change', () => {
-    state.closingPeriod = sel.value;
+  const grp = document.getElementById('closing-pills');
+  if (!grp) return;
+  grp.addEventListener('click', e => {
+    const b = e.target.closest('[data-closing]');
+    if (!b) return;
+    state.closingPeriod = b.dataset.closing;
     render();
   });
 }
