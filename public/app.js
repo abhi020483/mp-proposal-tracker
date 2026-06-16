@@ -30,16 +30,11 @@ const _MONTH_KEYS = ['january','february','march','april','may','june',
                      'july','august','september','october','november','december'];
 const CURRENT_PERIOD = _MONTH_KEYS[new Date().getMonth()];
 
-// True when a deal's closure month falls within the active period chip.
-// 'june' chip means "June and later" (June+), so July/Aug/… are included.
+// True when a deal's closure month matches the active period chip.
+// 'all' = no filter; otherwise an exact month-key match.
 function matchesPeriod(d) {
   if (state.period === 'all') return true;
-  if (state.period === 'may')  return d.time_period === 'may';
-  if (state.period === 'june') {
-    const i = PERIODS.findIndex(p => p.key === d.time_period);
-    return i >= 0 && i >= PERIODS.findIndex(p => p.key === 'june');
-  }
-  return true;
+  return d.time_period === state.period;
 }
 
 const CO_PALETTE = [
@@ -746,6 +741,26 @@ function viewPipeline(deals) {
     ${tplColdSegment()}`;
 }
 
+// Build the period filter chips dynamically: "All periods" + one chip per
+// month that actually has deals, in calendar order. New months (July, Aug, …)
+// appear automatically once their deals sync. Legacy weekly buckets are skipped.
+function renderPeriodChips() {
+  const bar = document.getElementById('period-chips');
+  if (!bar) return;
+  const present = PERIODS.filter(p =>
+    !p.key.includes('_wk') && state.deals.some(d => d.time_period === p.key)
+  );
+  // If the active month chip no longer has deals, fall back to "All periods".
+  if (state.period !== 'all' && !present.some(p => p.key === state.period)) {
+    state.period = 'all';
+  }
+  bar.innerHTML =
+    `<button class="chip ${state.period === 'all' ? 'is-active' : ''}" data-period="all">All periods</button>` +
+    present.map(p =>
+      `<button class="chip ${state.period === p.key ? 'is-active' : ''}" data-period="${p.key}">${p.label}</button>`
+    ).join('');
+}
+
 // ─── Render ───────────────────────────────────────────────────────────────────
 
 function render() {
@@ -769,8 +784,7 @@ function render() {
   // Chip states
   document.querySelectorAll('#type-chips .chip').forEach(c =>
     c.classList.toggle('is-active', c.dataset.type === state.type));
-  document.querySelectorAll('#period-chips .chip').forEach(c =>
-    c.classList.toggle('is-active', c.dataset.period === state.period));
+  renderPeriodChips();
 
   // Main content
   const main = document.getElementById('main');
