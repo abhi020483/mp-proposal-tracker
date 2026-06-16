@@ -351,7 +351,7 @@ input  { font-family: inherit; }
 
 /* ─── KPI strip ─────────────────────────────────────────── */
 .kpis {
-  display: grid; grid-template-columns: repeat(5,1fr);
+  display: grid; grid-template-columns: repeat(auto-fit, minmax(168px,1fr));
   border: 1px solid var(--line); background: var(--surface);
   border-radius: var(--radius); overflow: hidden;
 }
@@ -377,6 +377,8 @@ input  { font-family: inherit; }
 .kpi--hot  .kpi__value { color: var(--hot); }
 .kpi--warm .kpi__value { color: var(--warm); }
 .kpi--cold .kpi__value { color: var(--cold); }
+.kpi--won  .kpi__value { color: var(--won); }
+.kpi--lost .kpi__value { color: var(--ink-3); }
 .kpi__spark {
   position: absolute; right: 16px; bottom: 14px;
   width: 64px; height: 22px; opacity: .8;
@@ -425,6 +427,7 @@ input  { font-family: inherit; }
 .badge--shared  { background: var(--shared-soft); color: var(--shared); }
 .badge--discuss { background: var(--discuss-soft);color: var(--discuss); }
 .badge--cold    { background: var(--cold-soft);   color: var(--cold); }
+.badge--lost    { background: var(--surface-2); color: var(--ink-3); text-decoration: line-through; }
 .badge--null    { background: var(--surface-2); color: var(--ink-3); border: 1px dashed var(--line-2); }
 .badge .dot     { width: 5px; height: 5px; border-radius: 50%; background: currentColor; }
 

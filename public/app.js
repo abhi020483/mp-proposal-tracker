@@ -114,14 +114,14 @@ function activeDeals() {
   if (state.type === 'cold') {
     return state.deals.filter(d => {
       if (d.type !== 'cold') return false;
-      if (d.status === 'won') return false;
+      if (d.status === 'won' || d.status === 'lost') return false;
       if (state.period === 'may'  && d.time_period !== 'may')       return false;
       if (state.period === 'june' && d.time_period !== 'june_plus') return false;
       return matchesSearch(d);
     });
   }
   return state.deals.filter(d => {
-    if (d.type === 'cold' || d.status === 'won') return false;
+    if (d.type === 'cold' || d.status === 'won' || d.status === 'lost') return false;
     if (state.type !== 'all' && d.type !== state.type) return false;
     if (state.period === 'may'  && d.time_period !== 'may')       return false;
     if (state.period === 'june' && d.time_period !== 'june_plus') return false;
@@ -174,6 +174,7 @@ function statusBadge(status) {
   if (!status) return `<span class="badge badge--null">no status</span>`;
   const MAP = {
     won:        ['won',     'Won'],
+    lost:       ['lost',    'Lost'],
     shared:     ['shared',  'Proposal shared'],
     discussion: ['discuss', 'In discussion'],
   };
@@ -227,14 +228,17 @@ function tplKpis(deals) {
   // Hot/Warm tiles use same active pool so Hot + Warm = Active Pipeline
   const hot  = deals.filter(d => d.type === 'hot');
   const warm = deals.filter(d => d.type === 'warm');
-  const cold = state.deals.filter(d => d.type === 'cold');
+  const cold = state.deals.filter(d => d.type === 'cold' && d.status !== 'won' && d.status !== 'lost');
   const tv  = sumVals(deals);
   const hv  = sumVals(hot);
   const wv  = sumVals(warm);
   const cv  = sumVals(cold);
   const allTotal = sumVals(state.deals);
-  const wonCount = state.deals.filter(d => d.status === 'won').length;
-  const wonVal   = sumVals(state.deals.filter(d => d.status === 'won'));
+  const wonList  = state.deals.filter(d => d.status === 'won');
+  const lostList = state.deals.filter(d => d.status === 'lost');
+  const wonCount = wonList.length;
+  const wonVal   = sumVals(wonList);
+  const lostVal  = sumVals(lostList);
   return `<div class="kpis">
     <div class="kpi">
       <div class="kpi__label">Active pipeline</div>
@@ -259,10 +263,20 @@ function tplKpis(deals) {
       <div class="kpi__value" style="font-size:28px">₹${fmtNum(cv) || '0'}<span class="kpi__unit">L</span></div>
       <div class="kpi__delta"><strong>${cold.length}</strong> deals · nurture stage</div>
     </div>
+    <div class="kpi kpi--won">
+      <div class="kpi__label"><span class="ddot" style="background:var(--won)"></span>Closed won</div>
+      <div class="kpi__value" style="font-size:28px">₹${fmtNum(wonVal) || '0'}<span class="kpi__unit">L</span></div>
+      <div class="kpi__delta"><strong>${wonCount}</strong> deal${wonCount !== 1 ? 's' : ''} closed</div>
+    </div>
+    <div class="kpi kpi--lost">
+      <div class="kpi__label"><span class="ddot" style="background:var(--ink-3)"></span>Lost</div>
+      <div class="kpi__value" style="font-size:28px">₹${fmtNum(lostVal) || '0'}<span class="kpi__unit">L</span></div>
+      <div class="kpi__delta"><strong>${lostList.length}</strong> deal${lostList.length !== 1 ? 's' : ''} lost</div>
+    </div>
     <div class="kpi">
       <div class="kpi__label">Total pipeline value</div>
       <div class="kpi__value" style="font-size:24px">₹${fmtNum(allTotal) || '0'}<span class="kpi__unit">L</span></div>
-      <div class="kpi__delta"><strong>${wonCount} won</strong> · ₹${fmtNum(wonVal) || '0'}L closed</div>
+      <div class="kpi__delta">hot + warm + cold + won</div>
     </div>
   </div>`;
 }
@@ -294,7 +308,7 @@ function tplClosingWeek(closing, periodLabel) {
 function tplHeatmap() {
   // Heatmap shows all non-cold deals (including won), search + type filtered
   const forHeat = state.deals.filter(d => {
-    if (d.type === 'cold') return false;
+    if (d.type === 'cold' || d.status === 'lost') return false;
     if (state.type !== 'all' && d.type !== state.type) return false;
     return matchesSearch(d);
   });
@@ -438,7 +452,7 @@ function tplChart(deals) { return tplValueChart(deals, 'active'); }
 function tplKanban() {
   // [L-5] Use the dynamically-current period rather than hardcoded 'may'
   const currentPeriodKey = PERIODS.find(p => p.state === 'current')?.key || 'may';
-  const deals4kanban = state.deals.filter(d => d.type !== 'cold' && matchesSearch(d));
+  const deals4kanban = state.deals.filter(d => d.type !== 'cold' && d.status !== 'lost' && matchesSearch(d));
   // [U-1] Apply period filter to Kanban (same as other tabs)
   const periodFiltered = deals4kanban.filter(d => {
     if (state.period === 'may'  && d.time_period !== 'may')       return false;

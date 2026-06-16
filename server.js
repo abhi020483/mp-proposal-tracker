@@ -195,6 +195,9 @@ function mapTimePeriod(val) {
 function mapStatus(val) {
   if (!val) return null;
   const v = val.toLowerCase().trim();
+  // [B-2] Detect lost BEFORE won, so "closed lost" isn't swallowed by the
+  // 'closed' check on the won branch.
+  if (v.includes('lost') || v.includes('dropped') || v.includes('declined') || v.includes('dead')) return 'lost';
   if (v.includes('won') || v.includes('closed') || v === 'completed') return 'won';
   if (v.includes('shared') || v.includes('requested')) return 'shared';
   if (v.includes('discussion')) return 'discussion';
