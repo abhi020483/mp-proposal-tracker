@@ -6,7 +6,7 @@ CREATE TABLE IF NOT EXISTS proposals (
   deliverable    TEXT NOT NULL,
   value          TEXT,
   client_contact TEXT,
-  status         TEXT CHECK (status IN ('won', 'lost', 'shared', 'discussion', NULL)),
+  status         TEXT CHECK (status IN ('won', 'lost', 'requested', 'shared', 'discussion', NULL)),
   type           TEXT NOT NULL CHECK (type IN ('hot', 'warm', 'cold')),
   -- time_period is set by the importer (mapTimePeriod) to a month key, so it is
   -- left unconstrained — new months must never break a sync.
@@ -29,7 +29,7 @@ CREATE POLICY "Allow authenticated write" ON proposals
 -- lost" in the sheet will fail the status CHECK constraint.
 ALTER TABLE proposals DROP CONSTRAINT IF EXISTS proposals_status_check;
 ALTER TABLE proposals ADD  CONSTRAINT proposals_status_check
-  CHECK (status IN ('won', 'lost', 'shared', 'discussion', NULL));
+  CHECK (status IN ('won', 'lost', 'requested', 'shared', 'discussion', NULL));
 ALTER TABLE proposals DROP CONSTRAINT IF EXISTS proposals_type_check;
 ALTER TABLE proposals ADD  CONSTRAINT proposals_type_check
   CHECK (type IN ('hot', 'warm', 'cold'));

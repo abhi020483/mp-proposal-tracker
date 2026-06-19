@@ -211,7 +211,8 @@ function mapStatus(val) {
   // "closed lost" isn't mistaken for won.
   if (v.includes('lost') || v.includes('dropped') || v.includes('declined') || v.includes('dead')) return 'lost';
   if (v.includes('won')) return 'won';
-  if (v.includes('shared') || v.includes('requested')) return 'shared';
+  if (v.includes('requested')) return 'requested';
+  if (v.includes('shared')) return 'shared';
   if (v.includes('discussion')) return 'discussion';
   // [L-10] Log unrecognized statuses so they can be diagnosed
   if (v.length > 0) console.warn(`[sync] Unrecognized status value: "${val}" — stored as null`);

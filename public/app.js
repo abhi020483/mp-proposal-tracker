@@ -53,6 +53,7 @@ const state = {
   closingPeriod:  'may',
   pipelineDir:    'desc',
   pipelineCompany:'all',
+  requestedCompany:'all',
   sortBy:         'value',
   sortDir:        'desc',
   deals:          [],
@@ -195,10 +196,11 @@ function esc(s) {
 function statusBadge(status) {
   if (!status) return `<span class="badge badge--null">no status</span>`;
   const MAP = {
-    won:        ['won',     'Won'],
-    lost:       ['lost',    'Lost'],
-    shared:     ['shared',  'Proposal shared'],
-    discussion: ['discuss', 'In discussion'],
+    won:        ['won',       'Won'],
+    lost:       ['lost',      'Lost'],
+    requested:  ['requested', 'Proposal requested'],
+    shared:     ['shared',    'Proposal shared'],
+    discussion: ['discuss',   'In discussion'],
   };
   const [cls, label] = MAP[status] || ['null', esc(status)];
   return `<span class="badge badge--${cls}"><span class="dot"></span>${label}</span>`;
@@ -260,9 +262,11 @@ function tplKpis(deals) {
   const allTotal = sumVals(state.deals.filter(d => d.status !== 'won' && d.status !== 'lost'));
   const wonList  = state.deals.filter(d => d.status === 'won');
   const lostList = state.deals.filter(d => d.status === 'lost');
+  const reqList  = state.deals.filter(d => d.status === 'requested');
   const wonCount = wonList.length;
   const wonVal   = sumVals(wonList);
   const lostVal  = sumVals(lostList);
+  const reqVal   = sumVals(reqList);
   return `<div class="kpis">
     <div class="kpi">
       <div class="kpi__label">Active pipeline</div>
@@ -286,6 +290,12 @@ function tplKpis(deals) {
       <div class="kpi__label"><span class="ddot" style="background:var(--cold)"></span>Cold</div>
       <div class="kpi__value" style="font-size:28px">₹${fmtNum(cv) || '0'}<span class="kpi__unit">L</span></div>
       <div class="kpi__delta"><strong>${cold.length}</strong> deals · nurture stage</div>
+    </div>
+    <div class="kpi kpi--clickable" id="kpi-requested" role="button" tabindex="0"
+      title="View all proposals requested">
+      <div class="kpi__label">Proposal requested</div>
+      <div class="kpi__value" style="font-size:28px">₹${fmtNum(reqVal) || '0'}<span class="kpi__unit">L</span></div>
+      <div class="kpi__delta"><strong>${reqList.length}</strong> deal${reqList.length !== 1 ? 's' : ''} · view →</div>
     </div>
     <div class="kpi">
       <div class="kpi__label">Total pipeline value</div>
@@ -484,8 +494,10 @@ function tplKanban() {
   const bucket = d => {
     if (d.status === 'won')        return 'won';
     if (d.status === 'lost')       return 'lost';
-    if (d.status === 'shared' && d.time_period === currentPeriodKey) return 'closing';
-    if (d.status === 'shared')     return 'shared';
+    // Requested and shared share the "Proposal shared" column on the board.
+    const sharedish = d.status === 'shared' || d.status === 'requested';
+    if (sharedish && d.time_period === currentPeriodKey) return 'closing';
+    if (sharedish)                 return 'shared';
     if (d.status === 'discussion') return 'discussion';
     return 'new';  // [L-4] null status gets its own bucket instead of mixing with discussion
   };
@@ -751,6 +763,66 @@ function viewPipeline(deals) {
     ${tplColdSegment()}`;
 }
 
+function viewRequested() {
+  // All proposals whose Status (Column I) is "Proposal requested", respecting
+  // search. Grouped company-wise via the same pill tabs as the pipeline page.
+  const deals = state.deals.filter(d => d.status === 'requested' && matchesSearch(d));
+  const total = sumVals(deals);
+  const companies = [...new Set(deals.map(d => d.company))].sort((a, b) => a.localeCompare(b));
+  const activeCo  = companies.includes(state.requestedCompany) ? state.requestedCompany : 'all';
+  const shown     = activeCo === 'all' ? deals : deals.filter(d => d.company === activeCo);
+  const sorted    = [...shown].sort((a, b) => {
+    const av = a._val, bv = b._val;
+    if (av == null && bv == null) return 0;
+    if (av == null) return 1;
+    if (bv == null) return -1;
+    return bv - av;
+  });
+
+  if (!deals.length) {
+    return `<div class="section-head" style="margin-top:0"><h2>Proposals requested</h2></div>
+      <div class="empty">No proposals requested right now.</div>`;
+  }
+
+  const coTabs = `<div class="co-tabs" id="req-co-tabs">
+    <button class="co-tab ${activeCo === 'all' ? 'is-active' : ''}" data-co="all">
+      All <span class="co-tab__n">${deals.length}</span>
+    </button>
+    ${companies.map(co => `<button class="co-tab ${activeCo === co ? 'is-active' : ''}" data-co="${esc(co)}">
+        ${esc(co)} <span class="co-tab__n">${deals.filter(d => d.company === co).length}</span>
+      </button>`).join('')}
+  </div>`;
+
+  return `
+    <div class="section-head" style="margin-top:0">
+      <h2>Proposals requested</h2>
+      <span class="muted">${deals.length} proposal${deals.length !== 1 ? 's' : ''} · ₹${fmtNum(total) || '0'}L</span>
+    </div>
+    ${coTabs}
+    <div class="pipeline">
+      ${sorted.map(d => {
+        const pInfo = periodInfo(d.time_period);
+        const hasTitle = d.deliverable && d.deliverable !== '—';
+        return `<div class="pl-card">
+          <span class="type-ribbon type-ribbon--${d.type}"></span>
+          <div class="pl-card__head">
+            ${coAvatar(d.company)}
+            ${typeBadge(d.type)}
+          </div>
+          <div class="pl-card__title ${!hasTitle ? 'is-empty' : ''}">
+            ${hasTitle ? esc(d.deliverable) : 'Untitled proposal'}
+          </div>
+          ${valHtml(d._val)}
+          <div class="pl-card__foot">
+            <span class="mono" style="font-size:11px;color:var(--ink-3)">${pInfo.label || 'No date'}</span>
+            ${statusBadge(d.status)}
+          </div>
+          ${d.client_contact ? `<div class="pl-card__contact">${esc(d.client_contact)}</div>` : ''}
+        </div>`;
+      }).join('')}
+    </div>`;
+}
+
 // Build the period filter chips dynamically: "All periods" + one chip per
 // month that actually has deals, in calendar order. New months (July, Aug, …)
 // appear automatically once their deals sync. Legacy weekly buckets are skipped.
@@ -780,12 +852,15 @@ function render() {
 
   // Tab counts
   const allActive = state.deals.filter(d => d.type !== 'cold' && d.status !== 'won');
+  const reqCount = state.deals.filter(d => d.status === 'requested').length;
   document.getElementById('tc-pipeline').textContent = allActive.length;
   document.getElementById('tc-won').textContent = state.deals.filter(d => d.status === 'won').length;
   document.getElementById('tc-data').textContent = state.deals.filter(d => d.type !== 'cold').length;
+  const tcReq = document.getElementById('tc-requested');
+  if (tcReq) tcReq.textContent = reqCount;
 
   // Results count
-  const countMap = { overview: active.length, pipeline: active.length, kanban: all.length, won: won.length, data: all.length };
+  const countMap = { overview: active.length, pipeline: active.length, kanban: all.length, won: won.length, data: all.length, requested: reqCount };
   document.getElementById('results-count').textContent = `${countMap[state.tab] || 0} proposals`;
 
   // Active tab highlight
@@ -804,6 +879,7 @@ function render() {
     case 'kanban':   main.innerHTML = tplKanban();          break;
     case 'won':      main.innerHTML = tplWon(won);          break;
     case 'data':     main.innerHTML = tplDataTable(all);    break;
+    case 'requested':main.innerHTML = viewRequested();      break;
     default:         main.innerHTML = viewOverview(active);
   }
 
@@ -819,6 +895,8 @@ function wirePerRender() {
   wireClosingPeriodSelect();
   wirePipelineSort();
   wireCompanyTabs();
+  wireRequestedTabs();
+  wireRequestedTile();
 }
 
 function wireCompanyTabs() {
@@ -829,6 +907,27 @@ function wireCompanyTabs() {
     if (!t) return;
     state.pipelineCompany = t.dataset.co;
     render();
+  });
+}
+
+function wireRequestedTabs() {
+  const bar = document.getElementById('req-co-tabs');
+  if (!bar) return;
+  bar.addEventListener('click', e => {
+    const t = e.target.closest('[data-co]');
+    if (!t) return;
+    state.requestedCompany = t.dataset.co;
+    render();
+  });
+}
+
+function wireRequestedTile() {
+  const tile = document.getElementById('kpi-requested');
+  if (!tile) return;
+  const go = () => { state.tab = 'requested'; state.requestedCompany = 'all'; render(); };
+  tile.addEventListener('click', go);
+  tile.addEventListener('keydown', e => {
+    if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); go(); }
   });
 }
 
