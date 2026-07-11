@@ -54,6 +54,7 @@ const state = {
   pipelineDir:    'desc',
   pipelineCompany:'all',
   requestedCompany:'all',
+  focusMin:       0,
   sortBy:         'value',
   sortDir:        'desc',
   deals:          [],
@@ -871,18 +872,32 @@ function viewFocus() {
     if (bv !== av) return bv - av;
     return a.type === 'hot' ? -1 : (b.type === 'hot' ? 1 : 0);
   });
-  const hotList = ranked.filter(d => d.type === 'hot');
-  const top5    = ranked.slice(0, 5).filter(d => d._val != null);
+  // Minimum-ticket filter: collapse the long tail during a review.
+  // TBD-value deals only show on "All" (they have no ticket size to qualify).
+  const MIN_STEPS = [0, 10, 25, 50];
+  const min   = MIN_STEPS.includes(state.focusMin) ? state.focusMin : 0;
+  const shown = min === 0 ? ranked : ranked.filter(d => (d._val || 0) >= min);
+  const hidden = ranked.length - shown.length;
+
+  const minChips = `<div class="mpick-group" id="focus-min">
+    ${MIN_STEPS.map(m => `<button class="mpick ${m === min ? 'is-active' : ''}" data-min="${m}">
+      ${m === 0 ? 'All tickets' : '≥ ₹' + m + 'L'}
+    </button>`).join('')}
+  </div>`;
+
+  const top5    = shown.slice(0, 5).filter(d => d._val != null);
   const top5Val = sumVals(top5);
-  const totVal  = sumVals(ranked);
+  const totVal  = sumVals(shown);
 
   return `
     <div class="section-head" style="margin-top:0">
       <h2>Focus — ticket size</h2>
-      <span class="muted">${ranked.length} open deals · ₹${fmtNum(totVal) || '0'}L · top ${top5.length} = ₹${fmtNum(top5Val) || '0'}L (${totVal ? Math.round(top5Val / totVal * 100) : 0}%)</span>
+      <span class="muted">${shown.length} deal${shown.length !== 1 ? 's' : ''} · ₹${fmtNum(totVal) || '0'}L · top ${top5.length} = ₹${fmtNum(top5Val) || '0'}L (${totVal ? Math.round(top5Val / totVal * 100) : 0}%)${hidden > 0 ? ` · ${hidden} smaller hidden` : ''}</span>
     </div>
-    <div class="focus-list">
-      ${ranked.map((d, i) => {
+    ${minChips}
+    ${!shown.length ? `<div class="empty">No open deals at this ticket size.</div>` : ''}
+    <div class="focus-list" style="margin-top:14px">
+      ${shown.map((d, i) => {
         const pInfo = periodInfo(d.time_period);
         const hasTitle = d.deliverable && d.deliverable !== '—';
         return `<div class="focus-row ${d.type === 'hot' ? 'is-hot' : ''}">
@@ -986,6 +1001,18 @@ function wirePerRender() {
   wireCompanyTabs();
   wireRequestedTabs();
   wireRequestedTile();
+  wireFocusMin();
+}
+
+function wireFocusMin() {
+  const bar = document.getElementById('focus-min');
+  if (!bar) return;
+  bar.addEventListener('click', e => {
+    const b = e.target.closest('[data-min]');
+    if (!b) return;
+    state.focusMin = Number(b.dataset.min);
+    render();
+  });
 }
 
 function wireCompanyTabs() {
