@@ -712,7 +712,33 @@ function viewOverview(deals) {
        </h2>`
     : `<h2>Closing deals</h2>`;
 
+  // Combined potential = full open pipeline (hot + warm) + everything already
+  // won. Computed from all deals (filter-independent) as a headline figure.
+  const openHW    = state.deals.filter(d => (d.type === 'hot' || d.type === 'warm') && d.status !== 'won' && d.status !== 'lost');
+  const wonAll    = state.deals.filter(d => d.status === 'won');
+  const activeVal = sumVals(openHW);
+  const wonVal    = sumVals(wonAll);
+  const combined  = activeVal + wonVal;
+
   return `
+    <div class="combined-banner">
+      <div class="combined-banner__main">
+        <span class="combined-banner__label">Total combined potential · FY 2025-26</span>
+        <span class="combined-banner__value">₹${fmtNum(combined) || '0'}<span class="combined-banner__unit">L</span></span>
+        <span class="combined-banner__note">Where we could land — active pipeline that closes + business already won</span>
+      </div>
+      <div class="combined-banner__break">
+        <div class="combined-banner__part">
+          <span class="combined-banner__pnum">₹${fmtNum(activeVal) || '0'}L</span>
+          <span class="combined-banner__plabel">Active pipeline</span>
+        </div>
+        <span class="combined-banner__plus">+</span>
+        <div class="combined-banner__part">
+          <span class="combined-banner__pnum">₹${fmtNum(wonVal) || '0'}L</span>
+          <span class="combined-banner__plabel">Closed won</span>
+        </div>
+      </div>
+    </div>
     <div class="section-head" style="margin-top:0"><h2>Key metrics</h2></div>
     ${tplKpis(deals)}
     <div class="section-head">

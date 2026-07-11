@@ -368,6 +368,33 @@ input  { font-family: inherit; }
 .mpick:hover { border-color: var(--ink-3); background: var(--surface-2); }
 .mpick.is-active { background: var(--ink); color: var(--surface); border-color: var(--ink); }
 
+/* ─── Combined potential banner ─────────────────────────── */
+.combined-banner {
+  display: flex; align-items: center; justify-content: space-between; gap: 24px;
+  flex-wrap: wrap;
+  background: var(--ink); color: var(--surface);
+  border-radius: var(--radius); padding: 20px 26px; margin-bottom: 16px;
+}
+.combined-banner__main { display: flex; flex-direction: column; gap: 6px; }
+.combined-banner__label {
+  font-size: 11px; font-weight: 600; letter-spacing: 0.08em;
+  text-transform: uppercase; opacity: 0.65;
+}
+.combined-banner__value {
+  font-family: var(--font-mono); font-size: 42px; font-weight: 700;
+  letter-spacing: -0.03em; line-height: 1;
+}
+.combined-banner__unit { font-size: 20px; opacity: 0.6; margin-left: 4px; }
+.combined-banner__note { font-size: 12px; opacity: 0.7; }
+.combined-banner__break { display: flex; align-items: center; gap: 16px; }
+.combined-banner__part { display: flex; flex-direction: column; gap: 3px; text-align: right; }
+.combined-banner__pnum { font-family: var(--font-mono); font-size: 22px; font-weight: 600; }
+.combined-banner__plabel {
+  font-size: 10px; font-weight: 600; letter-spacing: 0.06em;
+  text-transform: uppercase; opacity: 0.6;
+}
+.combined-banner__plus { font-size: 22px; opacity: 0.5; font-weight: 300; }
+
 /* ─── KPI strip ─────────────────────────────────────────── */
 .kpis {
   display: grid; grid-template-columns: repeat(auto-fit, minmax(168px,1fr));
