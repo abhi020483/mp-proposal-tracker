@@ -368,6 +368,73 @@ input  { font-family: inherit; }
 .mpick:hover { border-color: var(--ink-3); background: var(--surface-2); }
 .mpick.is-active { background: var(--ink); color: var(--surface); border-color: var(--ink); }
 
+/* ─── Insights ──────────────────────────────────────────── */
+.ins-stats {
+  display: grid; grid-template-columns: repeat(auto-fit, minmax(160px,1fr));
+  gap: 10px; margin-bottom: 14px;
+}
+.ins-stat {
+  background: var(--surface); border: 1px solid var(--line);
+  border-radius: var(--radius); padding: 14px 16px;
+  display: flex; flex-direction: column; gap: 4px;
+}
+.ins-stat__label {
+  font-size: 10px; font-weight: 600; letter-spacing: 0.07em;
+  text-transform: uppercase; color: var(--ink-3);
+}
+.ins-stat__val { font-family: var(--font-mono); font-size: 24px; font-weight: 600; color: var(--ink); letter-spacing: -0.02em; }
+.ins-stat__sub { font-size: 11px; color: var(--ink-3); }
+
+.ins-grid {
+  display: grid; grid-template-columns: repeat(2, 1fr);
+  gap: 12px; margin-bottom: 12px;
+}
+@media (max-width: 900px) { .ins-grid { grid-template-columns: 1fr; } }
+
+.chart-card {
+  background: var(--surface); border: 1px solid var(--line);
+  border-radius: var(--radius); padding: 16px 18px;
+}
+.chart-card__title { font-size: 13px; font-weight: 600; color: var(--ink); margin-bottom: 14px; }
+.chart-card__title .muted-inline { font-size: 11px; font-weight: 400; color: var(--ink-3); margin-left: 6px; }
+.chart-card__foot { font-size: 11px; color: var(--ink-3); margin-top: 10px; border-top: 1px dashed var(--line); padding-top: 8px; }
+
+.donut-wrap { display: flex; align-items: center; gap: 22px; flex-wrap: wrap; }
+.donut-holder { position: relative; width: 170px; height: 170px; flex-shrink: 0; }
+.donut { width: 100%; height: 100%; }
+.donut-centre {
+  position: absolute; inset: 0; display: flex; align-items: center; justify-content: center;
+  gap: 2px; font-family: var(--font-mono);
+}
+.donut-centre strong { font-size: 22px; font-weight: 600; color: var(--ink); }
+.donut-centre span { font-size: 12px; color: var(--ink-3); }
+.legend { display: flex; flex-direction: column; gap: 6px; flex: 1; min-width: 180px; }
+.legend-row { display: flex; align-items: center; gap: 8px; font-size: 12px; }
+.legend-dot { width: 9px; height: 9px; border-radius: 3px; flex-shrink: 0; }
+.legend-label { flex: 1; color: var(--ink-2); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.legend-val { font-family: var(--font-mono); color: var(--ink); font-weight: 500; }
+.legend-pct { font-family: var(--font-mono); color: var(--ink-3); min-width: 34px; text-align: right; }
+
+.hist { display: flex; align-items: flex-end; gap: 14px; padding: 6px 4px 0; }
+.hist-col { flex: 1; display: flex; flex-direction: column; align-items: center; gap: 5px; }
+.hist-col__value { font-family: var(--font-mono); font-size: 11px; color: var(--ink-2); font-weight: 600; }
+.hist-col__bar { width: 100%; max-width: 64px; background: var(--hot); opacity: .85; border-radius: 5px 5px 0 0; }
+.hist-col:nth-child(even) .hist-col__bar { background: var(--warm); }
+.hist-col__count { font-size: 10px; color: var(--ink-3); }
+.hist-col__label { font-size: 10px; font-weight: 600; color: var(--ink-2); }
+
+.funnel { display: flex; flex-direction: column; gap: 9px; }
+.funnel-row { display: grid; grid-template-columns: 140px 1fr 110px; align-items: center; gap: 10px; }
+.funnel-row__label { font-size: 11px; font-weight: 500; color: var(--ink-2); }
+.funnel-row__track { background: var(--surface-2); border-radius: 4px; height: 16px; overflow: hidden; }
+.funnel-row__bar { height: 100%; border-radius: 4px; }
+.funnel-row__num { font-family: var(--font-mono); font-size: 11px; color: var(--ink-2); text-align: right; }
+.funnel-row--won { border-top: 1px dashed var(--line); padding-top: 9px; }
+
+.ins-bullets { margin: 0; padding-left: 18px; display: flex; flex-direction: column; gap: 8px; }
+.ins-bullets li { font-size: 13px; color: var(--ink-2); line-height: 1.5; }
+.ins-bullets strong { color: var(--ink); }
+
 /* ─── Focus (ticket-size) list ──────────────────────────── */
 .focus-list { display: flex; flex-direction: column; gap: 8px; }
 .focus-row {

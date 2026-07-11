@@ -924,6 +924,182 @@ function viewFocus() {
     </div>`;
 }
 
+// ─── Insights ─────────────────────────────────────────────────────────────────
+
+// SVG donut from segments [{label, value, color}]. Pure SVG, no libs.
+function donutSvg(segs, size = 170, stroke = 30) {
+  const total = segs.reduce((s, x) => s + x.value, 0);
+  if (!total) return '';
+  const r = (size - stroke) / 2;
+  const C = 2 * Math.PI * r;
+  let cum = 0;
+  const rings = segs.map(s => {
+    const frac = s.value / total;
+    const ring = `<circle r="${r}" cx="${size/2}" cy="${size/2}" fill="none"
+      stroke="${s.color}" stroke-width="${stroke}"
+      stroke-dasharray="${(frac * C).toFixed(2)} ${C.toFixed(2)}"
+      stroke-dashoffset="${(-cum * C).toFixed(2)}"/>`;
+    cum += frac;
+    return ring;
+  }).join('');
+  return `<svg class="donut" viewBox="0 0 ${size} ${size}" style="transform:rotate(-90deg)">${rings}</svg>`;
+}
+
+// Donut card: title + donut + centre total + legend with % and ₹.
+function tplDonutCard(title, entries, opts = {}) {
+  // entries: [{label, value}] — collapse beyond topN into "Other"
+  const topN = opts.topN || 6;
+  const sorted = entries.filter(e => e.value > 0).sort((a, b) => b.value - a.value);
+  if (!sorted.length) return '';
+  const head = sorted.slice(0, topN);
+  const rest = sorted.slice(topN);
+  const segsIn = rest.length
+    ? [...head, { label: `Other (${rest.length})`, value: rest.reduce((s, e) => s + e.value, 0), muted: true }]
+    : head;
+  const total = segsIn.reduce((s, e) => s + e.value, 0);
+  const segs = segsIn.map(e => ({ ...e, color: e.muted ? 'var(--line-2)' : coColor(e.label) }));
+  const legend = segs.map(s => `<div class="legend-row">
+      <span class="legend-dot" style="background:${s.color}"></span>
+      <span class="legend-label">${esc(s.label)}</span>
+      <span class="legend-val">₹${fmtNum(s.value)}L</span>
+      <span class="legend-pct">${Math.round(s.value / total * 100)}%</span>
+    </div>`).join('');
+  return `<div class="chart-card">
+    <div class="chart-card__title">${title}</div>
+    <div class="donut-wrap">
+      <div class="donut-holder">
+        ${donutSvg(segs)}
+        <div class="donut-centre"><strong>₹${fmtNum(total)}</strong><span>L</span></div>
+      </div>
+      <div class="legend">${legend}</div>
+    </div>
+  </div>`;
+}
+
+function viewInsights() {
+  // Analysis of the FULL book — deliberately ignores the filter bar so the
+  // discussion numbers stay stable.
+  const all  = state.deals;
+  const open = all.filter(d => (d.type === 'hot' || d.type === 'warm') && d.status !== 'won' && d.status !== 'lost');
+  const won  = all.filter(d => d.status === 'won');
+  const lost = all.filter(d => d.status === 'lost');
+  const cold = all.filter(d => d.type === 'cold' && d.status !== 'won' && d.status !== 'lost');
+  if (!all.length) return `<div class="empty">No data yet — run a sync.</div>`;
+
+  const openVal = sumVals(open), wonVal = sumVals(won), lostVal = sumVals(lost);
+  const priced  = open.filter(d => d._val != null);
+  const unpriced = open.length - priced.length;
+  const avgTicket = priced.length ? openVal / priced.length : 0;
+  const biggest  = priced.reduce((m, d) => (d._val > (m?._val || 0) ? d : m), null);
+
+  // Aggregations
+  const agg = (list, keyFn) => {
+    const m = {};
+    for (const d of list) {
+      const k = keyFn(d) || 'Uncategorised';
+      m[k] = (m[k] || 0) + (d._val || 0);
+    }
+    return Object.entries(m).map(([label, value]) => ({ label, value }));
+  };
+  const byCompany  = agg(open, d => d.company);
+  const byCategory = agg(open, d => d.category);
+  const hasCategories = open.some(d => d.category);
+
+  // Ticket-size histogram (priced open deals)
+  const BUCKETS = [
+    { label: '< ₹5L',    min: 0,  max: 5 },
+    { label: '₹5–15L',   min: 5,  max: 15 },
+    { label: '₹15–30L',  min: 15, max: 30 },
+    { label: '₹30–60L',  min: 30, max: 60 },
+    { label: '₹60L+',    min: 60, max: Infinity },
+  ].map(b => {
+    const ds = priced.filter(d => d._val >= b.min && d._val < b.max);
+    return { ...b, count: ds.length, value: sumVals(ds) };
+  });
+  const maxBucketVal = Math.max(...BUCKETS.map(b => b.value), 1);
+  const hist = `<div class="chart-card">
+    <div class="chart-card__title">Ticket-size distribution <span class="muted-inline">open deals · bar = value</span></div>
+    <div class="hist">
+      ${BUCKETS.map(b => `<div class="hist-col">
+        <div class="hist-col__value">₹${fmtNum(b.value) || 0}L</div>
+        <div class="hist-col__bar" style="height:${Math.max(4, b.value / maxBucketVal * 120)}px"></div>
+        <div class="hist-col__count">${b.count} deal${b.count !== 1 ? 's' : ''}</div>
+        <div class="hist-col__label">${b.label}</div>
+      </div>`).join('')}
+    </div>
+    ${unpriced ? `<div class="chart-card__foot">+ ${unpriced} unpriced (TBD) deal${unpriced !== 1 ? 's' : ''} not shown — pricing these is an action item</div>` : ''}
+  </div>`;
+
+  // Status funnel (open deals by stage, plus won)
+  const STAGES = [
+    { key: null,         label: 'New / no status',   color: 'var(--ink-3)' },
+    { key: 'discussion', label: 'In discussion',     color: 'var(--discuss)' },
+    { key: 'requested',  label: 'Proposal requested',color: 'var(--warm)' },
+    { key: 'shared',     label: 'Proposal shared',   color: 'var(--shared)' },
+  ].map(s => {
+    const ds = open.filter(d => (d.status || null) === s.key);
+    return { ...s, count: ds.length, value: sumVals(ds) };
+  });
+  const maxStage = Math.max(...STAGES.map(s => s.value), wonVal, 1);
+  const funnel = `<div class="chart-card">
+    <div class="chart-card__title">Stage funnel <span class="muted-inline">open value by stage → closed</span></div>
+    <div class="funnel">
+      ${STAGES.map(s => `<div class="funnel-row">
+        <span class="funnel-row__label">${s.label}</span>
+        <div class="funnel-row__track"><div class="funnel-row__bar" style="width:${Math.max(2, s.value / maxStage * 100)}%;background:${s.color}"></div></div>
+        <span class="funnel-row__num">₹${fmtNum(s.value) || 0}L · ${s.count}</span>
+      </div>`).join('')}
+      <div class="funnel-row funnel-row--won">
+        <span class="funnel-row__label">Closed won</span>
+        <div class="funnel-row__track"><div class="funnel-row__bar" style="width:${Math.max(2, wonVal / maxStage * 100)}%;background:var(--won)"></div></div>
+        <span class="funnel-row__num">₹${fmtNum(wonVal) || 0}L · ${won.length}</span>
+      </div>
+    </div>
+  </div>`;
+
+  // Auto-generated talking points
+  const share = (part, whole) => whole ? Math.round(part / whole * 100) : 0;
+  const topCo  = [...byCompany].sort((a, b) => b.value - a.value)[0];
+  const topCat = hasCategories ? [...byCategory].sort((a, b) => b.value - a.value)[0] : null;
+  const top5Val = sumVals([...priced].sort((a, b) => b._val - a._val).slice(0, 5));
+  const hotVal  = sumVals(open.filter(d => d.type === 'hot'));
+  const bullets = [
+    topCo   && `<strong>${esc(topCo.label)}</strong> carries ₹${fmtNum(topCo.value)}L — ${share(topCo.value, openVal)}% of the open pipeline. ${share(topCo.value, openVal) > 40 ? 'High concentration: a slip there moves the whole year.' : 'Reasonably diversified.'}`,
+    `The <strong>top 5 tickets hold ${share(top5Val, openVal)}%</strong> of open value (₹${fmtNum(top5Val)}L) — effort belongs there first (see the Focus tab).`,
+    topCat  && `Biggest category: <strong>${esc(topCat.label)}</strong> at ₹${fmtNum(topCat.value)}L (${share(topCat.value, openVal)}%).`,
+    `Hot deals are <strong>${share(hotVal, openVal)}% of open value</strong> (₹${fmtNum(hotVal)}L) — the rest needs warming or requalifying.`,
+    biggest && `Single biggest open ticket: <strong>${esc(biggest.company)} · ${esc(biggest.deliverable !== '—' ? biggest.deliverable : 'untitled')}</strong> at ₹${fmtNum(biggest._val)}L (${share(biggest._val, openVal)}% of pipeline).`,
+    unpriced > 0 && `<strong>${unpriced} open deal${unpriced !== 1 ? 's have' : ' has'} no value</strong> (TBD) — pricing them could move every number on this page.`,
+    won.length + lost.length > 0 && `Closed so far: <strong>₹${fmtNum(wonVal)}L won</strong> across ${won.length} deals${lost.length ? ` vs ₹${fmtNum(lostVal)}L lost (${lost.length})` : ' — nothing lost yet'}.`,
+    cold.length > 0 && `₹${fmtNum(sumVals(cold))}L sits in <strong>${cold.length} cold deals</strong> — a nurture backlog worth a quarterly review.`,
+  ].filter(Boolean);
+
+  return `
+    <div class="section-head" style="margin-top:0">
+      <h2>Pipeline insights</h2>
+      <span class="muted">full book analysis · filters ignored</span>
+    </div>
+    <div class="ins-stats">
+      <div class="ins-stat"><span class="ins-stat__label">Open pipeline</span><span class="ins-stat__val">₹${fmtNum(openVal) || 0}L</span><span class="ins-stat__sub">${open.length} deals</span></div>
+      <div class="ins-stat"><span class="ins-stat__label">Closed won</span><span class="ins-stat__val" style="color:var(--won)">₹${fmtNum(wonVal) || 0}L</span><span class="ins-stat__sub">${won.length} deals</span></div>
+      <div class="ins-stat"><span class="ins-stat__label">Avg open ticket</span><span class="ins-stat__val">₹${fmtNum(avgTicket) || 0}L</span><span class="ins-stat__sub">${priced.length} priced deals</span></div>
+      <div class="ins-stat"><span class="ins-stat__label">Conversion (value)</span><span class="ins-stat__val">${share(wonVal, wonVal + openVal + lostVal)}%</span><span class="ins-stat__sub">won ÷ (won + open + lost)</span></div>
+    </div>
+    <div class="ins-grid">
+      ${tplDonutCard('Open pipeline by company', byCompany)}
+      ${hasCategories
+        ? tplDonutCard('Open pipeline by category', byCategory)
+        : `<div class="chart-card"><div class="chart-card__title">Open pipeline by category</div>
+             <div class="empty" style="padding:30px 16px">No category data yet — fill the new Category column in the sheet and sync.</div></div>`}
+      ${hist}
+      ${funnel}
+    </div>
+    <div class="chart-card">
+      <div class="chart-card__title">Talking points</div>
+      <ul class="ins-bullets">${bullets.map(b => `<li>${b}</li>`).join('')}</ul>
+    </div>`;
+}
+
 // Build the period filter chips dynamically: "All periods" + one chip per
 // month that actually has deals, in calendar order. New months (July, Aug, …)
 // appear automatically once their deals sync. Legacy weekly buckets are skipped.
@@ -963,7 +1139,7 @@ function render() {
   if (tcFocus) tcFocus.textContent = allActive.length;
 
   // Results count
-  const countMap = { overview: active.length, pipeline: active.length, kanban: all.length, won: won.length, data: all.length, requested: reqCount, focus: allActive.length };
+  const countMap = { overview: active.length, pipeline: active.length, kanban: all.length, won: won.length, data: all.length, requested: reqCount, focus: allActive.length, insights: state.deals.length };
   document.getElementById('results-count').textContent = `${countMap[state.tab] || 0} proposals`;
 
   // Active tab highlight
@@ -984,6 +1160,7 @@ function render() {
     case 'data':     main.innerHTML = tplDataTable(all);    break;
     case 'requested':main.innerHTML = viewRequested();      break;
     case 'focus':    main.innerHTML = viewFocus();           break;
+    case 'insights': main.innerHTML = viewInsights();        break;
     default:         main.innerHTML = viewOverview(active);
   }
 

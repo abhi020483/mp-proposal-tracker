@@ -232,31 +232,41 @@ app.post('/api/sync', requireAuth, async (req, res) => {
 
     if (lines.length < 2) throw new Error('No data found in sheet');
 
-    // Detect column positions from header row
-    const headers = parseCSVLine(lines[0]).map(h => h.toLowerCase().trim());
+    // [B-5] Locate the real header row — the sheet's first row is a totals row,
+    // so scan the first few lines for one that contains "company". Without this,
+    // header detection silently fails and positional fallbacks mis-map columns
+    // whenever a column is inserted (as happened when Category was added).
+    let headerRow = 0;
+    for (let i = 0; i < Math.min(lines.length, 5); i++) {
+      const cells = parseCSVLine(lines[i]).map(h => h.toLowerCase().trim());
+      if (cells.some(h => h.includes('company'))) { headerRow = i; break; }
+    }
+    const headers = parseCSVLine(lines[headerRow]).map(h => h.toLowerCase().trim());
     const find = (...terms) => headers.findIndex(h => terms.some(t => h.includes(t)));
 
     const idx = {
       type:        find('type'),
       company:     find('company'),
       client:      find('client'),
+      category:    find('category'),
       deliverable: find('deliverable'),
       value:       find('value'),
       status:      find('status'),
-      closure:     find('closure', 'expected', 'period'),
+      closure:     find('closure', 'expected'),
     };
 
-    // Positional fallbacks (B=1, C=2, D=3, E=4, G=6, I=8, J=9)
+    // Positional fallbacks matching the current sheet layout
     if (idx.type < 0)        idx.type = 1;
     if (idx.company < 0)     idx.company = 2;
     if (idx.client < 0)      idx.client = 3;
-    if (idx.deliverable < 0) idx.deliverable = 4;
-    if (idx.value < 0)       idx.value = 6;
-    if (idx.status < 0)      idx.status = 8;
-    if (idx.closure < 0)     idx.closure = 9;
+    if (idx.category < 0)    idx.category = 4;
+    if (idx.deliverable < 0) idx.deliverable = 5;
+    if (idx.value < 0)       idx.value = 7;
+    if (idx.status < 0)      idx.status = 9;
+    if (idx.closure < 0)     idx.closure = 10;
 
     const proposals = [];
-    for (const line of lines.slice(1)) {
+    for (const line of lines.slice(headerRow + 1)) {
       const cols = parseCSVLine(line);
       const rawType = (cols[idx.type] || '').toLowerCase().trim();
 
@@ -288,6 +298,7 @@ app.post('/api/sync', requireAuth, async (req, res) => {
         type,
         company,
         client_contact: cols[idx.client]?.trim() || null,
+        category:       cols[idx.category]?.trim() || null,
         deliverable:    deliverable || '—',
         value:          cols[idx.value]?.trim() || null,
         status:         mappedStatus,

@@ -6,6 +6,7 @@ CREATE TABLE IF NOT EXISTS proposals (
   deliverable    TEXT NOT NULL,
   value          TEXT,
   client_contact TEXT,
+  category       TEXT,
   status         TEXT CHECK (status IN ('won', 'lost', 'requested', 'shared', 'discussion', NULL)),
   type           TEXT NOT NULL CHECK (type IN ('hot', 'warm', 'cold')),
   -- time_period is set by the importer (mapTimePeriod) to a month key, so it is
@@ -37,3 +38,5 @@ ALTER TABLE proposals ADD  CONSTRAINT proposals_type_check
 -- never fail a sync. This is the cause of:
 --   "violates check constraint proposals_time_period_check"
 ALTER TABLE proposals DROP CONSTRAINT IF EXISTS proposals_time_period_check;
+-- Project category (new sheet column) used by the Insights tab.
+ALTER TABLE proposals ADD COLUMN IF NOT EXISTS category TEXT;
