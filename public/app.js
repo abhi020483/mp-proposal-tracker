@@ -54,7 +54,7 @@ const state = {
   pipelineDir:    'desc',
   pipelineCompany:'all',
   requestedCompany:'all',
-  focusMin:       0,
+  focusMin:       'all',
   sortBy:         'value',
   sortDir:        'desc',
   deals:          [],
@@ -872,16 +872,22 @@ function viewFocus() {
     if (bv !== av) return bv - av;
     return a.type === 'hot' ? -1 : (b.type === 'hot' ? 1 : 0);
   });
-  // Minimum-ticket filter: collapse the long tail during a review.
+  // Ticket-size segments: collapse to a size band during a review.
   // TBD-value deals only show on "All" (they have no ticket size to qualify).
-  const MIN_STEPS = [0, 10, 25, 50];
-  const min   = MIN_STEPS.includes(state.focusMin) ? state.focusMin : 0;
-  const shown = min === 0 ? ranked : ranked.filter(d => (d._val || 0) >= min);
+  const SEGMENTS = [
+    { key: 'all',  label: 'All tickets', test: () => true },
+    { key: 'lt10', label: '< ₹10L',      test: d => d._val != null && d._val < 10 },
+    { key: '10',   label: '≥ ₹10L',      test: d => (d._val || 0) >= 10 },
+    { key: '25',   label: '≥ ₹25L',      test: d => (d._val || 0) >= 25 },
+    { key: '50',   label: '≥ ₹50L',      test: d => (d._val || 0) >= 50 },
+  ];
+  const seg = SEGMENTS.find(s => s.key === String(state.focusMin)) || SEGMENTS[0];
+  const shown = seg.key === 'all' ? ranked : ranked.filter(seg.test);
   const hidden = ranked.length - shown.length;
 
   const minChips = `<div class="mpick-group" id="focus-min">
-    ${MIN_STEPS.map(m => `<button class="mpick ${m === min ? 'is-active' : ''}" data-min="${m}">
-      ${m === 0 ? 'All tickets' : '≥ ₹' + m + 'L'}
+    ${SEGMENTS.map(s => `<button class="mpick ${s.key === seg.key ? 'is-active' : ''}" data-min="${s.key}">
+      ${s.label}
     </button>`).join('')}
   </div>`;
 
@@ -892,7 +898,7 @@ function viewFocus() {
   return `
     <div class="section-head" style="margin-top:0">
       <h2>Focus — ticket size</h2>
-      <span class="muted">${shown.length} deal${shown.length !== 1 ? 's' : ''} · ₹${fmtNum(totVal) || '0'}L · top ${top5.length} = ₹${fmtNum(top5Val) || '0'}L (${totVal ? Math.round(top5Val / totVal * 100) : 0}%)${hidden > 0 ? ` · ${hidden} smaller hidden` : ''}</span>
+      <span class="muted">${shown.length} deal${shown.length !== 1 ? 's' : ''} · ₹${fmtNum(totVal) || '0'}L · top ${top5.length} = ₹${fmtNum(top5Val) || '0'}L (${totVal ? Math.round(top5Val / totVal * 100) : 0}%)${hidden > 0 ? ` · ${hidden} outside this band` : ''}</span>
     </div>
     ${minChips}
     ${!shown.length ? `<div class="empty">No open deals at this ticket size.</div>` : ''}
@@ -1187,7 +1193,7 @@ function wireFocusMin() {
   bar.addEventListener('click', e => {
     const b = e.target.closest('[data-min]');
     if (!b) return;
-    state.focusMin = Number(b.dataset.min);
+    state.focusMin = b.dataset.min;
     render();
   });
 }
