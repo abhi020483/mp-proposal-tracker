@@ -368,6 +368,35 @@ input  { font-family: inherit; }
 .mpick:hover { border-color: var(--ink-3); background: var(--surface-2); }
 .mpick.is-active { background: var(--ink); color: var(--surface); border-color: var(--ink); }
 
+/* ─── Focus (ticket-size) list ──────────────────────────── */
+.focus-list { display: flex; flex-direction: column; gap: 8px; }
+.focus-row {
+  display: flex; align-items: center; gap: 18px;
+  background: var(--surface); border: 1px solid var(--line);
+  border-radius: var(--radius); padding: 14px 18px;
+}
+.focus-row.is-hot { border-left: 3px solid var(--hot); }
+.focus-row__rank {
+  font-family: var(--font-mono); font-size: 13px; font-weight: 600;
+  color: var(--ink-3); min-width: 26px; text-align: right;
+}
+.focus-row__val {
+  font-family: var(--font-mono); font-size: 26px; font-weight: 600;
+  letter-spacing: -0.02em; color: var(--ink); min-width: 110px;
+}
+.focus-row__val .u { font-size: 13px; color: var(--ink-3); margin-left: 2px; }
+.focus-row__val.is-tbd { font-size: 15px; color: var(--ink-3); font-weight: 500; }
+.focus-row__body { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 5px; }
+.focus-row__top { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.focus-row__title { font-size: 14px; font-weight: 500; color: var(--ink); }
+.focus-row__title.is-empty { color: var(--ink-3); font-style: italic; }
+.focus-row__meta { display: flex; flex-direction: column; align-items: flex-end; gap: 4px; }
+.focus-row__contact { font-size: 11px; color: var(--ink-3); }
+@media (max-width: 720px) {
+  .focus-row { flex-wrap: wrap; gap: 10px; }
+  .focus-row__meta { flex-direction: row; align-items: center; }
+}
+
 /* ─── Combined potential banner ─────────────────────────── */
 .combined-banner {
   display: flex; align-items: center; justify-content: space-between; gap: 24px;

@@ -849,6 +849,66 @@ function viewRequested() {
     </div>`;
 }
 
+function viewFocus() {
+  // Ticket-size discussion view: every open deal ranked by value descending,
+  // hot before warm at equal footing — companies intentionally mixed. Cold,
+  // won and lost are excluded; search + period filters respected.
+  const open = state.deals.filter(d =>
+    (d.type === 'hot' || d.type === 'warm') &&
+    d.status !== 'won' && d.status !== 'lost' &&
+    matchesPeriod(d) && matchesSearch(d)
+  );
+  if (!open.length) {
+    return `<div class="section-head" style="margin-top:0"><h2>Focus — ticket size</h2></div>
+      <div class="empty">No open deals match the current filter.</div>`;
+  }
+  // Hot outranks warm only as a tiebreak — value is the primary axis.
+  const ranked = [...open].sort((a, b) => {
+    const av = a._val, bv = b._val;
+    if (av == null && bv == null) return a.type === 'hot' ? -1 : 1;
+    if (av == null) return 1;
+    if (bv == null) return -1;
+    if (bv !== av) return bv - av;
+    return a.type === 'hot' ? -1 : (b.type === 'hot' ? 1 : 0);
+  });
+  const hotList = ranked.filter(d => d.type === 'hot');
+  const top5    = ranked.slice(0, 5).filter(d => d._val != null);
+  const top5Val = sumVals(top5);
+  const totVal  = sumVals(ranked);
+
+  return `
+    <div class="section-head" style="margin-top:0">
+      <h2>Focus — ticket size</h2>
+      <span class="muted">${ranked.length} open deals · ₹${fmtNum(totVal) || '0'}L · top ${top5.length} = ₹${fmtNum(top5Val) || '0'}L (${totVal ? Math.round(top5Val / totVal * 100) : 0}%)</span>
+    </div>
+    <div class="focus-list">
+      ${ranked.map((d, i) => {
+        const pInfo = periodInfo(d.time_period);
+        const hasTitle = d.deliverable && d.deliverable !== '—';
+        return `<div class="focus-row ${d.type === 'hot' ? 'is-hot' : ''}">
+          <span class="focus-row__rank">${i + 1}</span>
+          <div class="focus-row__val ${d._val == null ? 'is-tbd' : ''}">
+            ${d._val != null ? `₹${fmtNum(d._val)}<span class="u">L</span>` : 'TBD'}
+          </div>
+          <div class="focus-row__body">
+            <div class="focus-row__top">
+              ${coAvatar(d.company)}
+              ${typeBadge(d.type)}
+              ${statusBadge(d.status)}
+            </div>
+            <div class="focus-row__title ${!hasTitle ? 'is-empty' : ''}">
+              ${hasTitle ? esc(d.deliverable) : 'Untitled proposal'}
+            </div>
+          </div>
+          <div class="focus-row__meta">
+            <span class="mono" style="font-size:11px;color:var(--ink-3)">${pInfo.label || 'No date'}</span>
+            ${d.client_contact ? `<span class="focus-row__contact">${esc(d.client_contact)}</span>` : ''}
+          </div>
+        </div>`;
+      }).join('')}
+    </div>`;
+}
+
 // Build the period filter chips dynamically: "All periods" + one chip per
 // month that actually has deals, in calendar order. New months (July, Aug, …)
 // appear automatically once their deals sync. Legacy weekly buckets are skipped.
@@ -884,9 +944,11 @@ function render() {
   document.getElementById('tc-data').textContent = state.deals.filter(d => d.type !== 'cold').length;
   const tcReq = document.getElementById('tc-requested');
   if (tcReq) tcReq.textContent = reqCount;
+  const tcFocus = document.getElementById('tc-focus');
+  if (tcFocus) tcFocus.textContent = allActive.length;
 
   // Results count
-  const countMap = { overview: active.length, pipeline: active.length, kanban: all.length, won: won.length, data: all.length, requested: reqCount };
+  const countMap = { overview: active.length, pipeline: active.length, kanban: all.length, won: won.length, data: all.length, requested: reqCount, focus: allActive.length };
   document.getElementById('results-count').textContent = `${countMap[state.tab] || 0} proposals`;
 
   // Active tab highlight
@@ -906,6 +968,7 @@ function render() {
     case 'won':      main.innerHTML = tplWon(won);          break;
     case 'data':     main.innerHTML = tplDataTable(all);    break;
     case 'requested':main.innerHTML = viewRequested();      break;
+    case 'focus':    main.innerHTML = viewFocus();           break;
     default:         main.innerHTML = viewOverview(active);
   }
 
