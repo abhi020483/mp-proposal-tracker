@@ -55,6 +55,7 @@ const state = {
   pipelineCompany:'all',
   requestedCompany:'all',
   focusMin:       'all',
+  bdMon:          {},
   sortBy:         'value',
   sortDir:        'desc',
   deals:          [],
@@ -1189,19 +1190,34 @@ function viewBDTeam() {
   const totField = bds.reduce((s, bd) => s + bdSum(kpis, bd, months, 'fieldDays'), 0);
   const meetTarget = months.reduce((s, m) => s + bdMeetTarget(targets, m), 0) * bds.length;
 
-  // Leaderboard by FY meetings
+  // Per-card month scope: each card has its own "FY total | Apr | … " dropdown.
+  const scopeMonths = key => {
+    const sel = state.bdMon[key] || 'fy';
+    return months.includes(sel) ? [sel] : months;
+  };
+  const scopeLabel = key => {
+    const sel = state.bdMon[key] || 'fy';
+    return months.includes(sel) ? sel : 'FY total';
+  };
+  const monSelect = key => `<select class="bd-mon" data-card="${key}">
+      <option value="fy" ${(state.bdMon[key] || 'fy') === 'fy' ? 'selected' : ''}>FY total</option>
+      ${months.map(m => `<option value="${m}" ${state.bdMon[key] === m ? 'selected' : ''}>${m}</option>`).join('')}
+    </select>`;
+
+  // Leaderboard by meetings (per-card scope)
+  const leadMonths = scopeMonths('lead');
   const rows = bds.map(bd => ({
     bd,
-    meet:  bdSum(kpis, bd, months, 'meetings'),
-    prop:  bdSum(kpis, bd, months, 'proposals'),
+    meet:  bdSum(kpis, bd, leadMonths, 'meetings'),
+    prop:  bdSum(kpis, bd, scopeMonths('prop'), 'proposals'),
     field: bdSum(kpis, bd, months, 'fieldDays'),
     calls: Number(kpis[bd]?.[curMon]?.callsPerDay) || 0,
   })).sort((a, b) => b.meet - a.meet);
   const maxMeet = Math.max(...rows.map(r => r.meet), 1);
-  const perBDTarget = months.reduce((s, m) => s + bdMeetTarget(targets, m), 0);
+  const perBDTarget = leadMonths.reduce((s, m) => s + bdMeetTarget(targets, m), 0);
 
   const leaderboard = `<div class="chart-card">
-    <div class="chart-card__title">BD leaderboard — meetings FY to date <span class="muted-inline">target ${perBDTarget}/BD</span></div>
+    <div class="chart-card__title">BD leaderboard — meetings <span class="muted-inline">target ${perBDTarget}/BD</span>${monSelect('lead')}</div>
     <div class="funnel">
       ${rows.map(r => {
         const pct = Math.round(r.meet / (perBDTarget || 1) * 100);
@@ -1237,13 +1253,26 @@ function viewBDTeam() {
     </div>
   </div>`;
 
-  // Meeting outcomes donut + accounts coverage donut
-  const outcomeEntries = Object.entries(meetings.reduce((m, x) => { const k = x.status || '—'; m[k] = (m[k] || 0) + 1; return m; }, {}))
+  // Meeting outcomes donut + accounts coverage donut — filterable by the
+  // meeting's own date month via each card's dropdown.
+  const meetMonth = x => {
+    const dt = new Date(x.date);
+    return isNaN(dt) ? null : dt.toLocaleDateString('en', { month: 'short' });
+  };
+  const meetingsIn = key => {
+    const sel = state.bdMon[key] || 'fy';
+    return months.includes(sel) ? meetings.filter(x => meetMonth(x) === sel) : meetings;
+  };
+  const toEntries = (list, keyFn) => Object.entries(list.reduce((m, x) => { const k = keyFn(x) || '—'; m[k] = (m[k] || 0) + 1; return m; }, {}))
     .map(([label, value]) => ({ label, value }));
-  const accountEntries = Object.entries(meetings.reduce((m, x) => { const k = x.account || '—'; m[k] = (m[k] || 0) + 1; return m; }, {}))
-    .map(([label, value]) => ({ label, value }));
+  const outcomeEntries = toEntries(meetingsIn('out'), x => x.status);
+  const accountEntries = toEntries(meetingsIn('acc'), x => x.account);
 
-  const countDonut = (title, entries) => tplDonutCard(title, entries, { unit: 'count', unitLabel: 'mtgs' });
+  const countDonut = (title, entries, key) =>
+    entries.length
+      ? tplDonutCard(`${title}${monSelect(key)}`, entries, { unit: 'count', unitLabel: 'mtgs' })
+      : `<div class="chart-card"><div class="chart-card__title">${title}${monSelect(key)}</div>
+         <div class="empty" style="padding:24px">No meetings in ${scopeLabel(key)}.</div></div>`;
 
   // BD-originated deals summary
   const dealVal = deals.reduce((s, d) => s + (parseValue(d.value) || 0), 0);
@@ -1252,14 +1281,14 @@ function viewBDTeam() {
   const proposals = rows.filter(r => r.prop > 0).sort((a, b) => b.prop - a.prop);
   const propMax = Math.max(...proposals.map(r => r.prop), 1);
   const propCard = `<div class="chart-card">
-    <div class="chart-card__title">Proposal value originated <span class="muted-inline">₹L · FY to date</span></div>
+    <div class="chart-card__title">Proposal value originated <span class="muted-inline">₹L</span>${monSelect('prop')}</div>
     <div class="funnel">
       ${proposals.map(r => `<div class="funnel-row">
         <span class="funnel-row__label"><span class="legend-dot" style="background:${bdColor(r.bd)};display:inline-block;margin-right:6px"></span>${esc(r.bd)}</span>
         <div class="funnel-row__track"><div class="funnel-row__bar" style="width:${Math.max(2, r.prop / propMax * 100)}%;background:${bdColor(r.bd)}"></div></div>
         <span class="funnel-row__num">₹${fmtNum(r.prop)}L</span>
       </div>`).join('')}
-      ${!proposals.length ? '<div class="empty" style="padding:14px">No proposal value logged yet.</div>' : ''}
+      ${!proposals.length ? `<div class="empty" style="padding:14px">No proposal value logged in ${scopeLabel('prop')}.</div>` : ''}
     </div>
   </div>`;
 
@@ -1280,8 +1309,8 @@ function viewBDTeam() {
       ${leaderboard}
       ${propCard}
       ${trend}
-      ${countDonut('Meeting outcomes', outcomeEntries)}
-      ${countDonut('Meetings by account', accountEntries)}
+      ${countDonut('Meeting outcomes', outcomeEntries, 'out')}
+      ${countDonut('Meetings by account', accountEntries, 'acc')}
     </div>`;
 }
 
@@ -1337,11 +1366,14 @@ function renderPeriodChips() {
   if (state.period !== 'all' && !present.some(p => p.key === state.period)) {
     state.period = 'all';
   }
+  // Show the deal count per month — Expected closure (col J) is sparse in the
+  // sheet, so without counts a month chip looks broken when it matches 1–2 deals.
   bar.innerHTML =
     `<button class="chip ${state.period === 'all' ? 'is-active' : ''}" data-period="all">All periods</button>` +
-    present.map(p =>
-      `<button class="chip ${state.period === p.key ? 'is-active' : ''}" data-period="${p.key}">${p.label}</button>`
-    ).join('');
+    present.map(p => {
+      const n = state.deals.filter(d => d.time_period === p.key).length;
+      return `<button class="chip ${state.period === p.key ? 'is-active' : ''}" data-period="${p.key}">${p.label} <span class="chip__n">${n}</span></button>`;
+    }).join('');
 }
 
 // ─── Render ───────────────────────────────────────────────────────────────────
@@ -1404,6 +1436,16 @@ function wirePerRender() {
   wireRequestedTabs();
   wireRequestedTile();
   wireFocusMin();
+  wireBDMonthSelects();
+}
+
+function wireBDMonthSelects() {
+  document.querySelectorAll('.bd-mon').forEach(sel => {
+    sel.addEventListener('change', () => {
+      state.bdMon[sel.dataset.card] = sel.value;
+      render();
+    });
+  });
 }
 
 function wireFocusMin() {
