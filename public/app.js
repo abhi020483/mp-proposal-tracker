@@ -65,6 +65,29 @@ const state = {
 let authToken       = localStorage.getItem('heatmap_token');
 let eventsWired     = false;
 
+// ─── BD KPI dashboard data (read-only feed) ──────────────────────────────────
+// The BD dashboard persists its full state to its own Supabase store; we read
+// the same payload here to surface team-performance insights. Anon key is
+// already public in that deployed dashboard.
+const BD_SUPA_URL = 'https://ukjkibxtxxanhhurbfwo.supabase.co/rest/v1/app_data?store_key=eq.main_data&select=data,updated_at';
+const BD_SUPA_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InVramtpYnh0eHhhbmhodXJiZndvIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzYxNTU2NDgsImV4cCI6MjA5MTczMTY0OH0.b-oV2ol7hdBXhvJprT9bBamIsFJyat8AqsmEcWR47Bk';
+const BD_COLORS = { Sonali:'#01696f', Rohit:'#2563eb', Ranjana:'#9333ea', Sahil:'#ea580c', Purvi:'#16a34a', Rutvi:'#db2777', Blessy:'#b45309' };
+let bdData = null, bdError = null, bdUpdatedAt = null;
+
+async function loadBDData() {
+  try {
+    const r = await fetch(BD_SUPA_URL, { headers: { apikey: BD_SUPA_KEY, Authorization: `Bearer ${BD_SUPA_KEY}` } });
+    if (!r.ok) throw new Error(`BD feed HTTP ${r.status}`);
+    const rows = await r.json();
+    bdData = rows[0]?.data || null;
+    bdUpdatedAt = rows[0]?.updated_at || null;
+    bdError = bdData ? null : 'BD dashboard store is empty';
+  } catch (e) {
+    bdError = e.message;
+  }
+  if (state.tab === 'bdteam' || state.tab === 'insights') render();
+}
+
 // ─── Utilities ────────────────────────────────────────────────────────────────
 
 function parseValue(v) {
@@ -963,11 +986,13 @@ function tplDonutCard(title, entries, opts = {}) {
     ? [...head, { label: `Other (${rest.length})`, value: rest.reduce((s, e) => s + e.value, 0), muted: true }]
     : head;
   const total = segsIn.reduce((s, e) => s + e.value, 0);
-  const segs = segsIn.map(e => ({ ...e, color: e.muted ? 'var(--line-2)' : coColor(e.label) }));
+  const isCount = opts.unit === 'count';
+  const fmtV = v => isCount ? String(Math.round(v)) : `₹${fmtNum(v)}L`;
+  const segs = segsIn.map(e => ({ ...e, color: e.muted ? 'var(--line-2)' : (opts.colorFn || coColor)(e.label) }));
   const legend = segs.map(s => `<div class="legend-row">
       <span class="legend-dot" style="background:${s.color}"></span>
       <span class="legend-label">${esc(s.label)}</span>
-      <span class="legend-val">₹${fmtNum(s.value)}L</span>
+      <span class="legend-val">${fmtV(s.value)}</span>
       <span class="legend-pct">${Math.round(s.value / total * 100)}%</span>
     </div>`).join('');
   return `<div class="chart-card">
@@ -975,7 +1000,7 @@ function tplDonutCard(title, entries, opts = {}) {
     <div class="donut-wrap">
       <div class="donut-holder">
         ${donutSvg(segs)}
-        <div class="donut-centre"><strong>₹${fmtNum(total)}</strong><span>L</span></div>
+        <div class="donut-centre"><strong>${isCount ? Math.round(total) : '₹' + fmtNum(total)}</strong><span>${isCount ? (opts.unitLabel || '') : 'L'}</span></div>
       </div>
       <div class="legend">${legend}</div>
     </div>
@@ -1100,10 +1125,203 @@ function viewInsights() {
       ${hist}
       ${funnel}
     </div>
+    <div style="margin-bottom:12px">${tplBDInsightsSection()}</div>
     <div class="chart-card">
       <div class="chart-card__title">Talking points</div>
       <ul class="ins-bullets">${bullets.map(b => `<li>${b}</li>`).join('')}</ul>
     </div>`;
+}
+
+// ─── BD Team performance ──────────────────────────────────────────────────────
+
+const FY_MONTHS = ['Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec','Jan','Feb','Mar'];
+
+// Default monthly meeting target per BD — mirrors the BD dashboard's built-in
+// targets (its cloud payload stores targets only when overridden).
+const BD_DEFAULT_MEET_TARGET = 20;
+function bdMeetTarget(targets, m) {
+  return Number(targets?.[m]?.meetings) || BD_DEFAULT_MEET_TARGET;
+}
+
+function bdMonthsElapsed() {
+  // FY runs Apr→Mar; return the FY months up to and including the current one.
+  const now = new Date();
+  const key = now.toLocaleDateString('en', { month: 'short' });
+  const i = FY_MONTHS.indexOf(key);
+  return i >= 0 ? FY_MONTHS.slice(0, i + 1) : FY_MONTHS;
+}
+
+function bdColor(name) { return BD_COLORS[name] || coColor(name); }
+
+// Sum a KPI across the given months for one BD.
+function bdSum(kpis, bd, months, field) {
+  return months.reduce((s, m) => s + (Number(kpis[bd]?.[m]?.[field]) || 0), 0);
+}
+
+function tplBDStrip(stats) {
+  return `<div class="ins-stats">${stats.map(s =>
+    `<div class="ins-stat"><span class="ins-stat__label">${s.label}</span>
+     <span class="ins-stat__val" ${s.color ? `style="color:${s.color}"` : ''}>${s.val}</span>
+     <span class="ins-stat__sub">${s.sub || ''}</span></div>`).join('')}</div>`;
+}
+
+function viewBDTeam() {
+  if (!bdData) {
+    if (!bdError) { loadBDData(); return `<div class="loading-state">Loading BD dashboard data…</div>`; }
+    return `<div class="empty" style="color:var(--hot)">Could not load the BD KPI dashboard feed: ${esc(bdError)}
+      <br><button class="mpick" style="margin-top:10px" onclick="bdError=null;render()">Retry</button></div>`;
+  }
+  const kpis     = bdData.kpis || {};
+  const targets  = bdData.targets || {};
+  const meetings = bdData.meetings || [];
+  const deals    = bdData.deals || [];
+  const inactive = bdData.bdInactive || [];
+  const months   = bdMonthsElapsed();
+  const curMon   = months[months.length - 1];
+  const bds      = Object.keys(kpis)
+    .filter(bd => !inactive.includes(bd))
+    .filter(bd => months.some(m => Object.values(kpis[bd]?.[m] || {}).some(v => Number(v) > 0)) ||
+                  meetings.some(x => x.bd === bd));
+
+  // FY totals
+  const totMeet  = bds.reduce((s, bd) => s + bdSum(kpis, bd, months, 'meetings'), 0);
+  const totProp  = bds.reduce((s, bd) => s + bdSum(kpis, bd, months, 'proposals'), 0);
+  const totField = bds.reduce((s, bd) => s + bdSum(kpis, bd, months, 'fieldDays'), 0);
+  const meetTarget = months.reduce((s, m) => s + bdMeetTarget(targets, m), 0) * bds.length;
+
+  // Leaderboard by FY meetings
+  const rows = bds.map(bd => ({
+    bd,
+    meet:  bdSum(kpis, bd, months, 'meetings'),
+    prop:  bdSum(kpis, bd, months, 'proposals'),
+    field: bdSum(kpis, bd, months, 'fieldDays'),
+    calls: Number(kpis[bd]?.[curMon]?.callsPerDay) || 0,
+  })).sort((a, b) => b.meet - a.meet);
+  const maxMeet = Math.max(...rows.map(r => r.meet), 1);
+  const perBDTarget = months.reduce((s, m) => s + bdMeetTarget(targets, m), 0);
+
+  const leaderboard = `<div class="chart-card">
+    <div class="chart-card__title">BD leaderboard — meetings FY to date <span class="muted-inline">target ${perBDTarget}/BD</span></div>
+    <div class="funnel">
+      ${rows.map(r => {
+        const pct = Math.round(r.meet / (perBDTarget || 1) * 100);
+        return `<div class="funnel-row">
+          <span class="funnel-row__label"><span class="legend-dot" style="background:${bdColor(r.bd)};display:inline-block;margin-right:6px"></span>${esc(r.bd)}</span>
+          <div class="funnel-row__track">
+            <div class="funnel-row__bar" style="width:${Math.max(2, r.meet / maxMeet * 100)}%;background:${bdColor(r.bd)}"></div>
+          </div>
+          <span class="funnel-row__num">${r.meet} · ${pct}% of tgt</span>
+        </div>`;
+      }).join('')}
+    </div>
+  </div>`;
+
+  // Monthly meetings trend vs team target
+  const trendMax = Math.max(...months.map(m => bds.reduce((s, bd) => s + (Number(kpis[bd]?.[m]?.meetings) || 0), 0)),
+                            ...months.map(m => bdMeetTarget(targets, m) * bds.length), 1);
+  const trend = `<div class="chart-card">
+    <div class="chart-card__title">Meetings by month <span class="muted-inline">line marker = team target</span></div>
+    <div class="hist">
+      ${months.map(m => {
+        const v = bds.reduce((s, bd) => s + (Number(kpis[bd]?.[m]?.meetings) || 0), 0);
+        const t = bdMeetTarget(targets, m) * bds.length;
+        return `<div class="hist-col">
+          <div class="hist-col__value">${v}</div>
+          <div class="hist-col__stack" style="height:130px">
+            ${t ? `<div class="hist-col__target" style="bottom:${Math.min(126, t / trendMax * 126)}px"></div>` : ''}
+            <div class="hist-col__bar" style="height:${Math.max(3, v / trendMax * 126)}px;background:${v >= t ? 'var(--won)' : 'var(--warm)'}"></div>
+          </div>
+          <div class="hist-col__label">${m}</div>
+        </div>`;
+      }).join('')}
+    </div>
+  </div>`;
+
+  // Meeting outcomes donut + accounts coverage donut
+  const outcomeEntries = Object.entries(meetings.reduce((m, x) => { const k = x.status || '—'; m[k] = (m[k] || 0) + 1; return m; }, {}))
+    .map(([label, value]) => ({ label, value }));
+  const accountEntries = Object.entries(meetings.reduce((m, x) => { const k = x.account || '—'; m[k] = (m[k] || 0) + 1; return m; }, {}))
+    .map(([label, value]) => ({ label, value }));
+
+  const countDonut = (title, entries) => tplDonutCard(title, entries, { unit: 'count', unitLabel: 'mtgs' });
+
+  // BD-originated deals summary
+  const dealVal = deals.reduce((s, d) => s + (parseValue(d.value) || 0), 0);
+  const stages  = Object.entries(deals.reduce((m, d) => { const k = d.stage || '—'; m[k] = (m[k] || 0) + 1; return m; }, {}));
+
+  const proposals = rows.filter(r => r.prop > 0).sort((a, b) => b.prop - a.prop);
+  const propMax = Math.max(...proposals.map(r => r.prop), 1);
+  const propCard = `<div class="chart-card">
+    <div class="chart-card__title">Proposal value originated <span class="muted-inline">₹L · FY to date</span></div>
+    <div class="funnel">
+      ${proposals.map(r => `<div class="funnel-row">
+        <span class="funnel-row__label"><span class="legend-dot" style="background:${bdColor(r.bd)};display:inline-block;margin-right:6px"></span>${esc(r.bd)}</span>
+        <div class="funnel-row__track"><div class="funnel-row__bar" style="width:${Math.max(2, r.prop / propMax * 100)}%;background:${bdColor(r.bd)}"></div></div>
+        <span class="funnel-row__num">₹${fmtNum(r.prop)}L</span>
+      </div>`).join('')}
+      ${!proposals.length ? '<div class="empty" style="padding:14px">No proposal value logged yet.</div>' : ''}
+    </div>
+  </div>`;
+
+  const upd = bdUpdatedAt ? new Date(bdUpdatedAt).toLocaleString('en-IN', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' }) : '—';
+  return `
+    <div class="section-head" style="margin-top:0">
+      <h2>BD team performance</h2>
+      <span class="muted">live from BD KPI dashboard · updated ${upd}</span>
+    </div>
+    ${tplBDStrip([
+      { label: 'Team meetings FY', val: totMeet, sub: `target ${meetTarget} · ${meetTarget ? Math.round(totMeet / meetTarget * 100) : 0}%` },
+      { label: 'Proposal value originated', val: `₹${fmtNum(totProp) || 0}L`, sub: 'FY to date' },
+      { label: 'Field days', val: totField, sub: 'FY to date' },
+      { label: 'Active BDs', val: bds.length, sub: bds.join(' · ') },
+      { label: 'BD pipeline deals', val: deals.length, sub: `₹${fmtNum(dealVal) || 0}L · ${stages.map(([k, v]) => `${k} ${v}`).join(' · ') || '—'}` },
+    ])}
+    <div class="ins-grid">
+      ${leaderboard}
+      ${propCard}
+      ${trend}
+      ${countDonut('Meeting outcomes', outcomeEntries)}
+      ${countDonut('Meetings by account', accountEntries)}
+    </div>`;
+}
+
+// Compact BD section for the Insights tab.
+function tplBDInsightsSection() {
+  if (!bdData) {
+    if (!bdError) loadBDData();
+    return `<div class="chart-card"><div class="chart-card__title">BD activity engine</div>
+      <div class="empty" style="padding:20px">${bdError ? 'BD feed unavailable: ' + esc(bdError) : 'Loading BD dashboard data…'}</div></div>`;
+  }
+  const kpis    = bdData.kpis || {};
+  const targets = bdData.targets || {};
+  const months  = bdMonthsElapsed();
+  const inactive = bdData.bdInactive || [];
+  const bds = Object.keys(kpis).filter(bd => !inactive.includes(bd));
+  const rows = bds.map(bd => ({
+    bd,
+    meet: bdSum(kpis, bd, months, 'meetings'),
+    prop: bdSum(kpis, bd, months, 'proposals'),
+  })).filter(r => r.meet > 0 || r.prop > 0).sort((a, b) => b.meet - a.meet);
+  const totMeet = rows.reduce((s, r) => s + r.meet, 0);
+  const totProp = rows.reduce((s, r) => s + r.prop, 0);
+  const meetTarget = months.reduce((s, m) => s + bdMeetTarget(targets, m), 0) * rows.length;
+  const topBD = rows[0];
+  const perMeeting = totMeet ? totProp / totMeet : 0;
+  const openVal = sumVals(state.deals.filter(d => (d.type === 'hot' || d.type === 'warm') && d.status !== 'won' && d.status !== 'lost'));
+
+  return `<div class="chart-card">
+    <div class="chart-card__title">BD activity engine <span class="muted-inline">from the BD KPI dashboard — the effort feeding this pipeline</span></div>
+    ${tplBDStrip([
+      { label: 'Team meetings FY', val: totMeet, sub: meetTarget ? `${Math.round(totMeet / meetTarget * 100)}% of target` : '' },
+      { label: 'Proposal value originated', val: `₹${fmtNum(totProp) || 0}L`, sub: 'FY to date' },
+      { label: 'Value per meeting', val: `₹${fmtNum(perMeeting) || 0}L`, sub: 'proposals ÷ meetings' },
+      { label: 'Top contributor', val: topBD ? esc(topBD.bd) : '—', sub: topBD ? `${topBD.meet} meetings · ₹${fmtNum(topBD.prop) || 0}L` : '' },
+    ])}
+    <ul class="ins-bullets" style="margin-top:12px">
+      <li>Every ₹1L of the current ₹${fmtNum(openVal) || 0}L open pipeline is backed by team activity of <strong>${totMeet} meetings</strong> — activity is the leading indicator: if meetings dip, the pipeline follows in 1–2 months.</li>
+      ${topBD ? `<li><strong>${esc(topBD.bd)}</strong> leads on activity (${topBD.meet} meetings). See the BD Team tab for the full leaderboard vs targets.</li>` : ''}
+    </ul>
+  </div>`;
 }
 
 // Build the period filter chips dynamically: "All periods" + one chip per
@@ -1145,7 +1363,7 @@ function render() {
   if (tcFocus) tcFocus.textContent = allActive.length;
 
   // Results count
-  const countMap = { overview: active.length, pipeline: active.length, kanban: all.length, won: won.length, data: all.length, requested: reqCount, focus: allActive.length, insights: state.deals.length };
+  const countMap = { overview: active.length, pipeline: active.length, kanban: all.length, won: won.length, data: all.length, requested: reqCount, focus: allActive.length, insights: state.deals.length, bdteam: (bdData?.meetings || []).length };
   document.getElementById('results-count').textContent = `${countMap[state.tab] || 0} proposals`;
 
   // Active tab highlight
@@ -1167,6 +1385,7 @@ function render() {
     case 'requested':main.innerHTML = viewRequested();      break;
     case 'focus':    main.innerHTML = viewFocus();           break;
     case 'insights': main.innerHTML = viewInsights();        break;
+    case 'bdteam':   main.innerHTML = viewBDTeam();          break;
     default:         main.innerHTML = viewOverview(active);
   }
 
@@ -1550,6 +1769,8 @@ async function showApp() {
       if (db) db.innerHTML = `<span class="date-block__day">${day}</span><span class="date-block__sub">${sub}</span>`;
     }, 30000);
   }
+
+  loadBDData(); // fire-and-forget: BD Team / Insights re-render when it lands
 
   document.getElementById('main').innerHTML = '<div class="loading-state">Loading proposals…</div>';
   try {

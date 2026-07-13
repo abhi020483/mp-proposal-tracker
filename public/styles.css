@@ -422,6 +422,16 @@ input  { font-family: inherit; }
 .hist-col:nth-child(even) .hist-col__bar { background: var(--warm); }
 .hist-col__count { font-size: 10px; color: var(--ink-3); }
 .hist-col__label { font-size: 10px; font-weight: 600; color: var(--ink-2); }
+/* Stacked variant with a target tick (BD meetings trend) */
+.hist-col__stack {
+  position: relative; width: 100%; max-width: 64px;
+  display: flex; align-items: flex-end; justify-content: center;
+}
+.hist-col__stack .hist-col__bar { position: relative; width: 100%; }
+.hist-col__target {
+  position: absolute; left: -4px; right: -4px; height: 0;
+  border-top: 2px dashed var(--ink-3); z-index: 1;
+}
 
 .funnel { display: flex; flex-direction: column; gap: 9px; }
 .funnel-row { display: grid; grid-template-columns: 140px 1fr 110px; align-items: center; gap: 10px; }
