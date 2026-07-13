@@ -1159,6 +1159,33 @@ function bdSum(kpis, bd, months, field) {
   return months.reduce((s, m) => s + (Number(kpis[bd]?.[m]?.[field]) || 0), 0);
 }
 
+// The BD dashboard recomputes meetings/proposals LIVE from its meetings/deals
+// logs; its stored kpis are a snapshot that can lag. Mirror its exact logic
+// (count by calendar month, exclude phone calls, keep manual entries via max).
+const BD_MONTH_NUM = { Apr:'04',May:'05',Jun:'06',Jul:'07',Aug:'08',Sep:'09',Oct:'10',Nov:'11',Dec:'12',Jan:'01',Feb:'02',Mar:'03' };
+function bdMonthPrefix(mk) {
+  const now = new Date();
+  const fyStart = now.getMonth() >= 3 ? now.getFullYear() : now.getFullYear() - 1;
+  const year = ['Jan','Feb','Mar'].includes(mk) ? fyStart + 1 : fyStart;
+  return `${year}-${BD_MONTH_NUM[mk]}`;
+}
+function bdMeetCount(kpis, meetings, bd, months) {
+  return months.reduce((s, mk) => {
+    const pre = bdMonthPrefix(mk);
+    const live = meetings.filter(m => m.bd === bd && (m.date || '').startsWith(pre) &&
+      (m.type || 'Physical').toLowerCase() !== 'call').length;
+    return s + Math.max(live, Number(kpis[bd]?.[mk]?.meetings) || 0);
+  }, 0);
+}
+function bdPropSum(kpis, deals, bd, months) {
+  return months.reduce((s, mk) => {
+    const pre = bdMonthPrefix(mk);
+    const live = deals.filter(d => d.bd === bd && (d.meetDate || '').startsWith(pre) && Number(d.value) > 0)
+      .reduce((x, d) => x + Number(d.value), 0);
+    return s + Math.max(live, Number(kpis[bd]?.[mk]?.proposals) || 0);
+  }, 0);
+}
+
 function tplBDStrip(stats) {
   return `<div class="ins-stats">${stats.map(s =>
     `<div class="ins-stat"><span class="ins-stat__label">${s.label}</span>
@@ -1184,9 +1211,10 @@ function viewBDTeam() {
     .filter(bd => months.some(m => Object.values(kpis[bd]?.[m] || {}).some(v => Number(v) > 0)) ||
                   meetings.some(x => x.bd === bd));
 
-  // FY totals
-  const totMeet  = bds.reduce((s, bd) => s + bdSum(kpis, bd, months, 'meetings'), 0);
-  const totProp  = bds.reduce((s, bd) => s + bdSum(kpis, bd, months, 'proposals'), 0);
+  // FY totals — meetings/proposals derived live from the logs (matches the
+  // BD dashboard's own recompute), fieldDays only exists in the kpi snapshot.
+  const totMeet  = bds.reduce((s, bd) => s + bdMeetCount(kpis, meetings, bd, months), 0);
+  const totProp  = bds.reduce((s, bd) => s + bdPropSum(kpis, deals, bd, months), 0);
   const totField = bds.reduce((s, bd) => s + bdSum(kpis, bd, months, 'fieldDays'), 0);
   const meetTarget = months.reduce((s, m) => s + bdMeetTarget(targets, m), 0) * bds.length;
 
@@ -1208,8 +1236,8 @@ function viewBDTeam() {
   const leadMonths = scopeMonths('lead');
   const rows = bds.map(bd => ({
     bd,
-    meet:  bdSum(kpis, bd, leadMonths, 'meetings'),
-    prop:  bdSum(kpis, bd, scopeMonths('prop'), 'proposals'),
+    meet:  bdMeetCount(kpis, meetings, bd, leadMonths),
+    prop:  bdPropSum(kpis, deals, bd, scopeMonths('prop')),
     field: bdSum(kpis, bd, months, 'fieldDays'),
     calls: Number(kpis[bd]?.[curMon]?.callsPerDay) || 0,
   })).sort((a, b) => b.meet - a.meet);
@@ -1233,13 +1261,14 @@ function viewBDTeam() {
   </div>`;
 
   // Monthly meetings trend vs team target
-  const trendMax = Math.max(...months.map(m => bds.reduce((s, bd) => s + (Number(kpis[bd]?.[m]?.meetings) || 0), 0)),
+  const monthTeamMeet = m => bds.reduce((s, bd) => s + bdMeetCount(kpis, meetings, bd, [m]), 0);
+  const trendMax = Math.max(...months.map(monthTeamMeet),
                             ...months.map(m => bdMeetTarget(targets, m) * bds.length), 1);
   const trend = `<div class="chart-card">
     <div class="chart-card__title">Meetings by month <span class="muted-inline">line marker = team target</span></div>
     <div class="hist">
       ${months.map(m => {
-        const v = bds.reduce((s, bd) => s + (Number(kpis[bd]?.[m]?.meetings) || 0), 0);
+        const v = monthTeamMeet(m);
         const t = bdMeetTarget(targets, m) * bds.length;
         return `<div class="hist-col">
           <div class="hist-col__value">${v}</div>
@@ -1296,7 +1325,10 @@ function viewBDTeam() {
   return `
     <div class="section-head" style="margin-top:0">
       <h2>BD team performance</h2>
-      <span class="muted">live from BD KPI dashboard · updated ${upd}</span>
+      <span style="display:inline-flex;align-items:center;gap:10px">
+        <span class="muted">from BD KPI dashboard · sheets auto-sync daily · updated ${upd}</span>
+        <button id="bd-sync" class="sort-toggle" type="button" title="Re-pull the latest BD dashboard data">↻ Sync BD data</button>
+      </span>
     </div>
     ${tplBDStrip([
       { label: 'Team meetings FY', val: totMeet, sub: `target ${meetTarget} · ${meetTarget ? Math.round(totMeet / meetTarget * 100) : 0}%` },
@@ -1328,8 +1360,8 @@ function tplBDInsightsSection() {
   const bds = Object.keys(kpis).filter(bd => !inactive.includes(bd));
   const rows = bds.map(bd => ({
     bd,
-    meet: bdSum(kpis, bd, months, 'meetings'),
-    prop: bdSum(kpis, bd, months, 'proposals'),
+    meet: bdMeetCount(kpis, bdData.meetings || [], bd, months),
+    prop: bdPropSum(kpis, bdData.deals || [], bd, months),
   })).filter(r => r.meet > 0 || r.prop > 0).sort((a, b) => b.meet - a.meet);
   const totMeet = rows.reduce((s, r) => s + r.meet, 0);
   const totProp = rows.reduce((s, r) => s + r.prop, 0);
@@ -1437,6 +1469,18 @@ function wirePerRender() {
   wireRequestedTile();
   wireFocusMin();
   wireBDMonthSelects();
+  wireBDSync();
+}
+
+function wireBDSync() {
+  const btn = document.getElementById('bd-sync');
+  if (!btn) return;
+  btn.addEventListener('click', async () => {
+    btn.disabled = true;
+    btn.textContent = '↻ Syncing…';
+    bdError = null;
+    await loadBDData(); // re-renders the tab when it lands
+  });
 }
 
 function wireBDMonthSelects() {
