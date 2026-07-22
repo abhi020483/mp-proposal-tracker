@@ -56,7 +56,7 @@ const state = {
   requestedCompany:'all',
   focusMin:       'all',
   bdMon:          {},
-  salesScenario:  'base',
+  salesScenario:  'stretch',
   sortBy:         'value',
   sortDir:        'desc',
   deals:          [],
