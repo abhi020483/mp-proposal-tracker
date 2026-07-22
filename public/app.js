@@ -1577,6 +1577,9 @@ function render() {
   // Active tab highlight
   document.querySelectorAll('.tab').forEach(t => t.classList.toggle('is-active', t.dataset.tab === state.tab));
 
+  // The filter bar is pipeline-specific — hide it on the Sales tab (MIS data).
+  document.getElementById('filterbar').style.display = state.tab === 'sales' ? 'none' : '';
+
   // Chip states
   document.querySelectorAll('#type-chips .chip').forEach(c =>
     c.classList.toggle('is-active', c.dataset.type === state.type));
