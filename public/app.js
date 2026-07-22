@@ -1335,9 +1335,9 @@ function viewSales() {
       { label: 'Required / month', val: `₹${fmtNum(reqAvg)}L`, sub: `planned ₹${fmtNum(planAvgRem)}L` },
     ])}
     ${chart}
+    ${table}
     ${marginChart}
     ${margins}
-    ${table}
     <div class="chart-card">
       <div class="chart-card__title">Scenario notes</div>
       <ul class="ins-bullets">${bullets.map(b => `<li>${b}</li>`).join('')}</ul>
