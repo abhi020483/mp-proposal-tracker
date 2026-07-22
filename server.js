@@ -336,5 +336,77 @@ app.post('/api/sync', requireAuth, async (req, res) => {
   }
 });
 
+// ─── Sales (MIS "Plan vs Actual") ────────────────────────────────────────────
+// Reads the finance MIS Google Sheet and returns the current-FY monthly plan
+// and actual revenue (Service + Connect total), in ₹ Lakhs.
+const MIS_SHEET_ID = process.env.MIS_SHEET_ID || '1KYREgiO4ClwlSTQHX8vKs6eKs04HLceC';
+const MIS_CSV_URL = `https://docs.google.com/spreadsheets/d/${MIS_SHEET_ID}/gviz/tq?tqx=out:csv&sheet=${encodeURIComponent('Plan vs Actual')}`;
+
+function parseMISNumber(v) {
+  if (v == null) return null;
+  const s = String(v).replace(/[,\s]/g, '');
+  if (!s || s === '-') return null;
+  const n = parseFloat(s);
+  return isNaN(n) ? null : n;
+}
+
+let _salesCache = null; // { at, payload }
+app.get('/api/sales', requireAuth, async (req, res) => {
+  try {
+    if (_salesCache && Date.now() - _salesCache.at < 5 * 60 * 1000 && !req.query.fresh) {
+      return res.json(_salesCache.payload);
+    }
+    const r = await fetch(MIS_CSV_URL);
+    if (!r.ok) throw new Error(`MIS sheet fetch failed: ${r.status}`);
+    const rows = (await r.text()).split('\n').map(parseCSVLine);
+
+    const monthRow   = rows.find(c => (c[0] || '').trim() === 'Month>>');
+    const revenueRow = rows.find(c => (c[0] || '').trim() === 'Revenue');
+    if (!monthRow || !revenueRow) throw new Error('Could not locate Month>>/Revenue rows in Plan vs Actual');
+
+    // Current FY: Apr <startYear> → Mar <startYear+1>
+    const now = new Date();
+    const fyStart = now.getMonth() >= 3 ? now.getFullYear() : now.getFullYear() - 1;
+    const MONTHS = ['Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec','Jan','Feb','Mar'];
+
+    const months = [];
+    monthRow.forEach((cell, i) => {
+      const m = (cell || '').trim().match(/^([A-Z][a-z]{2})-(\d{2})$/);
+      if (!m) return;
+      const [, mon, yy] = m;
+      const year = 2000 + Number(yy);
+      const expectYear = ['Jan','Feb','Mar'].includes(mon) ? fyStart + 1 : fyStart;
+      if (year !== expectYear || !MONTHS.includes(mon)) return;
+      // Group layout: [i]=Plan, [i+1]=Actual Service, [i+2]=Actual Connect, [i+3]=Actual Total
+      months.push({
+        key:    mon,
+        label:  `${mon} ${String(year).slice(2)}`,
+        plan:   parseMISNumber(revenueRow[i]),
+        actual: parseMISNumber(revenueRow[i + 3]),
+      });
+    });
+    if (!months.length) throw new Error('No current-FY month columns found');
+    months.sort((a, b) => MONTHS.indexOf(a.key) - MONTHS.indexOf(b.key));
+
+    // Last FY actual total (the completed year block) for growth context:
+    // month cells of fyStart-1, Total column = [i+2] in the 3-wide layout.
+    let lastFY = 0;
+    monthRow.forEach((cell, i) => {
+      const m = (cell || '').trim().match(/^([A-Z][a-z]{2})-(\d{2})$/);
+      if (!m) return;
+      const [, mon, yy] = m;
+      const year = 2000 + Number(yy);
+      const expectYear = ['Jan','Feb','Mar'].includes(mon) ? fyStart : fyStart - 1;
+      if (year === expectYear) lastFY += parseMISNumber(revenueRow[i + 2]) || 0;
+    });
+
+    const payload = { months, lastFY: +lastFY.toFixed(1), fyLabel: `FY ${fyStart}-${String(fyStart + 1).slice(2)}`, fetchedAt: new Date().toISOString() };
+    _salesCache = { at: Date.now(), payload };
+    res.json(payload);
+  } catch (err) {
+    res.status(502).json({ error: err.message });
+  }
+});
+
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => console.log(`Server running on port ${PORT}`));

@@ -56,6 +56,7 @@ const state = {
   requestedCompany:'all',
   focusMin:       'all',
   bdMon:          {},
+  salesScenario:  'base',
   sortBy:         'value',
   sortDir:        'desc',
   deals:          [],
@@ -1133,6 +1134,149 @@ function viewInsights() {
     </div>`;
 }
 
+// ─── Sales (MIS plan vs actuals + scenarios) ─────────────────────────────────
+
+let salesData = null, salesError = null;
+async function loadSalesData(fresh = false) {
+  try {
+    const res = await apiFetch(`/api/sales${fresh ? '?fresh=1' : ''}`);
+    if (!res) return;
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.error || `HTTP ${res.status}`);
+    salesData = data;
+    salesError = null;
+  } catch (e) {
+    salesError = e.message;
+  }
+  if (state.tab === 'sales') render();
+}
+
+const SALES_SCENARIOS = {
+  base:    { label: '₹14.6 Cr', total: 1460 },
+  stretch: { label: '₹20 Cr',   total: 2000 },
+};
+
+function viewSales() {
+  if (!salesData) {
+    if (!salesError) { loadSalesData(); return `<div class="loading-state">Loading MIS plan vs actuals…</div>`; }
+    return `<div class="empty" style="color:var(--hot)">Could not load the MIS sheet: ${esc(salesError)}
+      <br><button class="mpick" style="margin-top:10px" onclick="salesError=null;render()">Retry</button></div>`;
+  }
+  const { months, lastFY, fyLabel } = salesData;
+  const scen   = SALES_SCENARIOS[state.salesScenario] || SALES_SCENARIOS.base;
+  const planFY = months.reduce((s, m) => s + (m.plan || 0), 0) || 1;
+  const factor = scen.total / planFY; // pre-assigned ratio preserved, scaled to the objective
+  const scenPlan = m => (m.plan || 0) * factor;
+
+  const closed    = months.filter(m => m.actual != null);
+  const remaining = months.filter(m => m.actual == null);
+  const ytd          = closed.reduce((s, m) => s + m.actual, 0);
+  const planToDate   = closed.reduce((s, m) => s + scenPlan(m), 0);
+  const attain       = planToDate ? Math.round(ytd / planToDate * 100) : 0;
+  const balance      = Math.max(0, scen.total - ytd);
+  const remPlanTotal = remaining.reduce((s, m) => s + scenPlan(m), 0) || 1;
+  const required     = m => scenPlan(m) * balance / remPlanTotal; // if-then redistribution
+  const reqAvg       = remaining.length ? balance / remaining.length : 0;
+  const planAvgRem   = remaining.length ? remPlanTotal / remaining.length : 0;
+
+  const scenPills = `<span class="mpick-group">
+    ${Object.entries(SALES_SCENARIOS).map(([k, s]) =>
+      `<button class="mpick ${state.salesScenario === k ? 'is-active' : ''}" data-scen="${k}">${s.label}</button>`).join('')}
+  </span>`;
+
+  // Monthly chart: closed = actual vs scenario-plan tick; remaining = required (striped)
+  const chartMax = Math.max(...months.map(m => Math.max(m.actual || 0, scenPlan(m), required(m))), 1);
+  const chart = `<div class="chart-card">
+    <div class="chart-card__title">Month on month — ₹L <span class="muted-inline">solid = actual · striped = required (if-then) · dash = plan</span></div>
+    <div class="hist">
+      ${months.map(m => {
+        const isClosed = m.actual != null;
+        const v = isClosed ? m.actual : required(m);
+        const t = scenPlan(m);
+        const color = isClosed ? (m.actual >= t ? 'var(--won)' : 'var(--hot)') : 'var(--shared)';
+        return `<div class="hist-col">
+          <div class="hist-col__value">${fmtNum(v) || 0}</div>
+          <div class="hist-col__stack" style="height:140px">
+            <div class="hist-col__target" style="bottom:${Math.min(136, t / chartMax * 136)}px"></div>
+            <div class="hist-col__bar ${isClosed ? '' : 'hist-col__bar--req'}" style="height:${Math.max(3, v / chartMax * 136)}px;background:${color}"></div>
+          </div>
+          <div class="hist-col__label">${m.key}</div>
+        </div>`;
+      }).join('')}
+    </div>
+  </div>`;
+
+  // If-then table
+  const table = `<div class="chart-card">
+    <div class="chart-card__title">If-then plan — ${scen.label} <span class="muted-inline">balance ₹${fmtNum(balance)}L redistributed over ${remaining.length} months in the plan ratio</span></div>
+    <div class="table-wrap"><table class="data-table">
+      <thead><tr><th>Month</th><th style="text-align:right">Plan</th><th style="text-align:right">Actual</th><th style="text-align:right">Required now</th><th>Status</th></tr></thead>
+      <tbody>${months.map(m => {
+        const isClosed = m.actual != null;
+        const t = scenPlan(m);
+        const diff = isClosed ? m.actual - t : null;
+        return `<tr>
+          <td class="mono" style="font-size:12px">${m.label}</td>
+          <td class="num">₹${fmtNum(t)}L</td>
+          <td class="num">${isClosed ? `₹${fmtNum(m.actual)}L` : '<span class="muted">—</span>'}</td>
+          <td class="num">${isClosed ? '<span class="muted">—</span>' : `<strong>₹${fmtNum(required(m))}L</strong>`}</td>
+          <td>${isClosed
+            ? (diff >= 0 ? `<span class="badge badge--won"><span class="dot"></span>+₹${fmtNum(diff)}L</span>`
+                         : `<span class="badge badge--hot"><span class="dot"></span>−₹${fmtNum(-diff)}L</span>`)
+            : `<span class="badge badge--null">to do · +${t ? Math.round((required(m) / t - 1) * 100) : 0}% vs plan</span>`}</td>
+        </tr>`;
+      }).join('')}</tbody>
+    </table></div>
+  </div>`;
+
+  // If-then narrative
+  const nextM = remaining[0];
+  const afterNext = remaining.slice(1);
+  const ifHit  = nextM && afterNext.length ? (balance - required(nextM)) / afterNext.length : 0;
+  const ifMiss = nextM && afterNext.length ? balance / afterNext.length : 0;
+  const growth = lastFY ? Math.round((scen.total / lastFY - 1) * 100) : null;
+  const bullets = [
+    `YTD ${fyLabel}: <strong>₹${fmtNum(ytd)}L</strong> against a plan-to-date of ₹${fmtNum(planToDate)}L — <strong>${attain}% attainment</strong>. Balance to the ${scen.label} objective: <strong>₹${fmtNum(balance)}L</strong> in ${remaining.length} months.`,
+    `Required run-rate is now <strong>₹${fmtNum(reqAvg)}L/month</strong> vs the originally planned ₹${fmtNum(planAvgRem)}L/month for these months (${planAvgRem ? Math.round((reqAvg / planAvgRem - 1) * 100) : 0}% uplift).`,
+    nextM && `<strong>If ${nextM.label} lands its required ₹${fmtNum(required(nextM))}L</strong>, the remaining months need ₹${fmtNum(ifHit)}L/month on average. <strong>If ${nextM.label} delivers zero</strong>, that rises to ₹${fmtNum(ifMiss)}L/month.`,
+    growth != null && `${scen.label} means <strong>${growth >= 0 ? '+' : ''}${growth}% growth</strong> over last FY's closed ₹${fmtNum(lastFY)}L.`,
+  ].filter(Boolean);
+
+  return `
+    <div class="section-head" style="margin-top:0">
+      <h2>Sales — ${fyLabel}</h2>
+      <span style="display:inline-flex;align-items:center;gap:10px;flex-wrap:wrap">
+        ${scenPills}
+        <button id="sales-sync" class="sort-toggle" type="button" title="Re-pull the MIS sheet">↻ Sync MIS</button>
+      </span>
+    </div>
+    ${tplBDStrip([
+      { label: 'Objective', val: scen.label, sub: `pre-assigned monthly ratio × ${factor.toFixed(2)}` },
+      { label: 'YTD actual', val: `₹${fmtNum(ytd)}L`, sub: `${closed.length} month${closed.length !== 1 ? 's' : ''} closed` },
+      { label: 'Attainment', val: `${attain}%`, sub: `vs ₹${fmtNum(planToDate)}L plan to date`, color: attain >= 100 ? 'var(--won)' : attain >= 70 ? 'var(--warm)' : 'var(--hot)' },
+      { label: 'Balance to go', val: `₹${fmtNum(balance)}L`, sub: `${remaining.length} months left` },
+      { label: 'Required / month', val: `₹${fmtNum(reqAvg)}L`, sub: `planned ₹${fmtNum(planAvgRem)}L` },
+    ])}
+    ${chart}
+    ${table}
+    <div class="chart-card">
+      <div class="chart-card__title">Scenario notes</div>
+      <ul class="ins-bullets">${bullets.map(b => `<li>${b}</li>`).join('')}</ul>
+    </div>`;
+}
+
+function wireSales() {
+  document.querySelectorAll('[data-scen]').forEach(b => {
+    b.addEventListener('click', () => { state.salesScenario = b.dataset.scen; render(); });
+  });
+  const btn = document.getElementById('sales-sync');
+  if (btn) btn.addEventListener('click', async () => {
+    btn.disabled = true; btn.textContent = '↻ Syncing…';
+    salesError = null;
+    await loadSalesData(true);
+  });
+}
+
 // ─── BD Team performance ──────────────────────────────────────────────────────
 
 const FY_MONTHS = ['Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec','Jan','Feb','Mar'];
@@ -1427,7 +1571,7 @@ function render() {
   if (tcFocus) tcFocus.textContent = allActive.length;
 
   // Results count
-  const countMap = { overview: active.length, pipeline: active.length, kanban: all.length, won: won.length, data: all.length, requested: reqCount, focus: allActive.length, insights: state.deals.length, bdteam: (bdData?.meetings || []).length };
+  const countMap = { overview: active.length, pipeline: active.length, kanban: all.length, won: won.length, data: all.length, requested: reqCount, focus: allActive.length, insights: state.deals.length, bdteam: (bdData?.meetings || []).length, sales: (salesData?.months || []).length };
   document.getElementById('results-count').textContent = `${countMap[state.tab] || 0} proposals`;
 
   // Active tab highlight
@@ -1450,6 +1594,7 @@ function render() {
     case 'focus':    main.innerHTML = viewFocus();           break;
     case 'insights': main.innerHTML = viewInsights();        break;
     case 'bdteam':   main.innerHTML = viewBDTeam();          break;
+    case 'sales':    main.innerHTML = viewSales();            break;
     default:         main.innerHTML = viewOverview(active);
   }
 
@@ -1470,6 +1615,7 @@ function wirePerRender() {
   wireFocusMin();
   wireBDMonthSelects();
   wireBDSync();
+  wireSales();
 }
 
 function wireBDSync() {
