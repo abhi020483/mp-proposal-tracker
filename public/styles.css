@@ -451,6 +451,15 @@ input  { font-family: inherit; }
   position: absolute; left: -4px; right: -4px; height: 0;
   border-top: 2px dashed var(--ink-3); z-index: 1;
 }
+/* Margin chart: paired % bars with a zero baseline */
+.mbar-group {
+  position: relative; width: 100%; max-width: 64px;
+  display: flex; gap: 4px; align-items: stretch;
+}
+.mbar-track { position: relative; flex: 1; }
+.mbar { position: absolute; left: 0; right: 0; border-radius: 3px; }
+.mbar-zero { position: absolute; left: -2px; right: -2px; border-top: 1px solid var(--line-2); }
+
 /* Striped "required" bars in the Sales if-then chart */
 .hist-col__bar--req {
   opacity: .75;

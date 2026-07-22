@@ -1241,6 +1241,48 @@ function viewSales() {
     </table></div>
   </div>`;
 
+  // Margins bar chart — % axis with a zero baseline (net margin can go
+  // negative). Closed months: solid achieved bars; future: striped target bars.
+  const H = 140;
+  const mVals = months.flatMap(m => [m.omAct, m.nmAct, m.omPlan, m.nmPlan]).filter(v => v != null);
+  const mMax = Math.max(...mVals, 10), mMin = Math.min(...mVals, 0);
+  const mRange = (mMax - mMin) || 1;
+  const yPos = v => (v - mMin) / mRange * H;
+  const zeroY = yPos(0);
+  const mbar = (val, tgt, color, isClosed) => {
+    const v = isClosed ? val : tgt;
+    if (v == null) return `<div class="mbar-track"><div class="mbar-zero" style="bottom:${zeroY}px"></div></div>`;
+    const y = yPos(v);
+    const bottom = Math.min(y, zeroY), height = Math.max(2, Math.abs(y - zeroY));
+    return `<div class="mbar-track">
+      <div class="mbar-zero" style="bottom:${zeroY}px"></div>
+      ${tgt != null && isClosed ? `<div class="hist-col__target" style="bottom:${yPos(tgt)}px"></div>` : ''}
+      <div class="mbar ${isClosed ? '' : 'hist-col__bar--req'}" style="bottom:${bottom}px;height:${height}px;background:${color}"></div>
+    </div>`;
+  };
+  const marginChart = `<div class="chart-card">
+    <div class="chart-card__title">Margins % — month on month
+      <span class="muted-inline"><span class="legend-dot" style="background:var(--won);display:inline-block"></span> operating · <span class="legend-dot" style="background:var(--cold);display:inline-block"></span> net · striped = target (open months) · dash = target</span>
+    </div>
+    <div class="hist">
+      ${months.map(m => {
+        const isClosed = m.actual != null;
+        const lab = isClosed
+          ? `${m.omAct != null ? fmtNum(m.omAct) : '—'} / ${m.nmAct != null ? fmtNum(m.nmAct) : '—'}`
+          : `${m.omPlan != null ? fmtNum(m.omPlan) : '—'} / ${m.nmPlan != null ? fmtNum(m.nmPlan) : '—'}`;
+        return `<div class="hist-col">
+          <div class="hist-col__value" style="font-size:10px">${lab}</div>
+          <div class="mbar-group" style="height:${H}px">
+            ${mbar(m.omAct, m.omPlan, 'var(--won)', isClosed)}
+            ${mbar(m.nmAct, m.nmPlan, 'var(--cold)', isClosed)}
+          </div>
+          <div class="hist-col__label">${m.key}</div>
+        </div>`;
+      }).join('')}
+    </div>
+    <div class="chart-card__foot">Labels: operating % / net %. Achieved for closed months, targets for open months.</div>
+  </div>`;
+
   // If-then table
   const table = `<div class="chart-card">
     <div class="chart-card__title">If-then plan — ${scen.label} <span class="muted-inline">balance ₹${fmtNum(balance)}L redistributed over ${remaining.length} months in the plan ratio</span></div>
@@ -1293,6 +1335,7 @@ function viewSales() {
       { label: 'Required / month', val: `₹${fmtNum(reqAvg)}L`, sub: `planned ₹${fmtNum(planAvgRem)}L` },
     ])}
     ${chart}
+    ${marginChart}
     ${margins}
     ${table}
     <div class="chart-card">
