@@ -879,11 +879,13 @@ function viewFocus() {
   // Ticket-size discussion view: every open deal ranked by value descending,
   // hot before warm at equal footing — companies intentionally mixed. Cold,
   // won and lost are excluded; search + period filters respected.
-  const open = state.deals.filter(d =>
-    (d.type === 'hot' || d.type === 'warm') &&
-    d.status !== 'won' && d.status !== 'lost' &&
-    matchesPeriod(d) && matchesSearch(d)
-  );
+  // Respect the type chip: All = open hot+warm; Hot/Warm = that type only;
+  // Cold = ranked cold nurture deals.
+  const open = state.deals.filter(d => {
+    if (state.type === 'all' ? d.type === 'cold' : d.type !== state.type) return false;
+    if (d.status === 'won' || d.status === 'lost') return false;
+    return matchesPeriod(d) && matchesSearch(d);
+  });
   if (!open.length) {
     return `<div class="section-head" style="margin-top:0"><h2>Focus — ticket size</h2></div>
       <div class="empty">No open deals match the current filter.</div>`;
