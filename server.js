@@ -363,6 +363,18 @@ app.get('/api/sales', requireAuth, async (req, res) => {
     const monthRow   = rows.find(c => (c[0] || '').trim() === 'Month>>');
     const revenueRow = rows.find(c => (c[0] || '').trim() === 'Revenue');
     if (!monthRow || !revenueRow) throw new Error('Could not locate Month>>/Revenue rows in Plan vs Actual');
+    const findRow = label => rows.find(c => (c[0] || '').trim().startsWith(label)) || [];
+    const omRow = findRow('Operating Margin');
+    const nmRow = findRow('Net Profit Margin');
+    const opRow = findRow('Operating Profit');
+    const npRow = findRow('Net Profit');
+    const parsePct = v => {
+      if (v == null) return null;
+      const s = String(v).replace(/[%,\s]/g, '');
+      if (!s || s === '-') return null;
+      const n = parseFloat(s);
+      return isNaN(n) ? null : n;
+    };
 
     // Current FY: Apr <startYear> → Mar <startYear+1>
     const now = new Date();
@@ -383,6 +395,10 @@ app.get('/api/sales', requireAuth, async (req, res) => {
         label:  `${mon} ${String(year).slice(2)}`,
         plan:   parseMISNumber(revenueRow[i]),
         actual: parseMISNumber(revenueRow[i + 3]),
+        omPlan: parsePct(omRow[i]),  omAct: parsePct(omRow[i + 3]),
+        nmPlan: parsePct(nmRow[i]),  nmAct: parsePct(nmRow[i + 3]),
+        opProfit: parseMISNumber(opRow[i + 3]),
+        netProfit: parseMISNumber(npRow[i + 3]),
       });
     });
     if (!months.length) throw new Error('No current-FY month columns found');

@@ -1206,6 +1206,41 @@ function viewSales() {
     </div>
   </div>`;
 
+  // Margins — month on month vs target (independent of the revenue scenario)
+  const pctBadge = (act, tgt) => {
+    if (act == null) return '<span class="muted">—</span>';
+    const cls = tgt != null && act >= tgt ? 'won' : 'hot';
+    return `<span class="badge badge--${cls}"><span class="dot"></span>${fmtNum(act)}%</span>`;
+  };
+  const ytdOP  = closed.reduce((s, m) => s + (m.opProfit  || 0), 0);
+  const ytdNP  = closed.reduce((s, m) => s + (m.netProfit || 0), 0);
+  const ytdOM  = ytd ? ytdOP / ytd * 100 : null;
+  const ytdNM  = ytd ? ytdNP / ytd * 100 : null;
+  const wAvg   = f => {
+    const p = closed.reduce((s, m) => s + (m[f] || 0) * (m.plan || 0), 0);
+    const w = closed.reduce((s, m) => s + (m.plan || 0), 0);
+    return w ? p / w : null;
+  };
+  const ytdOMt = wAvg('omPlan'), ytdNMt = wAvg('nmPlan');
+  const margins = `<div class="chart-card">
+    <div class="chart-card__title">Margins — month on month
+      <span class="muted-inline">YTD operating ${ytdOM != null ? fmtNum(ytdOM) : '—'}% (target ${ytdOMt != null ? fmtNum(ytdOMt) : '—'}%) · YTD net ${ytdNM != null ? fmtNum(ytdNM) : '—'}% (target ${ytdNMt != null ? fmtNum(ytdNMt) : '—'}%)</span>
+    </div>
+    <div class="table-wrap"><table class="data-table">
+      <thead><tr><th>Month</th>
+        <th style="text-align:right">Op margin target</th><th style="text-align:right">Op margin achieved</th>
+        <th style="text-align:right">Net margin target</th><th style="text-align:right">Net margin achieved</th>
+      </tr></thead>
+      <tbody>${months.map(m => `<tr>
+        <td class="mono" style="font-size:12px">${m.label}</td>
+        <td class="num">${m.omPlan != null ? fmtNum(m.omPlan) + '%' : '<span class="muted">—</span>'}</td>
+        <td class="num">${pctBadge(m.omAct, m.omPlan)}</td>
+        <td class="num">${m.nmPlan != null ? fmtNum(m.nmPlan) + '%' : '<span class="muted">—</span>'}</td>
+        <td class="num">${pctBadge(m.nmAct, m.nmPlan)}</td>
+      </tr>`).join('')}</tbody>
+    </table></div>
+  </div>`;
+
   // If-then table
   const table = `<div class="chart-card">
     <div class="chart-card__title">If-then plan — ${scen.label} <span class="muted-inline">balance ₹${fmtNum(balance)}L redistributed over ${remaining.length} months in the plan ratio</span></div>
@@ -1258,6 +1293,7 @@ function viewSales() {
       { label: 'Required / month', val: `₹${fmtNum(reqAvg)}L`, sub: `planned ₹${fmtNum(planAvgRem)}L` },
     ])}
     ${chart}
+    ${margins}
     ${table}
     <div class="chart-card">
       <div class="chart-card__title">Scenario notes</div>
