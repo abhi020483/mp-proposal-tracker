@@ -1656,8 +1656,10 @@ function render() {
   // Active tab highlight
   document.querySelectorAll('.tab').forEach(t => t.classList.toggle('is-active', t.dataset.tab === state.tab));
 
-  // The filter bar is pipeline-specific — hide it on the Sales tab (MIS data).
-  document.getElementById('filterbar').style.display = state.tab === 'sales' ? 'none' : '';
+  // The filter bar acts on proposal data — hide it on tabs where it has no
+  // effect: Sales (MIS feed), Insights (full-book analysis), BD Team (BD feed).
+  const noFilterTabs = ['sales', 'insights', 'bdteam'];
+  document.getElementById('filterbar').style.display = noFilterTabs.includes(state.tab) ? 'none' : '';
 
   // Chip states
   document.querySelectorAll('#type-chips .chip').forEach(c =>
