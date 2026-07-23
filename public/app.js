@@ -1297,7 +1297,9 @@ function viewSales() {
         return `<tr>
           <td class="mono" style="font-size:12px">${m.label}</td>
           <td class="num">₹${fmtNum(t)}L</td>
-          <td class="num">${isClosed ? `₹${fmtNum(m.actual)}L` : '<span class="muted">—</span>'}</td>
+          <td class="num">${isClosed
+            ? `<span style="color:${m.actual >= t ? 'var(--won)' : 'var(--hot)'};font-weight:600">₹${fmtNum(m.actual)}L</span>`
+            : '<span class="muted">—</span>'}</td>
           <td class="num">${isClosed ? '<span class="muted">—</span>' : `<strong>₹${fmtNum(required(m))}L</strong>`}</td>
           <td>${isClosed
             ? (diff >= 0 ? `<span class="badge badge--won"><span class="dot"></span>+₹${fmtNum(diff)}L</span>`
