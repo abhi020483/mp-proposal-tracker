@@ -55,6 +55,7 @@ const state = {
   pipelineCompany:'all',
   requestedCompany:'all',
   focusMin:       'all',
+  focusCategory:  'all',
   bdMon:          {},
   salesScenario:  'stretch',
   sortBy:         'value',
@@ -890,8 +891,23 @@ function viewFocus() {
     return `<div class="section-head" style="margin-top:0"><h2>Focus — ticket size</h2></div>
       <div class="empty">No open deals match the current filter.</div>`;
   }
+
+  // Category pills (from the sheet's Category column) — click to filter.
+  const catOf = d => d.category || 'Uncategorised';
+  const cats = [...new Set(open.map(catOf))].sort((a, b) => a.localeCompare(b));
+  const activeCat = cats.includes(state.focusCategory) ? state.focusCategory : 'all';
+  const catFiltered = activeCat === 'all' ? open : open.filter(d => catOf(d) === activeCat);
+  const catPills = cats.length > 1 ? `<div class="co-tabs" id="focus-cats" style="margin-bottom:10px">
+    <button class="co-tab ${activeCat === 'all' ? 'is-active' : ''}" data-cat="all">
+      All categories <span class="co-tab__n">${open.length}</span>
+    </button>
+    ${cats.map(c => `<button class="co-tab ${activeCat === c ? 'is-active' : ''}" data-cat="${esc(c)}">
+        ${esc(c)} <span class="co-tab__n">${open.filter(d => catOf(d) === c).length}</span>
+      </button>`).join('')}
+  </div>` : '';
+
   // Hot outranks warm only as a tiebreak — value is the primary axis.
-  const ranked = [...open].sort((a, b) => {
+  const ranked = [...catFiltered].sort((a, b) => {
     const av = a._val, bv = b._val;
     if (av == null && bv == null) return a.type === 'hot' ? -1 : 1;
     if (av == null) return 1;
@@ -927,6 +943,7 @@ function viewFocus() {
       <h2>Focus — ticket size</h2>
       <span class="muted">${shown.length} deal${shown.length !== 1 ? 's' : ''} · ₹${fmtNum(totVal) || '0'}L · top ${top5.length} = ₹${fmtNum(top5Val) || '0'}L (${totVal ? Math.round(top5Val / totVal * 100) : 0}%)${hidden > 0 ? ` · ${hidden} outside this band` : ''}</span>
     </div>
+    ${catPills}
     ${minChips}
     ${!shown.length ? `<div class="empty">No open deals at this ticket size.</div>` : ''}
     <div class="focus-list" style="margin-top:14px">
@@ -943,6 +960,7 @@ function viewFocus() {
               ${coAvatar(d.company)}
               ${typeBadge(d.type)}
               ${statusBadge(d.status)}
+              ${d.category ? `<span class="focus-row__cat">${esc(d.category)}</span>` : ''}
             </div>
             <div class="focus-row__title ${!hasTitle ? 'is-empty' : ''}">
               ${hasTitle ? esc(d.deliverable) : 'Untitled proposal'}
@@ -1701,6 +1719,7 @@ function wirePerRender() {
   wireRequestedTabs();
   wireRequestedTile();
   wireFocusMin();
+  wireFocusCats();
   wireBDMonthSelects();
   wireBDSync();
   wireSales();
@@ -1723,6 +1742,17 @@ function wireBDMonthSelects() {
       state.bdMon[sel.dataset.card] = sel.value;
       render();
     });
+  });
+}
+
+function wireFocusCats() {
+  const bar = document.getElementById('focus-cats');
+  if (!bar) return;
+  bar.addEventListener('click', e => {
+    const b = e.target.closest('[data-cat]');
+    if (!b) return;
+    state.focusCategory = b.dataset.cat;
+    render();
   });
 }
 
