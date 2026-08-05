@@ -1345,6 +1345,7 @@ function viewSales() {
     <div class="section-head" style="margin-top:0">
       <h2>Sales — ${fyLabel}</h2>
       <span style="display:inline-flex;align-items:center;gap:10px;flex-wrap:wrap">
+        <span class="muted">MIS pulled ${salesData.fetchedAt ? new Date(salesData.fetchedAt).toLocaleString('en-IN', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' }) : '—'}</span>
         ${scenPills}
         <button id="sales-sync" class="sort-toggle" type="button" title="Re-pull the MIS sheet">↻ Sync MIS</button>
       </span>
