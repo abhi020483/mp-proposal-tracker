@@ -339,8 +339,23 @@ app.post('/api/sync', requireAuth, async (req, res) => {
 // ─── Sales (MIS "Plan vs Actual") ────────────────────────────────────────────
 // Reads the finance MIS Google Sheet and returns the current-FY monthly plan
 // and actual revenue (Service + Connect total), in ₹ Lakhs.
-const MIS_SHEET_ID = process.env.MIS_SHEET_ID || '1KYREgiO4ClwlSTQHX8vKs6eKs04HLceC';
-const MIS_CSV_URL = `https://docs.google.com/spreadsheets/d/${MIS_SHEET_ID}/gviz/tq?tqx=out:csv&sheet=${encodeURIComponent('Plan vs Actual')}`;
+const MIS_SHEET_ID = process.env.MIS_SHEET_ID || '1GwZNGBr3HcfrwBURtSLw_NcKF6YTkPAe';
+const MIS_GID      = process.env.MIS_GID || '1943458146'; // "Plan vs Actual" tab
+const MIS_CSV_URL  = `https://docs.google.com/spreadsheets/d/${MIS_SHEET_ID}/gviz/tq?tqx=out:csv&sheet=${encodeURIComponent('Plan vs Actual')}`;
+const MIS_GID_URL  = `https://docs.google.com/spreadsheets/d/${MIS_SHEET_ID}/export?format=csv&gid=${MIS_GID}`;
+
+// Fetch the MIS tab: try by tab name first, fall back to the gid export.
+// A Google sign-in page (HTML) means the sheet isn't link-shared.
+async function fetchMISCsv() {
+  for (const url of [MIS_CSV_URL, MIS_GID_URL]) {
+    const r = await fetch(url);
+    if (!r.ok) continue;
+    const text = await r.text();
+    if (text.trim().startsWith('<')) continue; // HTML = auth wall / error page
+    return text;
+  }
+  throw new Error('MIS sheet is not accessible — enable link sharing (Anyone with the link → Viewer) on the workbook');
+}
 
 function parseMISNumber(v) {
   if (v == null) return null;
@@ -356,9 +371,7 @@ app.get('/api/sales', requireAuth, async (req, res) => {
     if (_salesCache && Date.now() - _salesCache.at < 5 * 60 * 1000 && !req.query.fresh) {
       return res.json(_salesCache.payload);
     }
-    const r = await fetch(MIS_CSV_URL);
-    if (!r.ok) throw new Error(`MIS sheet fetch failed: ${r.status}`);
-    const rows = (await r.text()).split('\n').map(parseCSVLine);
+    const rows = (await fetchMISCsv()).split('\n').map(parseCSVLine);
 
     const monthRow   = rows.find(c => (c[0] || '').trim() === 'Month>>');
     const revenueRow = rows.find(c => (c[0] || '').trim() === 'Revenue');
