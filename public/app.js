@@ -2002,7 +2002,8 @@ async function apiFetch(url, opts = {}) {
   if (res.status === 401) {
     localStorage.removeItem('heatmap_token');
     authToken = null;
-    eventsWired = false;
+    // NOTE: eventsWired stays true — the static DOM (and its listeners)
+    // persists across logout/login, so re-wiring would double-fire handlers.
     document.getElementById('main-app').style.display = 'none';
     document.getElementById('auth-overlay').style.display = 'flex';
     const err = document.getElementById('auth-err');
@@ -2087,6 +2088,9 @@ function wireStaticEvents() {
   // Sync button
   document.getElementById('sync-btn').addEventListener('click', doSync);
 
+  // Logout — clear the session token and return to the login screen.
+  document.getElementById('logout-btn').addEventListener('click', logout);
+
   // Theme toggle
   document.getElementById('theme-toggle').addEventListener('click', () => {
     const cur  = document.documentElement.getAttribute('data-theme') || 'light';
@@ -2133,6 +2137,22 @@ async function showApp() {
 }
 
 // ─── Auth flow ────────────────────────────────────────────────────────────────
+
+function logout() {
+  localStorage.removeItem('heatmap_token');
+  authToken = null;
+  // Drop in-memory data so nothing flashes for the next person at the screen.
+  state.deals = [];
+  salesData = null; salesError = null;
+  bdData = null; bdError = null;
+  state.tab = 'overview';
+  document.getElementById('main-app').style.display = 'none';
+  document.getElementById('auth-overlay').style.display = 'flex';
+  const err = document.getElementById('auth-err');
+  if (err) err.textContent = '';
+  const pw = document.getElementById('pw');
+  if (pw) { pw.value = ''; pw.focus(); }
+}
 
 async function login() {
   const pw  = document.getElementById('pw').value;
