@@ -1213,7 +1213,7 @@ function viewSales() {
         const isClosed = m.actual != null;
         const v = isClosed ? m.actual : required(m);
         const t = scenPlan(m);
-        const color = isClosed ? (m.actual >= t ? 'var(--won)' : 'var(--hot)') : 'var(--shared)';
+        const color = isClosed ? (m.actual >= t ? 'var(--won)' : 'var(--hot)') : 'var(--line-2)';
         return `<div class="hist-col">
           <div class="hist-col__value">${fmtNum(v) || 0}</div>
           <div class="hist-col__stack" style="height:140px">
@@ -1277,7 +1277,7 @@ function viewSales() {
     return `<div class="mbar-track">
       <div class="mbar-zero" style="bottom:${zeroY}px"></div>
       ${tgt != null && isClosed ? `<div class="hist-col__target" style="bottom:${yPos(tgt)}px"></div>` : ''}
-      <div class="mbar ${isClosed ? '' : 'hist-col__bar--req'}" style="bottom:${bottom}px;height:${height}px;background:${color}"></div>
+      <div class="mbar ${isClosed ? '' : 'hist-col__bar--req'}" style="bottom:${bottom}px;height:${height}px;background:${isClosed ? color : 'var(--line-2)'}"></div>
     </div>`;
   };
   const marginChart = `<div class="chart-card">
@@ -1347,7 +1347,7 @@ function viewSales() {
     }
     const bar = (v, color) => v == null
       ? '<div class="mbar-track"></div>'
-      : `<div class="mbar-track"><div class="mbar ${isClosed ? '' : 'hist-col__bar--req'}" style="bottom:0;height:${Math.max(2, v / cMax * cH)}px;background:${color}"></div></div>`;
+      : `<div class="mbar-track"><div class="mbar ${isClosed ? '' : 'hist-col__bar--req'}" style="bottom:0;height:${Math.max(2, v / cMax * cH)}px;background:${isClosed ? color : 'var(--line-2)'}"></div></div>`;
     return `<div class="hist-col">
       <div class="hist-col__value">₹${fmtNum(tot) || 0}L</div>
       <div class="mbar-group" style="height:${cH}px">
