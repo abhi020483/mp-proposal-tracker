@@ -1350,6 +1350,10 @@ function viewSales() {
       : `<div class="mbar-track"><div class="mbar ${isClosed ? '' : 'hist-col__bar--req'}" style="bottom:0;height:${Math.max(2, v / cMax * cH)}px;background:${isClosed ? color : 'var(--line-2)'}"></div></div>`;
     return `<div class="hist-col">
       <div class="hist-col__value">₹${fmtNum(tot) || 0}L</div>
+      <div class="hist-col__count" style="line-height:1.2">
+        <span style="color:var(--hot)">${dc != null ? fmtNum(dc) : '—'}</span> ·
+        <span style="color:var(--discuss)">${ic != null ? fmtNum(ic) : '—'}</span>
+      </div>
       <div class="mbar-group" style="height:${cH}px">
         ${bar(dc, 'var(--hot)')}
         ${bar(ic, 'var(--discuss)')}
