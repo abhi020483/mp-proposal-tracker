@@ -381,6 +381,8 @@ app.get('/api/sales', requireAuth, async (req, res) => {
     const nmRow = findRow('Net Profit Margin');
     const opRow = findRow('Operating Profit');
     const npRow = findRow('Net Profit');
+    const dcRow = findRow('Direct Costs');
+    const icRow = findRow('Indirect Costs'); // matches "Indirect Costs (Allocated)" too
     const parsePct = v => {
       if (v == null) return null;
       const s = String(v).replace(/[%,\s]/g, '');
@@ -412,6 +414,8 @@ app.get('/api/sales', requireAuth, async (req, res) => {
         nmPlan: parsePct(nmRow[i]),  nmAct: parsePct(nmRow[i + 3]),
         opProfit: parseMISNumber(opRow[i + 3]),
         netProfit: parseMISNumber(npRow[i + 3]),
+        dcPlan: parseMISNumber(dcRow[i]), dcAct: parseMISNumber(dcRow[i + 3]),
+        icPlan: parseMISNumber(icRow[i]), icAct: parseMISNumber(icRow[i + 3]),
       });
     });
     if (!months.length) throw new Error('No current-FY month columns found');
@@ -429,7 +433,13 @@ app.get('/api/sales', requireAuth, async (req, res) => {
       if (year === expectYear) lastFY += parseMISNumber(revenueRow[i + 2]) || 0;
     });
 
-    const payload = { months, lastFY: +lastFY.toFixed(1), fyLabel: `FY ${fyStart}-${String(fyStart + 1).slice(2)}`, fetchedAt: new Date().toISOString() };
+    const payload = {
+      months,
+      lastFY: +lastFY.toFixed(1),
+      fyLabel: `FY ${fyStart}-${String(fyStart + 1).slice(2)}`,
+      sheetUrl: `https://docs.google.com/spreadsheets/d/${MIS_SHEET_ID}/edit?gid=${MIS_GID}`,
+      fetchedAt: new Date().toISOString(),
+    };
     _salesCache = { at: Date.now(), payload };
     res.json(payload);
   } catch (err) {

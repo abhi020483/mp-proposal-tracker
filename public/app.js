@@ -1328,6 +1328,50 @@ function viewSales() {
     </table></div>
   </div>`;
 
+  // Costs — direct vs indirect, month on month, with MoM change
+  const costOf = (m, f, p) => m.actual != null ? m[f] : m[p]; // actual when closed, plan otherwise
+  const cMax = Math.max(...months.map(m => Math.max(costOf(m, 'dcAct', 'dcPlan') || 0, costOf(m, 'icAct', 'icPlan') || 0)), 1);
+  const cH = 130;
+  const costCols = months.map((m, i) => {
+    const isClosed = m.actual != null;
+    const dc = costOf(m, 'dcAct', 'dcPlan'), ic = costOf(m, 'icAct', 'icPlan');
+    const tot = (dc || 0) + (ic || 0);
+    // MoM change of total cost vs previous closed month
+    let delta = '';
+    if (isClosed && i > 0 && months[i - 1].actual != null) {
+      const prev = (months[i - 1].dcAct || 0) + (months[i - 1].icAct || 0);
+      if (prev > 0) {
+        const pct = Math.round((tot / prev - 1) * 100);
+        delta = `<span style="color:${pct > 0 ? 'var(--hot)' : 'var(--won)'};font-weight:600">${pct > 0 ? '▲' : '▼'}${Math.abs(pct)}%</span>`;
+      }
+    }
+    const bar = (v, color) => v == null
+      ? '<div class="mbar-track"></div>'
+      : `<div class="mbar-track"><div class="mbar ${isClosed ? '' : 'hist-col__bar--req'}" style="bottom:0;height:${Math.max(2, v / cMax * cH)}px;background:${color}"></div></div>`;
+    return `<div class="hist-col">
+      <div class="hist-col__value">₹${fmtNum(tot) || 0}L</div>
+      <div class="mbar-group" style="height:${cH}px">
+        ${bar(dc, 'var(--hot)')}
+        ${bar(ic, 'var(--discuss)')}
+      </div>
+      <div class="hist-col__count">${delta || '&nbsp;'}</div>
+      <div class="hist-col__label">${m.key}</div>
+    </div>`;
+  }).join('');
+  const dcYTD = closed.reduce((s, m) => s + (m.dcAct || 0), 0);
+  const icYTD = closed.reduce((s, m) => s + (m.icAct || 0), 0);
+  const costChart = `<div class="chart-card">
+    <div class="chart-card__title">Costs — direct vs indirect
+      <span class="muted-inline"><span class="legend-dot" style="background:var(--hot);display:inline-block"></span> direct · <span class="legend-dot" style="background:var(--discuss);display:inline-block"></span> indirect · striped = plan (open months) · ▲▼ = total cost vs previous month</span>
+    </div>
+    <div class="hist">${costCols}</div>
+    <div class="chart-card__foot">
+      YTD direct ₹${fmtNum(dcYTD) || 0}L (${ytd ? Math.round(dcYTD / ytd * 100) : 0}% of revenue) ·
+      indirect ₹${fmtNum(icYTD) || 0}L (${ytd ? Math.round(icYTD / ytd * 100) : 0}% of revenue) ·
+      total cost ₹${fmtNum(dcYTD + icYTD) || 0}L against ₹${fmtNum(ytd) || 0}L revenue
+    </div>
+  </div>`;
+
   // If-then narrative
   const nextM = remaining[0];
   const afterNext = remaining.slice(1);
@@ -1347,6 +1391,7 @@ function viewSales() {
       <span style="display:inline-flex;align-items:center;gap:10px;flex-wrap:wrap">
         <span class="muted">MIS pulled ${salesData.fetchedAt ? new Date(salesData.fetchedAt).toLocaleString('en-IN', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' }) : '—'}</span>
         ${scenPills}
+        ${salesData.sheetUrl ? `<a class="sort-toggle" style="text-decoration:none" href="${salesData.sheetUrl}" target="_blank" rel="noopener" title="Open the MIS workbook in Google Sheets">↗ Open MIS</a>` : ''}
         <button id="sales-sync" class="sort-toggle" type="button" title="Re-pull the MIS sheet">↻ Sync MIS</button>
       </span>
     </div>
@@ -1361,6 +1406,7 @@ function viewSales() {
     ${table}
     ${marginChart}
     ${margins}
+    ${costChart}
     <div class="chart-card">
       <div class="chart-card__title">Scenario notes</div>
       <ul class="ins-bullets">${bullets.map(b => `<li>${b}</li>`).join('')}</ul>
