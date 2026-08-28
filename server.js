@@ -307,25 +307,26 @@ app.post('/api/sync', requireAuth, async (req, res) => {
       });
     }
 
-    // Replace all proposals with sheet data
+    // [S-8] Snapshot current rows BEFORE the destructive replace, so a failed
+    // insert (e.g. a CHECK-constraint mismatch) can restore the previous data
+    // instead of leaving the table empty.
+    const { data: backup, error: bakErr } = await supabase.from('proposals').select('*');
+    if (bakErr) throw new Error(bakErr.message);
+    const restore = async () => {
+      if (!backup?.length) return;
+      const rows = backup.map(({ id, created_at, updated_at, ...rest }) => rest);
+      await supabase.from('proposals').insert(rows);
+    };
+
     const { error: delError } = await supabase.from('proposals').delete().neq('id', 0);
     if (delError) throw new Error(delError.message);
 
     if (proposals.length > 0) {
       const { error: insError } = await supabase.from('proposals').insert(proposals);
       if (insError) {
-        // If DB still has old type constraint (hot/warm only), retry without cold rows
-        if (insError.message.includes('type_check') || insError.message.includes('violates check')) {
-          const filtered = proposals.filter(p => p.type !== 'cold');
-          if (filtered.length > 0) {
-            const { error: retryErr } = await supabase.from('proposals').insert(filtered);
-            if (retryErr) throw new Error(retryErr.message);
-          }
-          return res.json({
-            synced: filtered.length,
-            cold_skipped: proposals.length - filtered.length,
-            message: `Synced ${filtered.length} proposals. ${proposals.length - filtered.length} cold proposals skipped — update the DB type constraint to include 'cold' to enable cold sync.`,
-          });
+        await restore(); // put the previous data back before reporting failure
+        if (insError.code === '23514' || insError.message.includes('violates check')) {
+          throw new Error(`Sheet has a value the database doesn't allow yet (${insError.message}). Previous data was restored — run the pending migration in supabase_schema.sql, then sync again.`);
         }
         throw new Error(insError.message);
       }
