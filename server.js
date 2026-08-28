@@ -285,7 +285,8 @@ app.post('/api/sync', requireAuth, async (req, res) => {
       const mappedStatus = mapStatus(rawStatus);
       const isWon = mappedStatus === 'won';
       let type;
-      if (rawType === 'hot' || rawType === 'warm' || rawType === 'cold') type = rawType;
+      if (rawType === 'super hot' || rawType === 'superhot' || rawType === 'super') type = 'super';
+      else if (rawType === 'hot' || rawType === 'warm' || rawType === 'cold') type = rawType;
       else if (isWon)                  type = 'hot';
       else if (rawType === 'converted') type = 'cold';
       else continue;

@@ -234,9 +234,12 @@ function statusBadge(status) {
 }
 
 function typeBadge(type) {
-  const cls = type === 'cold' ? 'cold' : type;
-  return `<span class="badge badge--${cls}">${type.toUpperCase()}</span>`;
+  const label = type === 'super' ? '🔥 SUPER HOT' : type.toUpperCase();
+  return `<span class="badge badge--${type}">${label}</span>`;
 }
+
+// Super-hot deals are hot for every hot-vs-warm computation.
+function isHotSide(t) { return t === 'hot' || t === 'super'; }
 
 function valHtml(val, size = 32) {
   if (val == null) return `<span class="pl-card__value is-tbd">— TBD</span>`;
@@ -247,7 +250,7 @@ function valHtml(val, size = 32) {
 function heatClass(deals) {
   if (!deals.length) return '';
   const total   = sumVals(deals);
-  const hasHot  = deals.some(d => d.type === 'hot');
+  const hasHot  = deals.some(d => isHotSide(d.type));
   const hasWarm = deals.some(d => d.type === 'warm');
   let lvl = 1;
   if      (total >= 120) lvl = 5;
@@ -277,8 +280,10 @@ function sparkSvg(vals, color) {
 function tplKpis(deals) {
   // deals = activeDeals() → non-won, non-cold, with current filters applied
   // Hot/Warm tiles use same active pool so Hot + Warm = Active Pipeline
+  const superH = deals.filter(d => d.type === 'super');
   const hot  = deals.filter(d => d.type === 'hot');
   const warm = deals.filter(d => d.type === 'warm');
+  const sv = sumVals(superH);
   const cold = state.deals.filter(d => d.type === 'cold' && d.status !== 'won' && d.status !== 'lost');
   const tv  = sumVals(deals);
   const hv  = sumVals(hot);
@@ -300,6 +305,11 @@ function tplKpis(deals) {
       <div class="kpi__value">₹${fmtNum(tv) || '0'}<span class="kpi__unit">L</span></div>
       <div class="kpi__delta"><strong>${deals.length}</strong> ${state.type === 'cold' ? 'cold deals' : 'open hot + warm'}</div>
       ${sparkSvg([3,4,5,7,6,8,10,9,12],'var(--ink-2)')}
+    </div>
+    <div class="kpi kpi--super">
+      <div class="kpi__label"><span class="ddot" style="background:var(--super)"></span>Super hot</div>
+      <div class="kpi__value" style="font-size:28px">₹${fmtNum(sv) || '0'}<span class="kpi__unit">L</span></div>
+      <div class="kpi__delta"><strong>${superH.length}</strong> deal${superH.length !== 1 ? 's' : ''} · top priority</div>
     </div>
     <div class="kpi kpi--hot">
       <div class="kpi__label"><span class="ddot" style="background:var(--hot)"></span>Hot</div>
@@ -485,7 +495,8 @@ function tplValueChart(deals, mode = 'active') {
   const byCompany = {};
   for (const d of src) {
     if (!byCompany[d.company]) byCompany[d.company] = { hot: 0, warm: 0 };
-    byCompany[d.company][d.type] = (byCompany[d.company][d.type] || 0) + (d._val || 0);
+    const bucket = isHotSide(d.type) ? 'hot' : d.type; // super rolls into hot bars
+    byCompany[d.company][bucket] = (byCompany[d.company][bucket] || 0) + (d._val || 0);
   }
   const rows = Object.entries(byCompany)
     .map(([co, v]) => ({ co, hot: v.hot || 0, warm: v.warm || 0, total: (v.hot || 0) + (v.warm || 0) }))
@@ -741,11 +752,23 @@ function viewOverview(deals) {
 
   // Combined potential = full open pipeline (hot + warm) + everything already
   // won. Computed from all deals (filter-independent) as a headline figure.
-  const openHW    = state.deals.filter(d => (d.type === 'hot' || d.type === 'warm') && d.status !== 'won' && d.status !== 'lost');
+  const openHW    = state.deals.filter(d => (isHotSide(d.type) || d.type === 'warm') && d.status !== 'won' && d.status !== 'lost');
   const wonAll    = state.deals.filter(d => d.status === 'won');
   const activeVal = sumVals(openHW);
   const wonVal    = sumVals(wonAll);
   const combined  = activeVal + wonVal;
+
+  // Super-hot identification strip — every open super-hot proposal, called out
+  // right on the Overview with its value and share of the total.
+  const superOpen = state.deals.filter(d =>
+    d.type === 'super' && d.status !== 'won' && d.status !== 'lost' && matchesSearch(d));
+  const superVal = sumVals(superOpen);
+  const superStrip = superOpen.length ? `
+    <div class="section-head">
+      <h2><span class="ddot" style="background:var(--super);display:inline-block;margin-right:6px"></span>Super hot — priority proposals</h2>
+      <span class="muted">${superOpen.length} proposal${superOpen.length !== 1 ? 's' : ''} · ₹${fmtNum(superVal) || 0}L · ${activeVal + wonVal ? Math.round(superVal / (activeVal + wonVal) * 100) : 0}% of combined potential</span>
+    </div>
+    ${tplClosingWeek([...superOpen].sort((a, b) => (b._val || 0) - (a._val || 0)), 'this list')}` : '';
 
   return `
     <div class="combined-banner">
@@ -768,6 +791,7 @@ function viewOverview(deals) {
     </div>
     <div class="section-head" style="margin-top:0"><h2>Key metrics</h2></div>
     ${tplKpis(deals)}
+    ${superStrip}
     <div class="section-head">
       ${closingHeading}
       <span class="muted">${closingDeals.length} proposal${closingDeals.length !== 1 ? 's' : ''}</span>
@@ -906,14 +930,15 @@ function viewFocus() {
       </button>`).join('')}
   </div>` : '';
 
-  // Hot outranks warm only as a tiebreak — value is the primary axis.
+  // Temperature breaks ties only — value is the primary axis (super > hot > warm).
+  const heat = t => t === 'super' ? 2 : t === 'hot' ? 1 : 0;
   const ranked = [...catFiltered].sort((a, b) => {
     const av = a._val, bv = b._val;
-    if (av == null && bv == null) return a.type === 'hot' ? -1 : 1;
+    if (av == null && bv == null) return heat(b.type) - heat(a.type);
     if (av == null) return 1;
     if (bv == null) return -1;
     if (bv !== av) return bv - av;
-    return a.type === 'hot' ? -1 : (b.type === 'hot' ? 1 : 0);
+    return heat(b.type) - heat(a.type);
   });
   // Ticket-size segments: collapse to a size band during a review.
   // TBD-value deals only show on "All" (they have no ticket size to qualify).
@@ -950,7 +975,7 @@ function viewFocus() {
       ${shown.map((d, i) => {
         const pInfo = periodInfo(d.time_period);
         const hasTitle = d.deliverable && d.deliverable !== '—';
-        return `<div class="focus-row ${d.type === 'hot' ? 'is-hot' : ''}">
+        return `<div class="focus-row ${d.type === 'super' ? 'is-super' : d.type === 'hot' ? 'is-hot' : ''}">
           <span class="focus-row__rank">${i + 1}</span>
           <div class="focus-row__val ${d._val == null ? 'is-tbd' : ''}">
             ${d._val != null ? `₹${fmtNum(d._val)}<span class="u">L</span>` : 'TBD'}
@@ -1033,7 +1058,7 @@ function viewInsights() {
   // Analysis of the FULL book — deliberately ignores the filter bar so the
   // discussion numbers stay stable.
   const all  = state.deals;
-  const open = all.filter(d => (d.type === 'hot' || d.type === 'warm') && d.status !== 'won' && d.status !== 'lost');
+  const open = all.filter(d => (isHotSide(d.type) || d.type === 'warm') && d.status !== 'won' && d.status !== 'lost');
   const won  = all.filter(d => d.status === 'won');
   const lost = all.filter(d => d.status === 'lost');
   const cold = all.filter(d => d.type === 'cold' && d.status !== 'won' && d.status !== 'lost');
@@ -1115,7 +1140,7 @@ function viewInsights() {
   const topCo  = [...byCompany].sort((a, b) => b.value - a.value)[0];
   const topCat = hasCategories ? [...byCategory].sort((a, b) => b.value - a.value)[0] : null;
   const top5Val = sumVals([...priced].sort((a, b) => b._val - a._val).slice(0, 5));
-  const hotVal  = sumVals(open.filter(d => d.type === 'hot'));
+  const hotVal  = sumVals(open.filter(d => isHotSide(d.type)));
   const bullets = [
     topCo   && `<strong>${esc(topCo.label)}</strong> carries ₹${fmtNum(topCo.value)}L — ${share(topCo.value, openVal)}% of the open pipeline. ${share(topCo.value, openVal) > 40 ? 'High concentration: a slip there moves the whole year.' : 'Reasonably diversified.'}`,
     `The <strong>top 5 tickets hold ${share(top5Val, openVal)}%</strong> of open value (₹${fmtNum(top5Val)}L) — effort belongs there first (see the Focus tab).`,
@@ -1664,7 +1689,7 @@ function tplBDInsightsSection() {
   const meetTarget = months.reduce((s, m) => s + bdMeetTarget(targets, m), 0) * rows.length;
   const topBD = rows[0];
   const perMeeting = totMeet ? totProp / totMeet : 0;
-  const openVal = sumVals(state.deals.filter(d => (d.type === 'hot' || d.type === 'warm') && d.status !== 'won' && d.status !== 'lost'));
+  const openVal = sumVals(state.deals.filter(d => (isHotSide(d.type) || d.type === 'warm') && d.status !== 'won' && d.status !== 'lost'));
 
   return `<div class="chart-card">
     <div class="chart-card__title">BD activity engine <span class="muted-inline">from the BD KPI dashboard — the effort feeding this pipeline</span></div>

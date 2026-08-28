@@ -8,7 +8,7 @@ CREATE TABLE IF NOT EXISTS proposals (
   client_contact TEXT,
   category       TEXT,
   status         TEXT CHECK (status IN ('won', 'lost', 'requested', 'shared', 'discussion', NULL)),
-  type           TEXT NOT NULL CHECK (type IN ('hot', 'warm', 'cold')),
+  type           TEXT NOT NULL CHECK (type IN ('super', 'hot', 'warm', 'cold')),
   -- time_period is set by the importer (mapTimePeriod) to a month key, so it is
   -- left unconstrained — new months must never break a sync.
   time_period    TEXT,
@@ -33,7 +33,7 @@ ALTER TABLE proposals ADD  CONSTRAINT proposals_status_check
   CHECK (status IN ('won', 'lost', 'requested', 'shared', 'discussion', NULL));
 ALTER TABLE proposals DROP CONSTRAINT IF EXISTS proposals_type_check;
 ALTER TABLE proposals ADD  CONSTRAINT proposals_type_check
-  CHECK (type IN ('hot', 'warm', 'cold'));
+  CHECK (type IN ('super', 'hot', 'warm', 'cold'));
 -- Drop the restrictive month constraint so July/Aug/… (and any future month)
 -- never fail a sync. This is the cause of:
 --   "violates check constraint proposals_time_period_check"
