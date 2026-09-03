@@ -693,27 +693,8 @@ function tplDataTable(deals) {
   </div>`;
 }
 
-function tplColdSegment() {
-  const cold = coldDeals();
-  if (!cold.length) return '';
-  const total = sumVals(cold);
-  return `<div class="cold-section">
-    <div class="cold-section__head">
-      <span class="cold-section__title">● Cold pipeline — nurture stage</span>
-      <span class="cold-section__sub">${cold.length} proposals · ₹${fmtNum(total) || '0'}L potential · tracked separately</span>
-    </div>
-    <div class="cold-grid">
-      ${cold.map(d => `<div class="cold-card">
-        <div class="cold-card__co">${esc(d.company)}</div>
-        <div class="cold-card__title">${d.deliverable && d.deliverable !== '—' ? esc(d.deliverable) : '<em style="color:var(--ink-3)">Untitled</em>'}</div>
-        <div class="cold-card__foot">
-          <span style="font-size:11px;color:var(--ink-3)">${esc(d.client_contact || '—')}</span>
-          <span class="cold-card__val">${d._val != null ? '₹' + fmtNum(d._val) + 'L' : 'TBD'}</span>
-        </div>
-      </div>`).join('')}
-    </div>
-  </div>`;
-}
+// (Cold-segment block removed — cold deals live behind the Cold chip: the
+// Overview strip, Pipeline list and Focus all render them when selected.)
 
 // ─── Tab views ────────────────────────────────────────────────────────────────
 
@@ -811,7 +792,7 @@ function viewOverview(deals) {
       <span class="muted">Heat map by company × period · click any cell to expand</span>
     </div>
     ${tplHeatmap()}
-    ${tplColdSegment()}`;
+    `;
 }
 
 function viewPipeline(deals) {
@@ -844,9 +825,9 @@ function viewPipeline(deals) {
       <h2>Value by company</h2>
     </div>
     ${state.type === 'cold'
-      ? `<div class="empty" style="padding:20px;text-align:left;color:var(--ink-3)">Cold deals are shown in the cold segment below — no bar chart for nurture stage.</div>`
+      ? `<div class="empty" style="padding:20px;text-align:left;color:var(--ink-3)">No value-by-company chart for cold nurture deals.</div>`
       : tplChart(shown)}
-    ${tplColdSegment()}`;
+    `;
 }
 
 function viewRequested() {
