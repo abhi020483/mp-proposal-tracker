@@ -758,17 +758,26 @@ function viewOverview(deals) {
   const wonVal    = sumVals(wonAll);
   const combined  = activeVal + wonVal;
 
-  // Super-hot identification strip — every open super-hot proposal, called out
-  // right on the Overview with its value and share of the total.
-  const superOpen = state.deals.filter(d =>
-    d.type === 'super' && d.status !== 'won' && d.status !== 'lost' && matchesSearch(d));
-  const superVal = sumVals(superOpen);
-  const superStrip = superOpen.length ? `
+  // Priority-proposals strip — follows the type chip: Super/Hot/Warm/Cold show
+  // that tier's open deals; "All" defaults to the Super Hot tier.
+  const stripType  = state.type === 'all' ? 'super' : state.type;
+  const STRIP_META = {
+    super: { label: 'Super hot — priority proposals', color: 'var(--super)' },
+    hot:   { label: 'Hot — proposals',                color: 'var(--hot)' },
+    warm:  { label: 'Warm — proposals',               color: 'var(--warm)' },
+    cold:  { label: 'Cold — nurture proposals',       color: 'var(--cold)' },
+  };
+  const stripMeta = STRIP_META[stripType] || STRIP_META.super;
+  const stripOpen = state.deals.filter(d =>
+    d.type === stripType && d.status !== 'won' && d.status !== 'lost' &&
+    matchesPeriod(d) && matchesSearch(d));
+  const stripVal = sumVals(stripOpen);
+  const superStrip = stripOpen.length ? `
     <div class="section-head">
-      <h2><span class="ddot" style="background:var(--super);display:inline-block;margin-right:6px"></span>Super hot — priority proposals</h2>
-      <span class="muted">${superOpen.length} proposal${superOpen.length !== 1 ? 's' : ''} · ₹${fmtNum(superVal) || 0}L · ${activeVal + wonVal ? Math.round(superVal / (activeVal + wonVal) * 100) : 0}% of combined potential</span>
+      <h2><span class="ddot" style="background:${stripMeta.color};display:inline-block;margin-right:6px"></span>${stripMeta.label}</h2>
+      <span class="muted">${stripOpen.length} proposal${stripOpen.length !== 1 ? 's' : ''} · ₹${fmtNum(stripVal) || 0}L · ${activeVal + wonVal ? Math.round(stripVal / (activeVal + wonVal) * 100) : 0}% of combined potential</span>
     </div>
-    ${tplClosingWeek([...superOpen].sort((a, b) => (b._val || 0) - (a._val || 0)), 'this list')}` : '';
+    ${tplClosingWeek([...stripOpen].sort((a, b) => (b._val || 0) - (a._val || 0)), 'this list')}` : '';
 
   return `
     <div class="combined-banner">
