@@ -7,6 +7,8 @@ CREATE TABLE IF NOT EXISTS proposals (
   value          TEXT,
   client_contact TEXT,
   category       TEXT,
+  closure_text   TEXT,
+  bd             TEXT,
   status         TEXT CHECK (status IN ('won', 'lost', 'requested', 'shared', 'discussion', NULL)),
   type           TEXT NOT NULL CHECK (type IN ('super', 'hot', 'warm', 'cold')),
   -- time_period is set by the importer (mapTimePeriod) to a month key, so it is
@@ -40,3 +42,6 @@ ALTER TABLE proposals ADD  CONSTRAINT proposals_type_check
 ALTER TABLE proposals DROP CONSTRAINT IF EXISTS proposals_time_period_check;
 -- Project category (new sheet column) used by the Insights tab.
 ALTER TABLE proposals ADD COLUMN IF NOT EXISTS category TEXT;
+-- Column K raw expected-closure text ("Oct Wk-2") and column L BD owner.
+ALTER TABLE proposals ADD COLUMN IF NOT EXISTS closure_text TEXT;
+ALTER TABLE proposals ADD COLUMN IF NOT EXISTS bd TEXT;

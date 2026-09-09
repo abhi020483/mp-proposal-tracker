@@ -253,6 +253,7 @@ app.post('/api/sync', requireAuth, async (req, res) => {
       value:       find('value'),
       status:      find('status'),
       closure:     find('closure', 'expected'),
+      bd:          find('bd team', 'bd owner', 'bd'),
     };
 
     // Positional fallbacks matching the current sheet layout
@@ -304,6 +305,8 @@ app.post('/api/sync', requireAuth, async (req, res) => {
         value:          cols[idx.value]?.trim() || null,
         status:         mappedStatus,
         time_period:    mapTimePeriod(rawClosure),
+        closure_text:   rawClosure || null,
+        bd:             (idx.bd >= 0 && cols[idx.bd]?.trim()) || null,
       });
     }
 

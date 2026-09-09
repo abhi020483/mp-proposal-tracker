@@ -600,6 +600,16 @@ input  { font-family: inherit; }
 .cw-card__head { display: flex; align-items: center; justify-content: space-between; }
 .cw-card__title { font-size: 14px; font-weight: 500; color: var(--ink); letter-spacing: -0.01em; line-height: 1.3; }
 .cw-card__row { display: flex; align-items: flex-end; justify-content: space-between; margin-top: 4px; }
+.cw-card__meta {
+  display: flex; align-items: center; justify-content: space-between; gap: 8px;
+  margin-top: 8px; padding-top: 7px; border-top: 1px dashed var(--line);
+}
+.cw-card__closure { font-family: var(--font-mono); font-size: 11px; color: var(--ink-3); }
+.cw-card__bd {
+  font-size: 10px; font-weight: 600; letter-spacing: 0.04em; text-transform: uppercase;
+  color: var(--ink-2); background: var(--surface-2);
+  border: 1px solid var(--line); border-radius: 999px; padding: 2px 8px;
+}
 .cw-card__value {
   font-family: var(--font-mono); font-size: 26px; font-weight: 600;
   letter-spacing: -0.03em; color: var(--ink); line-height: 1;

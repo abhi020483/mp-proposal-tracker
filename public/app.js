@@ -371,6 +371,10 @@ function tplClosingWeek(closing, periodLabel) {
             : `<span class="cw-card__value is-tbd">TBD</span>`}
           ${statusBadge(d.status)}
         </div>
+        ${d.closure_text || d.bd ? `<div class="cw-card__meta">
+          <span class="cw-card__closure">${d.closure_text ? '⏱ ' + esc(d.closure_text) : ''}</span>
+          ${d.bd ? `<span class="cw-card__bd">${esc(d.bd)}</span>` : ''}
+        </div>` : ''}
       </div>`;
     }).join('')}
   </div>`;
