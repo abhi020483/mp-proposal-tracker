@@ -1483,7 +1483,8 @@ function viewSales() {
     ${tplBDStrip([
       { label: 'Objective', val: scen.label, sub: `pre-assigned monthly ratio × ${factor.toFixed(2)}` },
       { label: 'YTD actual', val: `₹${fmtNum(ytd)}L`, sub: `${closed.length} month${closed.length !== 1 ? 's' : ''} closed` },
-      { label: 'Attainment', val: `${attain}%`, sub: `vs ₹${fmtNum(planToDate)}L plan to date`, color: attain >= 100 ? 'var(--won)' : attain >= 70 ? 'var(--warm)' : 'var(--hot)' },
+      { label: 'Attainment to date', val: `${attain}%`, sub: `vs ₹${fmtNum(planToDate)}L plan to date`, color: attain >= 100 ? 'var(--won)' : attain >= 70 ? 'var(--warm)' : 'var(--hot)' },
+      { label: 'Achievement — annual', val: `${scen.total ? Math.round(ytd / scen.total * 100) : 0}%`, sub: `₹${fmtNum(ytd)}L of ${scen.label} target`, color: 'var(--ink)' },
       { label: 'Balance to go', val: `₹${fmtNum(balance)}L`, sub: `${remaining.length} months left` },
       { label: 'Required / month', val: `₹${fmtNum(reqAvg)}L`, sub: `planned ₹${fmtNum(planAvgRem)}L` },
     ])}
