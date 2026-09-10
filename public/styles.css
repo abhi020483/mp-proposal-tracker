@@ -604,7 +604,9 @@ input  { font-family: inherit; }
   display: flex; align-items: center; justify-content: space-between; gap: 8px;
   margin-top: 8px; padding-top: 7px; border-top: 1px dashed var(--line);
 }
-.cw-card__closure { font-family: var(--font-mono); font-size: 11px; color: var(--ink-3); }
+.cw-card__closure { font-family: var(--font-mono); font-size: 13px; font-weight: 700; color: var(--ink); letter-spacing: -0.01em; }
+.cw-card__closure.is-soon    { color: var(--warm); }
+.cw-card__closure.is-overdue { color: var(--hot); }
 .cw-card__bd {
   font-size: 10px; font-weight: 600; letter-spacing: 0.04em; text-transform: uppercase;
   color: var(--ink-2); background: var(--surface-2);

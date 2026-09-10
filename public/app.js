@@ -58,6 +58,7 @@ const state = {
   focusCategory:  'all',
   bdMon:          {},
   salesScenario:  'stretch',
+  stripSort:      'value',
   sortBy:         'value',
   sortDir:        'desc',
   deals:          [],
@@ -241,6 +242,38 @@ function typeBadge(type) {
 // Super-hot deals are hot for every hot-vs-warm computation.
 function isHotSide(t) { return t === 'hot' || t === 'super'; }
 
+// Parse the free-text Expected closure (col K) into an approximate Date.
+// Handles "Sep 15", "11th Sept", "Oct Wk-2" (weeks ≈ 4/11/18/25th),
+// bare months ("July" → month-end) and FY-aware years ("Jan 27" → Jan 2027).
+// Returns null for unparseable text ("Q3", "SOW Finalisation").
+const _CLOSURE_MONTHS = { jan:0, feb:1, mar:2, apr:3, may:4, jun:5, jul:6, aug:7, sep:8, oct:9, nov:10, dec:11 };
+function parseClosureDate(text) {
+  if (!text) return null;
+  // Strip ordinal suffixes ("11th" → "11") so day numbers parse.
+  const t = String(text).toLowerCase().replace(/(\d)(st|nd|rd|th)\b/g, '$1');
+  let mon = null;
+  for (const k of Object.keys(_CLOSURE_MONTHS)) {
+    if (new RegExp('\\b' + k).test(t)) { mon = _CLOSURE_MONTHS[k]; break; }
+  }
+  if (mon == null) return null;
+  const now = new Date();
+  const fyStart = now.getMonth() >= 3 ? now.getFullYear() : now.getFullYear() - 1;
+  let year = mon >= 3 ? fyStart : fyStart + 1;      // FY runs Apr → Mar
+  let day = 28;                                      // bare month → month-end-ish
+  const wk = t.match(/wk\s*-?\s*(\d)/);
+  if (wk) {
+    day = [4, 11, 18, 25][Math.min(3, wk[1] - 1)];
+  } else {
+    const nums = (t.match(/\b\d{1,2}\b/g) || []).map(Number);
+    for (const n of nums) {
+      // A number equal to the FY-implied year ("Jan 27") is a year, not a day
+      if (n === year % 100) continue;
+      if (n >= 1 && n <= 31) { day = n; break; }
+    }
+  }
+  return new Date(year, mon, day);
+}
+
 function valHtml(val, size = 32) {
   if (val == null) return `<span class="pl-card__value is-tbd">— TBD</span>`;
   const sz = size !== 32 ? `style="font-size:${size}px"` : '';
@@ -371,10 +404,15 @@ function tplClosingWeek(closing, periodLabel) {
             : `<span class="cw-card__value is-tbd">TBD</span>`}
           ${statusBadge(d.status)}
         </div>
-        ${d.closure_text || d.bd ? `<div class="cw-card__meta">
-          <span class="cw-card__closure">${d.closure_text ? '⏱ ' + esc(d.closure_text) : ''}</span>
+        ${d.closure_text || d.bd ? (() => {
+          const cd = parseClosureDate(d.closure_text);
+          const days = cd ? Math.ceil((cd - Date.now()) / 86400000) : null;
+          const cls = days != null && days < 0 ? 'is-overdue' : days != null && days <= 14 ? 'is-soon' : '';
+          return `<div class="cw-card__meta">
+          <span class="cw-card__closure ${cls}">${d.closure_text ? '⏱ ' + esc(d.closure_text) : ''}${days != null && days < 0 ? ' · overdue' : ''}</span>
           ${d.bd ? `<span class="cw-card__bd">${esc(d.bd)}</span>` : ''}
-        </div>` : ''}
+        </div>`;
+        })() : ''}
       </div>`;
     }).join('')}
   </div>`;
@@ -723,7 +761,14 @@ function viewOverview(deals) {
     : (periodsWithDeals[0]?.key || state.closingPeriod);
   const selPeriod = PERIODS.find(p => p.key === displayPeriodKey) ||
                     { key: displayPeriodKey, label: displayPeriodKey };
-  const closingDeals = closingPool.filter(d => d.time_period === displayPeriodKey);
+  const closingDeals = closingPool.filter(d => d.time_period === displayPeriodKey)
+    .sort((a, b) => {
+      const da = parseClosureDate(a.closure_text), db = parseClosureDate(b.closure_text);
+      if (da == null && db == null) return (b._val || 0) - (a._val || 0);
+      if (da == null) return 1;
+      if (db == null) return -1;
+      return da - db;
+    });
 
   const periodPills = periodsWithDeals.map(p =>
     `<button class="mpick ${p.key === displayPeriodKey ? 'is-active' : ''}" data-closing="${p.key}">${p.label}</button>`
@@ -757,12 +802,29 @@ function viewOverview(deals) {
     d.type === stripType && d.status !== 'won' && d.status !== 'lost' &&
     matchesPeriod(d) && matchesSearch(d));
   const stripVal = sumVals(stripOpen);
+  // Sort: by value (default) or by parsed expected-closure date, soonest
+  // first — deals with no parseable date sink to the end of the date sort.
+  const byDate = (a, b) => {
+    const da = parseClosureDate(a.closure_text), db = parseClosureDate(b.closure_text);
+    if (da == null && db == null) return (b._val || 0) - (a._val || 0);
+    if (da == null) return 1;
+    if (db == null) return -1;
+    return da - db || (b._val || 0) - (a._val || 0);
+  };
+  const stripSorted = [...stripOpen].sort(state.stripSort === 'date'
+    ? byDate
+    : (a, b) => (b._val || 0) - (a._val || 0));
   const superStrip = stripOpen.length ? `
     <div class="section-head">
       <h2><span class="ddot" style="background:${stripMeta.color};display:inline-block;margin-right:6px"></span>${stripMeta.label}</h2>
-      <span class="muted">${stripOpen.length} proposal${stripOpen.length !== 1 ? 's' : ''} · ₹${fmtNum(stripVal) || 0}L · ${activeVal + wonVal ? Math.round(stripVal / (activeVal + wonVal) * 100) : 0}% of combined potential</span>
+      <span style="display:inline-flex;align-items:center;gap:10px">
+        <span class="muted">${stripOpen.length} proposal${stripOpen.length !== 1 ? 's' : ''} · ₹${fmtNum(stripVal) || 0}L · ${activeVal + wonVal ? Math.round(stripVal / (activeVal + wonVal) * 100) : 0}% of combined potential</span>
+        <button id="strip-sort" class="sort-toggle" type="button" title="Toggle sort">
+          sort: ${state.stripSort === 'date' ? '⏱ closure date' : '₹ value'} ⇄
+        </button>
+      </span>
     </div>
-    ${tplClosingWeek([...stripOpen].sort((a, b) => (b._val || 0) - (a._val || 0)), 'this list')}` : '';
+    ${tplClosingWeek(stripSorted, 'this list')}` : '';
 
   return `
     <div class="combined-banner">
@@ -1785,6 +1847,7 @@ function wirePerRender() {
   wireTableSort();
   wireClosingPeriodSelect();
   wirePipelineSort();
+  wireStripSort();
   wireCompanyTabs();
   wireRequestedTabs();
   wireRequestedTile();
@@ -1833,6 +1896,15 @@ function wireFocusMin() {
     const b = e.target.closest('[data-min]');
     if (!b) return;
     state.focusMin = b.dataset.min;
+    render();
+  });
+}
+
+function wireStripSort() {
+  const btn = document.getElementById('strip-sort');
+  if (!btn) return;
+  btn.addEventListener('click', () => {
+    state.stripSort = state.stripSort === 'date' ? 'value' : 'date';
     render();
   });
 }
