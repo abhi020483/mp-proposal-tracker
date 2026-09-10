@@ -373,6 +373,13 @@ input  { font-family: inherit; }
 .mpick:hover { border-color: var(--ink-3); background: var(--surface-2); }
 .mpick.is-active { background: var(--ink); color: var(--surface); border-color: var(--ink); }
 
+/* ─── Competition Analysis (embedded dossier) ───────────── */
+.competition-frame {
+  width: 100%; height: calc(100vh - 210px); min-height: 560px;
+  border: 1px solid var(--line); border-radius: var(--radius);
+  background: var(--surface);
+}
+
 /* ─── Insights ──────────────────────────────────────────── */
 .ins-stats {
   display: grid; grid-template-columns: repeat(auto-fit, minmax(160px,1fr));

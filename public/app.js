@@ -1762,6 +1762,21 @@ function tplBDInsightsSection() {
   </div>`;
 }
 
+// ─── Competition Analysis (embedded dossier) ─────────────────────────────────
+
+const COMPETITION_URL = 'https://vercel-deploy-nu-smoky-43.vercel.app';
+
+function viewCompetition() {
+  return `
+    <div class="section-head" style="margin-top:0">
+      <h2>Competition analysis</h2>
+      <a class="sort-toggle" style="text-decoration:none" href="${COMPETITION_URL}" target="_blank" rel="noopener"
+         title="Open the dossier in its own tab">↗ Open full screen</a>
+    </div>
+    <iframe class="competition-frame" src="${COMPETITION_URL}"
+      title="Healthcare Agency Competitor Dossier" loading="lazy"></iframe>`;
+}
+
 // Build the period filter chips dynamically: "All periods" + one chip per
 // month that actually has deals, in calendar order. New months (July, Aug, …)
 // appear automatically once their deals sync. Legacy weekly buckets are skipped.
@@ -1812,7 +1827,7 @@ function render() {
 
   // The filter bar acts on proposal data — hide it on tabs where it has no
   // effect: Sales (MIS feed), Insights (full-book analysis), BD Team (BD feed).
-  const noFilterTabs = ['sales', 'insights', 'bdteam'];
+  const noFilterTabs = ['sales', 'insights', 'bdteam', 'competition'];
   document.getElementById('filterbar').style.display = noFilterTabs.includes(state.tab) ? 'none' : '';
 
   // Chip states
@@ -1833,6 +1848,7 @@ function render() {
     case 'insights': main.innerHTML = viewInsights();        break;
     case 'bdteam':   main.innerHTML = viewBDTeam();          break;
     case 'sales':    main.innerHTML = viewSales();            break;
+    case 'competition': main.innerHTML = viewCompetition();     break;
     default:         main.innerHTML = viewOverview(active);
   }
 
