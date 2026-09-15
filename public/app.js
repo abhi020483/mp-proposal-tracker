@@ -1219,6 +1219,8 @@ function viewInsights() {
       <div class="ins-stat"><span class="ins-stat__label">Avg open ticket</span><span class="ins-stat__val">₹${fmtNum(avgTicket) || 0}L</span><span class="ins-stat__sub">${priced.length} priced deals</span></div>
       <div class="ins-stat"><span class="ins-stat__label">Conversion (value)</span><span class="ins-stat__val">${share(wonVal, wonVal + openVal + lostVal)}%</span><span class="ins-stat__sub">won ÷ (won + open + lost)</span></div>
     </div>
+    ${tplFunnelCard()}
+    ${tplInflowCard()}
     <div class="ins-grid">
       ${tplDonutCard('Open pipeline by company', byCompany)}
       ${hasCategories
@@ -1760,6 +1762,114 @@ function tplBDInsightsSection() {
       <li>Every ₹1L of the current ₹${fmtNum(openVal) || 0}L open pipeline is backed by team activity of <strong>${totMeet} meetings</strong> — activity is the leading indicator: if meetings dip, the pipeline follows in 1–2 months.</li>
       ${topBD ? `<li><strong>${esc(topBD.bd)}</strong> leads on activity (${topBD.meet} meetings). See the BD Team tab for the full leaderboard vs targets.</li>` : ''}
     </ul>
+  </div>`;
+}
+
+// ─── Pipeline inflow + funnel ────────────────────────────────────────────────
+
+let inflowData = null, inflowError = null;
+async function loadInflow() {
+  try {
+    const res = await apiFetch('/api/inflow');
+    if (!res) return;
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.error || `HTTP ${res.status}`);
+    inflowData = data;
+    inflowError = null;
+  } catch (e) { inflowError = e.message; }
+  if (state.tab === 'insights') render();
+}
+
+// Funnel infographic: trapezoid bands (width ∝ value) with labels alongside.
+function funnelSvg(stages) {
+  const BAND = 62, GAP = 6, ZONE = 330, X0 = 4, LX = 352;
+  const H = stages.length * (BAND + GAP) - GAP + 8;
+  const maxV = Math.max(...stages.map(s => s.value), 1);
+  const w = stages.map(s => Math.max(0.2, s.value / maxV) * ZONE);
+  const bands = stages.map((s, i) => {
+    const y = 4 + i * (BAND + GAP);
+    const wTop = w[i], wBot = i < stages.length - 1 ? w[i + 1] : w[i] * 0.62;
+    const cx = X0 + ZONE / 2;
+    const pts = [
+      [cx - wTop / 2, y], [cx + wTop / 2, y],
+      [cx + wBot / 2, y + BAND], [cx - wBot / 2, y + BAND],
+    ].map(p => p.map(n => n.toFixed(1)).join(',')).join(' ');
+    return `<polygon points="${pts}" fill="${s.color}" opacity="0.9"/>
+      <text x="${cx}" y="${y + BAND / 2 + 1}" text-anchor="middle" dominant-baseline="middle"
+        font-family="var(--font-mono)" font-size="15" font-weight="700" fill="#fff">₹${fmtNum(s.value) || 0}L</text>
+      <text x="${LX}" y="${y + BAND / 2 - 9}" font-family="var(--font-sans)" font-size="13.5"
+        font-weight="600" fill="var(--ink)">${esc(s.label)}</text>
+      <text x="${LX}" y="${y + BAND / 2 + 11}" font-family="var(--font-sans)" font-size="11.5"
+        fill="var(--ink-3)">${s.count} proposal${s.count !== 1 ? 's' : ''} · ${s.clients} client${s.clients !== 1 ? 's' : ''}${s.pct != null ? ' · ' + s.pct + '% of logged' : ''}</text>`;
+  }).join('');
+  return `<svg viewBox="0 0 620 ${H}" style="width:100%;max-width:680px;height:auto">${bands}</svg>`;
+}
+
+function tplFunnelCard() {
+  // Cumulative "reached at least this stage" funnel over every logged deal.
+  const RANK = { discussion: 1, requested: 2, shared: 3, won: 4 };
+  const rankOf = d => d.status === 'won' ? 4 : RANK[d.status] || 0;
+  const all = state.deals;
+  if (!all.length) return '';
+  const reach = k => all.filter(d => rankOf(d) >= k);
+  const mk = (label, list, color) => ({
+    label, color,
+    count: list.length,
+    clients: new Set(list.map(d => d.company)).size,
+    value: sumVals(list),
+    pct: all.length ? Math.round(list.length / all.length * 100) : 0,
+  });
+  const stages = [
+    { ...mk('Logged — total pipeline', all, 'var(--ink-2)'), pct: null },
+    mk('In discussion or beyond', reach(1), 'var(--discuss)'),
+    mk('Proposal requested or beyond', reach(2), 'var(--warm)'),
+    mk('Proposal shared or beyond', reach(3), 'var(--shared)'),
+    mk('Closed won', reach(4), 'var(--won)'),
+  ];
+  return `<div class="chart-card" style="margin-bottom:12px">
+    <div class="chart-card__title">Pipeline funnel <span class="muted-inline">band width ∝ value · every logged proposal, cold included</span></div>
+    <div style="overflow-x:auto">${funnelSvg(stages)}</div>
+  </div>`;
+}
+
+function tplInflowCard() {
+  if (!inflowData) {
+    if (!inflowError) loadInflow();
+    return `<div class="chart-card" style="margin-bottom:12px"><div class="chart-card__title">Proposals logged per month</div>
+      <div class="empty" style="padding:20px">${inflowError ? 'Inflow log unavailable: ' + esc(inflowError) + ' — run the proposal_log migration in supabase_schema.sql and sync.' : 'Loading inflow log…'}</div></div>`;
+  }
+  const seeded = inflowData.filter(r => r.seeded);
+  const rest   = inflowData.filter(r => !r.seeded);
+  const knownCos = new Set(seeded.map(r => r.company));
+  const months = {};
+  for (const r of rest) {
+    const mk = (r.first_seen || '').slice(0, 7);
+    if (!mk) continue;
+    if (!months[mk]) months[mk] = { count: 0, value: 0, newClients: 0, cos: new Set() };
+    const m = months[mk];
+    m.count++;
+    m.value += parseValue(r.value) || 0;
+    if (!knownCos.has(r.company) && !m.cos.has(r.company)) { m.newClients++; }
+    m.cos.add(r.company); knownCos.add(r.company);
+  }
+  const keys = Object.keys(months).sort();
+  const maxVal = Math.max(...keys.map(k => months[k].value), 1);
+  const seedVal = seeded.reduce((s, r) => s + (parseValue(r.value) || 0), 0);
+  const seedDate = seeded[0]?.first_seen || '';
+  const monthLabel = k => new Date(k + '-02').toLocaleDateString('en', { month: 'short', year: '2-digit' });
+  return `<div class="chart-card" style="margin-bottom:12px">
+    <div class="chart-card__title">Proposals logged per month <span class="muted-inline">pipeline fill rate — quantity, clients, value</span></div>
+    ${keys.length ? `<div class="hist">
+      ${keys.map(k => { const m = months[k]; return `<div class="hist-col">
+        <div class="hist-col__value">₹${fmtNum(m.value) || 0}L</div>
+        <div class="hist-col__stack" style="height:110px">
+          <div class="hist-col__bar" style="height:${Math.max(4, m.value / maxVal * 106)}px;background:var(--shared)"></div>
+        </div>
+        <div class="hist-col__count"><strong>${m.count}</strong> logged · ${m.cos.size} client${m.cos.size !== 1 ? 's' : ''}${m.newClients ? ` · ${m.newClients} new` : ''}</div>
+        <div class="hist-col__label">${monthLabel(k)}</div>
+      </div>`; }).join('')}
+    </div>` : `<div class="empty" style="padding:18px">Tracking started ${seedDate ? new Date(seedDate).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' }) : 'with the last sync'} — new proposals appear here as they are added to the sheet and synced.</div>`}
+    <div class="chart-card__foot">Baseline before tracking: ${seeded.length} proposals · ${new Set(seeded.map(r => r.company)).size} clients · ₹${fmtNum(seedVal) || 0}L. The sheet has no logged-date column, so months accrue from first sync onward.</div>
   </div>`;
 }
 

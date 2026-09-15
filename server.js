@@ -335,10 +335,41 @@ app.post('/api/sync', requireAuth, async (req, res) => {
       }
     }
 
+    // [B-6] Inflow log: record the first-seen date of every proposal
+    // (key = company|deliverable) so "proposals logged per month" can be
+    // analysed. The sheet has no logged-date column, so history starts at the
+    // first run — pre-existing rows are marked seeded (baseline). Non-fatal.
+    try {
+      const { data: logRows, error: logErr } = await supabase.from('proposal_log').select('key');
+      if (!logErr) {
+        const known = new Set((logRows || []).map(r => r.key));
+        const isFirstRun = known.size === 0;
+        const seen = new Set();
+        const fresh = [];
+        for (const p of proposals) {
+          const key = `${p.company}|${p.deliverable}`.toLowerCase();
+          if (known.has(key) || seen.has(key)) continue;
+          seen.add(key);
+          fresh.push({ key, company: p.company, value: p.value, seeded: isFirstRun });
+        }
+        if (fresh.length) await supabase.from('proposal_log').insert(fresh);
+      }
+    } catch (e) { console.warn('[sync] inflow log skipped:', e.message); }
+
     res.json({ synced: proposals.length, message: `Successfully synced ${proposals.length} proposals` });
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
+});
+
+// Inflow log — first-seen dates for the "proposals logged per month" analysis.
+app.get('/api/inflow', requireAuth, async (req, res) => {
+  const { data, error } = await supabase
+    .from('proposal_log')
+    .select('key, company, value, seeded, first_seen')
+    .order('first_seen');
+  if (error) return res.status(500).json({ error: error.message });
+  res.json(data);
 });
 
 // ─── Sales (MIS "Plan vs Actual") ────────────────────────────────────────────

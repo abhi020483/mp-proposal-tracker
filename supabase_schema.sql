@@ -45,3 +45,19 @@ ALTER TABLE proposals ADD COLUMN IF NOT EXISTS category TEXT;
 -- Column K raw expected-closure text ("Oct Wk-2") and column L BD owner.
 ALTER TABLE proposals ADD COLUMN IF NOT EXISTS closure_text TEXT;
 ALTER TABLE proposals ADD COLUMN IF NOT EXISTS bd TEXT;
+
+-- Inflow log: first-seen date per proposal (survives the sync's full-replace)
+-- powering the "proposals logged per month" analysis. Rows present at the
+-- very first sync are marked seeded (pre-tracking baseline).
+CREATE TABLE IF NOT EXISTS proposal_log (
+  key        TEXT PRIMARY KEY,
+  company    TEXT,
+  value      TEXT,
+  seeded     BOOLEAN DEFAULT FALSE,
+  first_seen DATE DEFAULT CURRENT_DATE
+);
+ALTER TABLE proposal_log ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS "log read"  ON proposal_log;
+DROP POLICY IF EXISTS "log write" ON proposal_log;
+CREATE POLICY "log read"  ON proposal_log FOR SELECT USING (true);
+CREATE POLICY "log write" ON proposal_log FOR INSERT WITH CHECK (true);
