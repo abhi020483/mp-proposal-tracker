@@ -1852,24 +1852,42 @@ function tplInflowCard() {
     if (!knownCos.has(r.company) && !m.cos.has(r.company)) { m.newClients++; }
     m.cos.add(r.company); knownCos.add(r.company);
   }
-  const keys = Object.keys(months).sort();
-  const maxVal = Math.max(...keys.map(k => months[k].value), 1);
   const seedVal = seeded.reduce((s, r) => s + (parseValue(r.value) || 0), 0);
   const seedDate = seeded[0]?.first_seen || '';
   const monthLabel = k => new Date(k + '-02').toLocaleDateString('en', { month: 'short', year: '2-digit' });
+  // Bars: the pre-tracking baseline is the first bar, tracked months follow.
+  const bars = [
+    {
+      label: seedDate ? `≤ ${monthLabel(seedDate.slice(0, 7))}` : 'Baseline',
+      count: seeded.length,
+      clients: new Set(seeded.map(r => r.company)).size,
+      newClients: 0,
+      value: seedVal,
+      baseline: true,
+    },
+    ...Object.keys(months).sort().map(k => ({
+      label: monthLabel(k),
+      count: months[k].count,
+      clients: months[k].cos.size,
+      newClients: months[k].newClients,
+      value: months[k].value,
+      baseline: false,
+    })),
+  ];
+  const maxCount = Math.max(...bars.map(b => b.count), 1);
   return `<div class="chart-card" style="margin-bottom:12px">
-    <div class="chart-card__title">Proposals logged per month <span class="muted-inline">pipeline fill rate — quantity, clients, value</span></div>
-    ${keys.length ? `<div class="hist">
-      ${keys.map(k => { const m = months[k]; return `<div class="hist-col">
-        <div class="hist-col__value">₹${fmtNum(m.value) || 0}L</div>
-        <div class="hist-col__stack" style="height:110px">
-          <div class="hist-col__bar" style="height:${Math.max(4, m.value / maxVal * 106)}px;background:var(--shared)"></div>
+    <div class="chart-card__title">Proposals logged per month <span class="muted-inline">bar = # logged · first bar is the pre-tracking baseline</span></div>
+    <div class="hist">
+      ${bars.map(b => `<div class="hist-col">
+        <div class="hist-col__value">${b.count}</div>
+        <div class="hist-col__stack" style="height:120px">
+          <div class="hist-col__bar" style="height:${Math.max(4, b.count / maxCount * 116)}px;background:${b.baseline ? 'var(--line-2)' : 'var(--shared)'}"></div>
         </div>
-        <div class="hist-col__count"><strong>${m.count}</strong> logged · ${m.cos.size} client${m.cos.size !== 1 ? 's' : ''}${m.newClients ? ` · ${m.newClients} new` : ''}</div>
-        <div class="hist-col__label">${monthLabel(k)}</div>
-      </div>`; }).join('')}
-    </div>` : `<div class="empty" style="padding:18px">Tracking started ${seedDate ? new Date(seedDate).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' }) : 'with the last sync'} — new proposals appear here as they are added to the sheet and synced.</div>`}
-    <div class="chart-card__foot">Baseline before tracking: ${seeded.length} proposals · ${new Set(seeded.map(r => r.company)).size} clients · ₹${fmtNum(seedVal) || 0}L. The sheet has no logged-date column, so months accrue from first sync onward.</div>
+        <div class="hist-col__count">₹${fmtNum(b.value) || 0}L · ${b.clients} client${b.clients !== 1 ? 's' : ''}${b.newClients ? ` · <strong>${b.newClients} new</strong>` : ''}</div>
+        <div class="hist-col__label">${b.label}</div>
+      </div>`).join('')}
+    </div>
+    <div class="chart-card__foot">The sheet has no logged-date column, so the gray bar bundles everything present when tracking began (${seedDate ? new Date(seedDate).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' }) : 'first sync'}); colored bars accrue per month from each sync onward.</div>
   </div>`;
 }
 
