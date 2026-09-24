@@ -1536,6 +1536,7 @@ function wireSales() {
 
 const GAME_TIERS = [
   { type: 'invoiced', label: 'Invoiced — not yet in MIS', color: 'var(--invoiced)', prob: 1 },
+  { type: 'won',      label: 'Closed won — not yet in MIS', color: 'var(--wonplan)', prob: 1 },
   { type: 'super', label: 'Super hot', color: 'var(--super)', prob: 0.9 },
   { type: 'hot',   label: 'Hot',       color: 'var(--hot)',   prob: 0.7 },
   { type: 'warm',  label: 'Warm',      color: 'var(--warm)',  prob: 0.4 },
@@ -1573,10 +1574,18 @@ function customDeals() {
 }
 const MON3 = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
 
+// Closed-won deals may or may not be invoiced (and in the MIS) yet, so they
+// are offered for manual picking only — never by auto-fill or add-all.
+function wonDeals() {
+  return state.deals.filter(d => d.status === 'won')
+    .map(d => ({ ...d, type: 'won', _origType: d.type, closure_text: d.closure_text || 'closed won' }));
+}
 function gamePool() {
-  return [...customDeals(), ...state.deals.filter(d =>
+  return [...customDeals(), ...wonDeals(), ...state.deals.filter(d =>
     GAME_TIERS.some(t => t.type === d.type) && d.status !== 'won' && d.status !== 'lost')];
 }
+// Order in the plan: invoiced blocks, then wins, then pipeline by value.
+const planRank = d => d.custom ? 2 : d.type === 'won' ? 1 : 0;
 // Value used in the plan: an MP override if set, else the sheet value.
 function gameVal(d) {
   if (d.custom) return d.custom.value;
@@ -1586,6 +1595,7 @@ function gameVal(d) {
 // Where a deal's expected closure (col K) falls relative to this FY.
 function gameFY(d) {
   if (d.custom) return customStale(d.custom) ? 'stale' : 'in';
+  if (d.type === 'won') return 'in'; // already closed — no closure date needed
   const now = new Date();
   const fyStart = now.getMonth() >= 3 ? now.getFullYear() : now.getFullYear() - 1;
   const cd = parseClosureDate(d.closure_text);
@@ -1621,7 +1631,7 @@ function gameStats(commit, assume, scenKey) {
     if (!(k in commit)) return false;
     const fy = gameFY(d);
     return fy === 'in' || (fy === 'nodate' && assume[k]);
-  }).sort((a, b) => (b.custom ? 1 : 0) - (a.custom ? 1 : 0) || valOf(b) - valOf(a));
+  }).sort((a, b) => planRank(b) - planRank(a) || valOf(b) - valOf(a));
   const added = picked.reduce((s, d) => s + valOf(d), 0);
   const weighted = booked + picked.reduce((s, d) => s + valOf(d) * gameTier(d.type).prob, 0);
   // Picks that no longer qualify (won, dropped from the sheet, re-dated).
@@ -1658,7 +1668,7 @@ function viewGame() {
   const nextFY = pool.filter(d => gameFY(d) === 'next');
   // A pick only counts while its deal still qualifies for this FY.
   const picked = pool.filter(d => dealKey(d) in state.gameCommit && gameCounts(d))
-    .sort((a, b) => (b.custom ? 1 : 0) - (a.custom ? 1 : 0) || gameVal(b) - gameVal(a));
+    .sort((a, b) => planRank(b) - planRank(a) || gameVal(b) - gameVal(a));
   const added    = picked.reduce((s, d) => s + gameVal(d), 0);
   const total    = booked + added;
   const pct      = target ? total / target * 100 : 0;
@@ -1767,16 +1777,20 @@ function viewGame() {
   </div>`;
 
   // ── What the in-FY pipeline could do (largest tickets first) ──
-  const priced = inFY.filter(d => gameVal(d) > 0).sort((a, b) => gameVal(b) - gameVal(a));
+  const priced = inFY.filter(d => !d.custom && d.type !== 'won' && gameVal(d) > 0).sort((a, b) => gameVal(b) - gameVal(a));
   let acc = booked, need = -1;
   priced.forEach((d, i) => { acc += gameVal(d); if (need < 0 && acc >= target) need = i + 1; });
   const fullTotal = acc;
-  const tbd = inFY.filter(d => !(gameVal(d) > 0)).length;
+  const tbd = inFY.filter(d => !d.custom && d.type !== 'won' && !(gameVal(d) > 0)).length;
   const noDatePriced = noDate.filter(d => d._val > 0);
   const noDateVal = noDatePriced.reduce((s, d) => s + d._val, 0);
 
   const staleCustoms = pool.filter(d => d.custom && gameFY(d) === 'stale');
   const bullets = [
+    ...(picked.some(d => d.type === 'won') ? [(() => {
+      const w = picked.filter(d => d.type === 'won');
+      return `${w.length} closed win${w.length !== 1 ? 's' : ''} worth <strong>₹${fmtNum(w.reduce((x, d) => x + gameVal(d), 0))}L</strong> counted on top of booked sales — keep only wins whose revenue is <strong>not already</strong> in the MIS ₹${fmtNum(booked)}L.`;
+    })()] : []),
     ...staleCustoms.map(d => `<strong style="color:var(--hot)">${esc(d.custom.name)} no longer counts</strong> — ${esc(d.custom.month)} is now in the MIS, so it's already inside the booked figure. Remove the block with ×.`),
     `Booked ₹${fmtNum(booked)}L${picked.length ? ` + ${picked.length} project${picked.length !== 1 ? 's' : ''} worth ₹${fmtNum(added)}L` : ''} = <strong>₹${fmtNum(total)}L, ${Math.round(pct)}% of ${scen.label}</strong>.`,
     gap > 0
@@ -1826,7 +1840,9 @@ function viewGame() {
         <span class="muted-inline">${ds.length} · ₹${fmtNum(ds.reduce((s, d) => s + gameVal(d), 0)) || 0}L${inVal ? ` · ₹${fmtNum(inVal)}L in plan` : ''}</span>
         ${isInv
           ? `<button class="mpick" data-gact="cnew" style="margin-left:auto">+ New block</button>`
-          : `<button class="mpick" data-gact="tier" data-gtier="${t.type}" style="margin-left:auto">+ add all</button>`}
+          : t.type === 'won'
+            ? `<span class="muted-inline" style="margin-left:auto">pick only wins not yet in the MIS booked figure</span>`
+            : `<button class="mpick" data-gact="tier" data-gtier="${t.type}" style="margin-left:auto">+ add all</button>`}
       </div>
       <div class="game-tray">${ds.length
         ? ds.map(d => block(d, t, d.custom && gameFY(d) === 'stale' ? 'stale' : 'in')).join('')
@@ -2065,7 +2081,7 @@ function wireGame() {
       const target = (SALES_SCENARIOS[state.salesScenario] || SALES_SCENARIOS.base).total;
       let run = salesData.months.filter(m => m.actual != null).reduce((s, m) => s + m.actual, 0)
         + gamePool().filter(d => dealKey(d) in state.gameCommit && gameCounts(d)).reduce((s, d) => s + gameVal(d), 0);
-      for (const d of inFY.filter(d => !(dealKey(d) in state.gameCommit) && gameVal(d) > 0)
+      for (const d of inFY.filter(d => d.type !== 'won' && !(dealKey(d) in state.gameCommit) && gameVal(d) > 0)
                           .sort((a, b) => gameVal(b) - gameVal(a))) {
         if (run >= target) break;
         state.gameCommit[dealKey(d)] = null;
