@@ -29,6 +29,7 @@
   --tooltip-fg:   #FFFFFF;
 
   --super:        #8E1B4A;
+  --invoiced:     #2F8F83;
   --super-soft:   #F9E3ED;
   --hot:          #C8332E;
   --hot-soft:     #FBE9E7;
@@ -77,6 +78,7 @@
   --tooltip-fg:   #0F0F0E;
 
   --super:        #FF6FA5;
+  --invoiced:     #5CC8B9;
   --super-soft:   rgba(255,111,165,0.16);
   --hot:          #F26B62;
   --hot-soft:     rgba(242,107,98,0.14);
@@ -520,6 +522,13 @@ input  { font-family: inherit; }
   opacity: .45; cursor: pointer; line-height: 1;
 }
 .game-block__edit:hover { opacity: 1; }
+.game-block__del {
+  position: absolute; top: 4px; right: 24px; font-size: 15px; line-height: 1;
+  opacity: .45; cursor: pointer; padding: 0 2px;
+}
+.game-block__del:hover { opacity: 1; color: var(--hot); }
+.game-block.is-in .game-block__del:hover { color: #fff; }
+.game-block.is-custom .game-block__co { padding-right: 36px; }
 
 /* ─── Competition Analysis (embedded dossier) ───────────── */
 .competition-frame {

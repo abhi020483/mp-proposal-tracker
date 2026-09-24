@@ -1535,13 +1535,14 @@ function wireSales() {
 // every sync.
 
 const GAME_TIERS = [
+  { type: 'invoiced', label: 'Invoiced — not yet in MIS', color: 'var(--invoiced)', prob: 1 },
   { type: 'super', label: 'Super hot', color: 'var(--super)', prob: 0.9 },
   { type: 'hot',   label: 'Hot',       color: 'var(--hot)',   prob: 0.7 },
   { type: 'warm',  label: 'Warm',      color: 'var(--warm)',  prob: 0.4 },
   { type: 'cold',  label: 'Cold',      color: 'var(--cold)',  prob: 0.15 },
 ];
-const gameTier = t => GAME_TIERS.find(x => x.type === t) || GAME_TIERS[3];
-const dealKey  = d => `${d.company}|${d.deliverable}`;
+const gameTier = t => GAME_TIERS.find(x => x.type === t) || GAME_TIERS.find(x => x.type === 'cold');
+const dealKey  = d => d._key || `${d.company}|${d.deliverable}`;
 const dealName = d => d.deliverable && d.deliverable !== '—' ? d.deliverable : 'Untitled';
 
 function gameLoad(key) {
@@ -1551,20 +1552,40 @@ function gameSave() {
   try {
     localStorage.setItem('mp-game-v1', JSON.stringify(state.gameCommit));
     localStorage.setItem('mp-game-fy-v1', JSON.stringify(state.gameAssume));
+    localStorage.setItem('mp-game-custom-v1', JSON.stringify(state.gameCustom || []));
   } catch {}
 }
 
+// Manual "invoiced but not yet in the MIS" blocks, e.g. a month that has been
+// invoiced before finance closes it in the MIS. Each carries the MIS month it
+// belongs to; once that month's actual appears in the MIS the block stops
+// counting (it would double-count) and asks to be removed.
+function gameCustomLoad() {
+  try { const a = JSON.parse(localStorage.getItem('mp-game-custom-v1') || 'null'); return Array.isArray(a) ? a : null; }
+  catch { return null; }
+}
+const customStale = c => !!salesData && salesData.months.some(m => m.key === c.month && m.actual != null);
+function customDeals() {
+  return (state.gameCustom || []).map(c => ({
+    _key: c.id, custom: c, type: 'invoiced', company: 'Invoiced', deliverable: c.name,
+    _val: c.value, closure_text: `${c.month} · invoiced`, status: null,
+  }));
+}
+const MON3 = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+
 function gamePool() {
-  return state.deals.filter(d =>
-    GAME_TIERS.some(t => t.type === d.type) && d.status !== 'won' && d.status !== 'lost');
+  return [...customDeals(), ...state.deals.filter(d =>
+    GAME_TIERS.some(t => t.type === d.type) && d.status !== 'won' && d.status !== 'lost')];
 }
 // Value used in the plan: an MP override if set, else the sheet value.
 function gameVal(d) {
+  if (d.custom) return d.custom.value;
   const o = state.gameCommit[dealKey(d)];
   return o != null ? o : (d._val || 0);
 }
 // Where a deal's expected closure (col K) falls relative to this FY.
 function gameFY(d) {
+  if (d.custom) return customStale(d.custom) ? 'stale' : 'in';
   const now = new Date();
   const fyStart = now.getMonth() >= 3 ? now.getFullYear() : now.getFullYear() - 1;
   const cd = parseClosureDate(d.closure_text);
@@ -1594,13 +1615,13 @@ function gameScenSave(list) {
 function gameStats(commit, assume, scenKey) {
   const target = (SALES_SCENARIOS[scenKey] || SALES_SCENARIOS.base).total;
   const booked = salesData.months.filter(m => m.actual != null).reduce((s, m) => s + m.actual, 0);
-  const valOf = d => { const o = commit[dealKey(d)]; return o != null ? o : (d._val || 0); };
+  const valOf = d => { if (d.custom) return d.custom.value; const o = commit[dealKey(d)]; return o != null ? o : (d._val || 0); };
   const picked = gamePool().filter(d => {
     const k = dealKey(d);
     if (!(k in commit)) return false;
     const fy = gameFY(d);
     return fy === 'in' || (fy === 'nodate' && assume[k]);
-  }).sort((a, b) => valOf(b) - valOf(a));
+  }).sort((a, b) => (b.custom ? 1 : 0) - (a.custom ? 1 : 0) || valOf(b) - valOf(a));
   const added = picked.reduce((s, d) => s + valOf(d), 0);
   const weighted = booked + picked.reduce((s, d) => s + valOf(d) * gameTier(d.type).prob, 0);
   // Picks that no longer qualify (won, dropped from the sheet, re-dated).
@@ -1617,6 +1638,14 @@ function viewGame() {
   if (!state.gameLoaded) {
     state.gameCommit = gameLoad('mp-game-v1');
     state.gameAssume = gameLoad('mp-game-fy-v1');
+    state.gameCustom = gameCustomLoad();
+    if (state.gameCustom == null) {
+      // First visit: pre-create the Sept '26 invoicing block (₹124L) unless
+      // the MIS already carries September.
+      const seed = { id: 'custom:sep26', name: "Sept '26 invoicing", month: 'Sep', value: 124 };
+      state.gameCustom = customStale(seed) ? [] : [seed];
+      gameSave();
+    }
     state.gameLoaded = true;
   }
 
@@ -1629,7 +1658,7 @@ function viewGame() {
   const nextFY = pool.filter(d => gameFY(d) === 'next');
   // A pick only counts while its deal still qualifies for this FY.
   const picked = pool.filter(d => dealKey(d) in state.gameCommit && gameCounts(d))
-    .sort((a, b) => gameVal(b) - gameVal(a));
+    .sort((a, b) => (b.custom ? 1 : 0) - (a.custom ? 1 : 0) || gameVal(b) - gameVal(a));
   const added    = picked.reduce((s, d) => s + gameVal(d), 0);
   const total    = booked + added;
   const pct      = target ? total / target * 100 : 0;
@@ -1741,7 +1770,9 @@ function viewGame() {
   const noDatePriced = noDate.filter(d => d._val > 0);
   const noDateVal = noDatePriced.reduce((s, d) => s + d._val, 0);
 
+  const staleCustoms = pool.filter(d => d.custom && gameFY(d) === 'stale');
   const bullets = [
+    ...staleCustoms.map(d => `<strong style="color:var(--hot)">${esc(d.custom.name)} no longer counts</strong> — ${esc(d.custom.month)} is now in the MIS, so it's already inside the booked figure. Remove the block with ×.`),
     `Booked ₹${fmtNum(booked)}L${picked.length ? ` + ${picked.length} project${picked.length !== 1 ? 's' : ''} worth ₹${fmtNum(added)}L` : ''} = <strong>₹${fmtNum(total)}L, ${Math.round(pct)}% of ${scen.label}</strong>.`,
     gap > 0
       ? `Still <strong>₹${fmtNum(gap)}L short</strong> of target with this selection.`
@@ -1760,30 +1791,41 @@ function viewGame() {
     const k = dealKey(d), v = gameVal(d), on = k in state.gameCommit && gameCounts(d), priced = v > 0;
     const f = priced ? v / maxV : 0;
     const disabled = mode === 'next';
-    return `<button class="game-block ${on ? 'is-in' : ''} ${priced ? '' : 'is-tbd'} ${mode !== 'in' ? 'is-out' : ''}"
-      ${disabled ? 'disabled' : `data-gkey="${esc(k)}"`}
+    const stale = mode === 'stale';
+    const title = disabled ? `Expected after ${gameFyEndLabel()} — not counted this FY`
+      : stale ? `${d.custom.month} is now in the MIS — this block no longer counts. Remove it with ×.`
+      : on ? 'Click to remove from plan' : 'Click to add to plan';
+    return `<button class="game-block ${on ? 'is-in' : ''} ${priced ? '' : 'is-tbd'} ${mode !== 'in' ? 'is-out' : ''} ${d.custom ? 'is-custom' : ''}"
+      ${disabled ? 'disabled' : stale ? '' : `data-gkey="${esc(k)}"`}
       style="--tier:${t.color};width:${Math.round(110 + 240 * f)}px;min-height:${Math.round(70 + 44 * f)}px"
-      title="${disabled ? `Expected after ${gameFyEndLabel()} — not counted this FY` : on ? 'Click to remove from plan' : 'Click to add to plan'}">
-      ${disabled ? '' : `<span class="game-block__edit" data-gedit="${esc(k)}" title="Set expected value">✎</span>`}
+      title="${title}">
+      ${disabled || stale ? '' : `<span class="game-block__edit" data-gedit="${esc(k)}" title="${d.custom ? 'Change amount' : 'Set expected value'}">✎</span>`}
+      ${d.custom ? `<span class="game-block__del" data-gcdel="${esc(k)}" title="Delete this block">×</span>` : ''}
       <span class="game-block__co">${esc(d.company)}</span>
       <span class="game-block__name">${esc(dealName(d))}</span>
       <span class="game-block__foot">
         <span class="game-block__val">${priced ? `₹${fmtNum(v)}L` : 'TBD'}${on ? ' ✓' : ''}</span>
-        <span class="game-block__when">${d.closure_text ? esc(d.closure_text) : 'no date'}</span>
+        <span class="game-block__when">${stale ? `${esc(d.custom.month)} now in MIS — remove` : d.closure_text ? esc(d.closure_text) : 'no date'}</span>
       </span>
     </button>`;
   };
   const tierGroups = GAME_TIERS.map(t => {
-    const ds = inFY.filter(d => d.type === t.type).sort((a, b) => gameVal(b) - gameVal(a));
-    if (!ds.length) return '';
+    const isInv = t.type === 'invoiced';
+    const ds = (isInv ? pool.filter(d => d.custom) : inFY.filter(d => d.type === t.type))
+      .sort((a, b) => gameVal(b) - gameVal(a));
+    if (!ds.length && !isInv) return '';
     const inVal = ds.filter(d => dealKey(d) in state.gameCommit).reduce((s, d) => s + gameVal(d), 0);
     return `<div class="game-tier">
       <div class="game-tier__head">
         <span class="ddot" style="background:${t.color};display:inline-block;margin-right:6px"></span>${t.label}
         <span class="muted-inline">${ds.length} · ₹${fmtNum(ds.reduce((s, d) => s + gameVal(d), 0)) || 0}L${inVal ? ` · ₹${fmtNum(inVal)}L in plan` : ''}</span>
-        <button class="mpick" data-gact="tier" data-gtier="${t.type}" style="margin-left:auto">+ add all</button>
+        ${isInv
+          ? `<button class="mpick" data-gact="cnew" style="margin-left:auto">+ New block</button>`
+          : `<button class="mpick" data-gact="tier" data-gtier="${t.type}" style="margin-left:auto">+ add all</button>`}
       </div>
-      <div class="game-tray">${ds.map(d => block(d, t, 'in')).join('')}</div>
+      <div class="game-tray">${ds.length
+        ? ds.map(d => block(d, t, d.custom && gameFY(d) === 'stale' ? 'stale' : 'in')).join('')
+        : `<span class="muted" style="font-size:12px">Add a month that's invoiced but not yet closed in the MIS, so the plan matches real time.</span>`}</div>
     </div>`;
   }).join('');
   const sideGroup = (list, title, note, mode) => !list.length ? '' : `<div class="game-tier game-tier--out">
@@ -1901,7 +1943,28 @@ function wireGame() {
   if (!root) return;
   const parseAns = a => parseFloat(String(a ?? '').replace(/[₹,L\s]/g, ''));
   root.addEventListener('click', e => {
+    const cdel = e.target.closest('[data-gcdel]');
+    if (cdel) {
+      e.stopPropagation();
+      const k = cdel.dataset.gcdel;
+      const c = (state.gameCustom || []).find(x => x.id === k);
+      if (!c || !confirm(`Delete the "${c.name}" block?`)) return;
+      state.gameCustom = state.gameCustom.filter(x => x.id !== k);
+      delete state.gameCommit[k];
+      gameSave(); render();
+      return;
+    }
     const edit = e.target.closest('[data-gedit]');
+    if (edit && edit.dataset.gedit.startsWith('custom:')) {
+      e.stopPropagation();
+      const c = (state.gameCustom || []).find(x => x.id === edit.dataset.gedit);
+      if (!c) return;
+      const v = parseAns(prompt(`Amount for "${c.name}", in ₹ Lakhs:`, c.value));
+      if (isNaN(v) || v <= 0) return;
+      c.value = v;
+      gameSave(); render();
+      return;
+    }
     if (edit) {
       e.stopPropagation();
       const k = edit.dataset.gedit;
@@ -1946,6 +2009,21 @@ function wireGame() {
     if (!act) return;
     // Bulk actions only ever use projects dated within this FY.
     const inFY = gamePool().filter(d => gameFY(d) === 'in');
+    if (act.dataset.gact === 'cnew') {
+      const now = new Date();
+      const name = (prompt('Name for this block (e.g. "Oct \'26 invoicing"):', `${MON3[now.getMonth()]} '${String(now.getFullYear()).slice(2)} invoicing`) || '').trim();
+      if (!name) return;
+      const v = parseAns(prompt(`Amount for "${name}", in ₹ Lakhs:`));
+      if (isNaN(v) || v <= 0) return;
+      // MIS month it belongs to: a month named in the label, else this month.
+      const lower = name.toLowerCase();
+      const m = MON3.find(x => new RegExp('\\b' + x.toLowerCase()).test(lower)) || MON3[now.getMonth()];
+      const id = `custom:${Date.now()}`;
+      state.gameCustom = [...(state.gameCustom || []), { id, name, month: m, value: v }];
+      state.gameCommit[id] = null; // new blocks go straight into the plan
+      gameSave(); render();
+      return;
+    }
     if (act.dataset.gact === 'save') {
       const list = gameScenLoad();
       const name = (prompt('Name this scenario (e.g. "Conservative — super hot only"):', `Plan ${list.length + 1}`) || '').trim();
