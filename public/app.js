@@ -1580,6 +1580,34 @@ function gameFyEndLabel() {
   return `Mar ${fyStart + 1}`;
 }
 
+// Saved scenarios: named snapshots of a plan (picks, value overrides,
+// confirmed-undated flags and the ₹ target), stored in this browser.
+function gameScenLoad() {
+  try { const a = JSON.parse(localStorage.getItem('mp-game-scen-v1') || '[]'); return Array.isArray(a) ? a : []; }
+  catch { return []; }
+}
+function gameScenSave(list) {
+  try { localStorage.setItem('mp-game-scen-v1', JSON.stringify(list)); } catch {}
+}
+// Evaluate a plan against today's pipeline and MIS: the same rules as the
+// live view, so a saved plan re-prices itself as deals and actuals move.
+function gameStats(commit, assume, scenKey) {
+  const target = (SALES_SCENARIOS[scenKey] || SALES_SCENARIOS.base).total;
+  const booked = salesData.months.filter(m => m.actual != null).reduce((s, m) => s + m.actual, 0);
+  const valOf = d => { const o = commit[dealKey(d)]; return o != null ? o : (d._val || 0); };
+  const picked = gamePool().filter(d => {
+    const k = dealKey(d);
+    if (!(k in commit)) return false;
+    const fy = gameFY(d);
+    return fy === 'in' || (fy === 'nodate' && assume[k]);
+  }).sort((a, b) => valOf(b) - valOf(a));
+  const added = picked.reduce((s, d) => s + valOf(d), 0);
+  const weighted = booked + picked.reduce((s, d) => s + valOf(d) * gameTier(d.type).prob, 0);
+  // Picks that no longer qualify (won, dropped from the sheet, re-dated).
+  const dropped = Object.keys(commit).length - picked.length;
+  return { target, booked, picked, added, total: booked + added, weighted, dropped, valOf };
+}
+
 function viewGame() {
   if (!salesData) {
     if (!salesError) { loadSalesData(); return `<div class="loading-state">Loading booked sales from the MIS…</div>`; }
@@ -1620,8 +1648,13 @@ function viewGame() {
     return `<div class="runway__seg" style="left:${pos(left)}%;width:${w.toFixed(3)}%;background:${gameTier(d.type).color}"
       title="#${i + 1} ${esc(dealName(d))} · ${esc(d.company)} · ₹${fmtNum(v)}L">${label ? `<span>${label}</span>` : ''}</div>`;
   }).join('');
-  const ticks = [0.25, 0.5, 0.75].map(f =>
-    `<div class="runway__tick" style="left:${pos(target * f)}%"><span>${Math.round(f * 100)}%</span></div>`).join('');
+  // Value scale: a line every ₹5 Cr (500 L), labelled with its % of target.
+  // The one that coincides with the target is left to the target marker.
+  const STEP = 500;
+  const crLines = [];
+  for (let v = STEP; v < scaleMax; v += STEP) if (Math.abs(v - target) > STEP * 0.15) crLines.push(v);
+  const ticks = crLines.map(v =>
+    `<div class="runway__tick" style="left:${pos(v)}%"><span>₹${v / 100} Cr<em>${Math.round(v / target * 100)}%</em></span></div>`).join('');
 
   // Plan list: every project in the plan, in the same numbered order.
   let run2 = booked;
@@ -1668,7 +1701,7 @@ function viewGame() {
   </div>`;
 
   // ── Step line: cumulative value as each picked deal is added ──
-  const W = 1000, H = 250, P = 36;
+  const W = 1000, H = 250, P = 56;
   const y = v => (H - P - v / scaleMax * (H - 2 * P)).toFixed(1);
   const n = picked.length;
   const xs = i => (P + (i / Math.max(n, 1)) * (W - 2 * P)).toFixed(1);
@@ -1688,6 +1721,8 @@ function viewGame() {
       <span class="muted-inline">each step = one project (numbers match the plan list) · dashed line = ${scen.label}</span>
     </div>
     <svg viewBox="0 0 ${W} ${H}" style="width:100%;height:auto;display:block">
+      ${crLines.map(v => `<line x1="${P}" x2="${W - P}" y1="${y(v)}" y2="${y(v)}" style="stroke:var(--line-2);stroke-width:1"/>
+      <text x="${P - 6}" y="${+y(v) + 4}" text-anchor="end" style="fill:var(--ink-3);font-size:11px">₹${v / 100} Cr</text>`).join('')}
       <line x1="${P}" x2="${W - P}" y1="${y(target)}" y2="${y(target)}" style="stroke:var(--ink);stroke-width:1.5;stroke-dasharray:6 5"/>
       <text x="${W - P}" y="${+y(target) - 7}" text-anchor="end" style="fill:var(--ink);font-size:13px;font-weight:600">Target ${scen.label}</text>
       <line x1="${P}" x2="${W - P}" y1="${y(booked)}" y2="${y(booked)}" style="stroke:var(--won);stroke-width:1;opacity:.5"/>
@@ -1767,6 +1802,7 @@ function viewGame() {
       <span style="display:inline-flex;align-items:center;gap:8px;flex-wrap:wrap">
         ${scenPills}
         <button class="mpick" data-gact="auto">⚡ Auto-fill to target</button>
+        <button class="mpick" data-gact="save" ${picked.length ? '' : 'disabled title="Add projects to the plan first"'}>💾 Save scenario</button>
         <button class="mpick" data-gact="clear">Clear</button>
       </span>
     </div>
@@ -1781,6 +1817,7 @@ function viewGame() {
     ])}
     ${runway}
     ${stepLine}
+    ${tplScenarioCompare()}
     <div class="chart-card">
       <div class="chart-card__title">What this means</div>
       <ul class="ins-bullets">${bullets.map(b => `<li>${b}</li>`).join('')}</ul>
@@ -1792,6 +1829,70 @@ function viewGame() {
     ${tierGroups || `<div class="empty">No open projects have an expected closure date in this FY yet.</div>`}
     ${sideGroup(noDate, 'No expected closure date', 'not counted unless you click to confirm it closes this FY', 'nodate')}
     ${sideGroup(nextFY, `Expected after ${gameFyEndLabel()}`, 'next FY — not counted', 'next')}
+  </div>`;
+}
+
+// Side-by-side comparison of saved plans (plus the current, unsaved one).
+function tplScenarioCompare() {
+  const saved = gameScenLoad();
+  if (!saved.length) return '';
+  const cur = gameStats(state.gameCommit, state.gameAssume, state.salesScenario);
+  const rows = [
+    { name: 'Current plan', live: true, scen: state.salesScenario, st: cur },
+    ...saved.map((s, i) => ({ name: s.name, idx: i, scen: s.scen, savedAt: s.savedAt,
+                              st: gameStats(s.commit || {}, s.assume || {}, s.scen) })),
+  ];
+  const scaleMax = Math.max(...rows.map(r => Math.max(r.st.target * 1.05, r.st.total * 1.02)), 1);
+  const pos = v => (v / scaleMax * 100).toFixed(2);
+  const best = Math.max(...rows.map(r => r.st.total));
+  const curKeys = new Set(cur.picked.map(dealKey));
+
+  return `<div class="chart-card">
+    <div class="chart-card__title">Compare scenarios
+      <span class="muted-inline">saved plans re-price against today's MIS and pipeline · bar = booked + planned · black tick = that plan's target</span>
+    </div>
+    <div class="scen-list">
+      ${rows.map(r => {
+        const st = r.st, pct = Math.round(st.total / st.target * 100);
+        const names = st.picked.map(d => dealName(d));
+        // What differs from the current plan, so two plans can be told apart fast.
+        const extra = r.live ? [] : st.picked.filter(d => !curKeys.has(dealKey(d))).map(dealName);
+        const missing = r.live ? [] : cur.picked.filter(d => !st.picked.some(x => dealKey(x) === dealKey(d))).map(dealName);
+        const color = pct >= 100 ? 'var(--won)' : pct >= 70 ? 'var(--warm)' : 'var(--hot)';
+        return `<div class="scen-row ${r.live ? 'is-live' : ''}">
+          <div class="scen-row__head">
+            <strong>${esc(r.name)}</strong>
+            <span class="scen-row__meta">${(SALES_SCENARIOS[r.scen] || SALES_SCENARIOS.base).label} target
+              ${r.savedAt ? ` · saved ${new Date(r.savedAt).toLocaleDateString('en-IN', { day: '2-digit', month: 'short' })}` : ' · unsaved'}
+              ${st.total === best && rows.length > 1 ? ' · <span style="color:var(--won);font-weight:600">highest</span>' : ''}</span>
+            ${r.live ? '' : `<span class="scen-row__btns">
+              <button class="mpick" data-gact="sload" data-gidx="${r.idx}">Load</button>
+              <button class="mpick" data-gact="sdel" data-gidx="${r.idx}" title="Delete this scenario">×</button>
+            </span>`}
+          </div>
+          <div class="scen-bar">
+            <div class="scen-bar__booked" style="width:${pos(st.booked)}%"></div>
+            <div class="scen-bar__added" style="left:${pos(st.booked)}%;width:${pos(st.added)}%"></div>
+            <div class="scen-bar__target" style="left:${pos(st.target)}%"></div>
+          </div>
+          <div class="scen-row__nums">
+            <span><b style="color:${color}">${pct}%</b> of target</span>
+            <span>₹${fmtNum(st.total)}L projected</span>
+            <span>${st.picked.length} project${st.picked.length !== 1 ? 's' : ''} · ₹${fmtNum(st.added)}L</span>
+            <span>${st.total < st.target ? `₹${fmtNum(st.target - st.total)}L short` : `₹${fmtNum(st.total - st.target)}L over`}</span>
+            <span>weighted ${Math.round(st.weighted / st.target * 100)}%</span>
+          </div>
+          <div class="scen-row__names" title="${esc(names.join(', '))}">
+            ${names.length ? esc(names.slice(0, 8).join(' · ')) + (names.length > 8 ? ` · +${names.length - 8} more` : '') : '<em>no projects</em>'}
+          </div>
+          ${extra.length || missing.length ? `<div class="scen-row__diff">
+            ${extra.length ? `<span class="is-plus">+ vs current: ${esc(extra.join(', '))}</span>` : ''}
+            ${missing.length ? `<span class="is-minus">− vs current: ${esc(missing.join(', '))}</span>` : ''}
+          </div>` : ''}
+          ${st.dropped > 0 ? `<div class="scen-row__note">${st.dropped} saved pick${st.dropped !== 1 ? 's' : ''} no longer count (won, removed from the sheet, or re-dated out of this FY)</div>` : ''}
+        </div>`;
+      }).join('')}
+    </div>
   </div>`;
 }
 
@@ -1845,6 +1946,32 @@ function wireGame() {
     if (!act) return;
     // Bulk actions only ever use projects dated within this FY.
     const inFY = gamePool().filter(d => gameFY(d) === 'in');
+    if (act.dataset.gact === 'save') {
+      const list = gameScenLoad();
+      const name = (prompt('Name this scenario (e.g. "Conservative — super hot only"):', `Plan ${list.length + 1}`) || '').trim();
+      if (!name) return;
+      const snap = { name, scen: state.salesScenario, savedAt: new Date().toISOString(),
+                     commit: { ...state.gameCommit }, assume: { ...state.gameAssume } };
+      const at = list.findIndex(s => s.name.toLowerCase() === name.toLowerCase());
+      if (at >= 0) {
+        if (!confirm(`A scenario called "${list[at].name}" already exists. Replace it?`)) return;
+        list[at] = snap;
+      } else list.push(snap);
+      gameScenSave(list); render();
+      return;
+    }
+    if (act.dataset.gact === 'sload' || act.dataset.gact === 'sdel') {
+      const list = gameScenLoad(), i = +act.dataset.gidx, s = list[i];
+      if (!s) return;
+      if (act.dataset.gact === 'sdel') {
+        if (!confirm(`Delete scenario "${s.name}"?`)) return;
+        list.splice(i, 1); gameScenSave(list); render();
+        return;
+      }
+      state.gameCommit = { ...(s.commit || {}) };
+      state.gameAssume = { ...(s.assume || {}) };
+      if (SALES_SCENARIOS[s.scen]) state.salesScenario = s.scen;
+    }
     if (act.dataset.gact === 'clear') { state.gameCommit = {}; state.gameAssume = {}; }
     if (act.dataset.gact === 'tier') {
       inFY.filter(d => d.type === act.dataset.gtier && gameVal(d) > 0)
