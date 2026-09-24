@@ -59,6 +59,8 @@ const state = {
   bdMon:          {},
   salesScenario:  'stretch',
   stripSort:      'value',
+  gameCommit:     {},
+  gameLoaded:     false,
   sortBy:         'value',
   sortDir:        'desc',
   deals:          [],
@@ -1251,7 +1253,7 @@ async function loadSalesData(fresh = false) {
   } catch (e) {
     salesError = e.message;
   }
-  if (state.tab === 'sales') render();
+  if (state.tab === 'sales' || state.tab === 'game') render();
 }
 
 const SALES_SCENARIOS = {
@@ -1510,6 +1512,259 @@ function wireSales() {
     btn.disabled = true; btn.textContent = '↻ Syncing…';
     salesError = null;
     await loadSalesData(true);
+  });
+}
+
+// ─── Path to Target (gamified what-if) ───────────────────────────────────────
+// MIS-booked sales are the base; open proposals are value-sized blocks the MP
+// can pull into the plan to see how far the pipeline gets us toward target.
+// Selections are a per-browser scratchpad (localStorage), keyed by
+// company|deliverable because row ids change on every sync.
+
+const GAME_TIERS = [
+  { type: 'super', label: 'Super hot', color: 'var(--super)', prob: 0.9 },
+  { type: 'hot',   label: 'Hot',       color: 'var(--hot)',   prob: 0.7 },
+  { type: 'warm',  label: 'Warm',      color: 'var(--warm)',  prob: 0.4 },
+  { type: 'cold',  label: 'Cold',      color: 'var(--cold)',  prob: 0.15 },
+];
+const gameTier = t => GAME_TIERS.find(x => x.type === t) || GAME_TIERS[3];
+const dealKey  = d => `${d.company}|${d.deliverable}`;
+
+function gameLoad() {
+  try { return JSON.parse(localStorage.getItem('mp-game-v1') || '{}') || {}; } catch { return {}; }
+}
+function gameSave() {
+  try { localStorage.setItem('mp-game-v1', JSON.stringify(state.gameCommit)); } catch {}
+}
+
+function gamePool() {
+  return state.deals.filter(d =>
+    GAME_TIERS.some(t => t.type === d.type) && d.status !== 'won' && d.status !== 'lost');
+}
+// Value used in the plan: an MP override if set, else the sheet value.
+function gameVal(d) {
+  const o = state.gameCommit[dealKey(d)];
+  return o != null ? o : (d._val || 0);
+}
+
+function viewGame() {
+  if (!salesData) {
+    if (!salesError) { loadSalesData(); return `<div class="loading-state">Loading booked sales from the MIS…</div>`; }
+    return `<div class="empty" style="color:var(--hot)">Could not load the MIS sheet: ${esc(salesError)}
+      <br><button class="mpick" style="margin-top:10px" onclick="salesError=null;render()">Retry</button></div>`;
+  }
+  if (!state.gameLoaded) { state.gameCommit = gameLoad(); state.gameLoaded = true; }
+
+  const scen   = SALES_SCENARIOS[state.salesScenario] || SALES_SCENARIOS.base;
+  const target = scen.total;
+  const booked = salesData.months.filter(m => m.actual != null).reduce((s, m) => s + m.actual, 0);
+  const pool   = gamePool();
+  const picked = pool.filter(d => dealKey(d) in state.gameCommit)
+    .sort((a, b) => gameVal(b) - gameVal(a));
+  const added    = picked.reduce((s, d) => s + gameVal(d), 0);
+  const total    = booked + added;
+  const pct      = target ? total / target * 100 : 0;
+  const gap      = target - total;
+  const weighted = booked + picked.reduce((s, d) => s + gameVal(d) * gameTier(d.type).prob, 0);
+
+  // ── Runway bar: booked + each picked deal, with target marker ──
+  const scaleMax = Math.max(target * 1.08, total * 1.03);
+  const pos = v => (v / scaleMax * 100).toFixed(3);
+  let cum = booked;
+  const segs = picked.map(d => {
+    const v = gameVal(d), left = cum;
+    cum += v;
+    const w = v / scaleMax * 100;
+    const name = d.deliverable && d.deliverable !== '—' ? d.deliverable : d.company;
+    return `<div class="runway__seg" style="left:${pos(left)}%;width:${w.toFixed(3)}%;background:${gameTier(d.type).color}"
+      title="${esc(d.company)} · ${esc(name)} · ₹${fmtNum(v)}L">${w > 5 ? `<span>${esc(name)}</span>` : ''}</div>`;
+  }).join('');
+  const ticks = [0.25, 0.5, 0.75].map(f =>
+    `<div class="runway__tick" style="left:${pos(target * f)}%"><span>${Math.round(f * 100)}%</span></div>`).join('');
+  const runway = `<div class="chart-card">
+    <div class="chart-card__title">Runway to ${scen.label}
+      <span class="muted-inline">green = booked in MIS · coloured blocks = proposals you've added</span>
+    </div>
+    <div class="runway">
+      <div class="runway__seg runway__seg--booked" style="left:0;width:${pos(booked)}%" title="Booked (MIS) ₹${fmtNum(booked)}L">
+        ${booked / scaleMax > 0.08 ? `<span>Booked ₹${fmtNum(booked)}L</span>` : ''}
+      </div>
+      ${segs}
+      ${ticks}
+      <div class="runway__target" style="left:${pos(target)}%"><span>Target ${scen.label}</span></div>
+    </div>
+    <div class="runway__scale"><span>₹0</span><span>₹${fmtNum(Math.round(scaleMax))}L</span></div>
+  </div>`;
+
+  // ── Step line: cumulative value as each picked deal is added ──
+  const W = 1000, H = 250, P = 36;
+  const y = v => (H - P - v / scaleMax * (H - 2 * P)).toFixed(1);
+  const n = picked.length;
+  const xs = i => (P + (i / Math.max(n, 1)) * (W - 2 * P)).toFixed(1);
+  let path = `M ${P} ${y(booked)}`, run = booked, crossAt = booked >= target ? 0 : -1;
+  const dots = picked.map((d, i) => {
+    const before = run;
+    run += gameVal(d);
+    if (crossAt < 0 && run >= target) crossAt = i + 1;
+    path += ` L ${xs(i + 1)} ${y(before)} L ${xs(i + 1)} ${y(run)}`;
+    return `<circle cx="${xs(i + 1)}" cy="${y(run)}" r="5" style="fill:${gameTier(d.type).color}">
+      <title>#${i + 1} ${esc(d.company)} · ₹${fmtNum(gameVal(d))}L → ₹${fmtNum(run)}L</title></circle>`;
+  }).join('');
+  if (!n) path += ` L ${W - P} ${y(booked)}`;
+  const stepLine = `<div class="chart-card">
+    <div class="chart-card__title">Climb to target
+      <span class="muted-inline">each step = one proposal, biggest first · dashed line = ${scen.label}</span>
+    </div>
+    <svg viewBox="0 0 ${W} ${H}" style="width:100%;height:auto;display:block">
+      <line x1="${P}" x2="${W - P}" y1="${y(target)}" y2="${y(target)}" style="stroke:var(--ink);stroke-width:1.5;stroke-dasharray:6 5"/>
+      <text x="${W - P}" y="${+y(target) - 7}" text-anchor="end" style="fill:var(--ink);font-size:13px;font-weight:600">Target ${scen.label}</text>
+      <line x1="${P}" x2="${W - P}" y1="${y(booked)}" y2="${y(booked)}" style="stroke:var(--won);stroke-width:1;opacity:.5"/>
+      <text x="${P + 4}" y="${+y(booked) + 16}" style="fill:var(--won);font-size:12px">Booked ₹${fmtNum(booked)}L</text>
+      <path d="${path}" style="fill:none;stroke:var(--ink-2);stroke-width:2.5;stroke-linejoin:round"/>
+      ${dots}
+    </svg>
+    ${!n ? `<div class="chart-card__foot">Add proposals below and the line climbs — each step is one deal closing.</div>` : ''}
+  </div>`;
+
+  // ── What the full pipeline could do (largest tickets first) ──
+  const priced = pool.filter(d => gameVal(d) > 0).sort((a, b) => gameVal(b) - gameVal(a));
+  let acc = booked, need = -1;
+  priced.forEach((d, i) => { acc += gameVal(d); if (need < 0 && acc >= target) need = i + 1; });
+  const fullTotal = acc;
+  const tbd = pool.filter(d => !(gameVal(d) > 0)).length;
+
+  const bullets = [
+    `Booked ₹${fmtNum(booked)}L${picked.length ? ` + ${picked.length} proposal${picked.length !== 1 ? 's' : ''} worth ₹${fmtNum(added)}L` : ''} = <strong>₹${fmtNum(total)}L, ${Math.round(pct)}% of ${scen.label}</strong>.`,
+    gap > 0
+      ? `Still <strong>₹${fmtNum(gap)}L short</strong> of target with this selection.`
+      : `This selection <strong>clears the target by ₹${fmtNum(-gap)}L</strong>${crossAt > 0 ? ` — the line crosses it at proposal #${crossAt}` : ''}.`,
+    need > 0
+      ? `Taking the biggest tickets first, <strong>the top ${need} open proposals</strong> would get us to target on their own.`
+      : `Even if every priced proposal closed, we'd reach <strong>${Math.round(fullTotal / target * 100)}%</strong> — <strong>₹${fmtNum(target - fullTotal)}L must come from new business</strong> not yet in the pipeline.`,
+    `Probability-weighted, this selection is worth <strong>₹${fmtNum(weighted)}L (${Math.round(weighted / target * 100)}%)</strong> — super hot at 90%, hot 70%, warm 40%, cold 15%.`,
+    tbd > 0 && `${tbd} open proposal${tbd !== 1 ? 's have' : ' has'} no value yet — click its ✎ to put in an expected figure and see the effect.`,
+  ].filter(Boolean);
+
+  // ── Block tray, grouped by tier; block size tracks proposal value ──
+  const maxV = Math.max(...pool.map(gameVal), 1);
+  const tray = GAME_TIERS.map(t => {
+    const ds = pool.filter(d => d.type === t.type).sort((a, b) => gameVal(b) - gameVal(a));
+    if (!ds.length) return '';
+    const inVal = ds.filter(d => dealKey(d) in state.gameCommit).reduce((s, d) => s + gameVal(d), 0);
+    return `<div class="game-tier">
+      <div class="game-tier__head">
+        <span class="ddot" style="background:${t.color};display:inline-block;margin-right:6px"></span>${t.label}
+        <span class="muted-inline">${ds.length} · ₹${fmtNum(ds.reduce((s, d) => s + gameVal(d), 0)) || 0}L${inVal ? ` · ₹${fmtNum(inVal)}L in plan` : ''}</span>
+        <button class="mpick" data-gact="tier" data-gtier="${t.type}" style="margin-left:auto">+ add all</button>
+      </div>
+      <div class="game-tray">
+        ${ds.map(d => {
+          const k = dealKey(d), v = gameVal(d), on = k in state.gameCommit, priced = v > 0;
+          const f = priced ? v / maxV : 0;
+          const name = d.deliverable && d.deliverable !== '—' ? d.deliverable : 'Untitled';
+          return `<button class="game-block ${on ? 'is-in' : ''} ${priced ? '' : 'is-tbd'}" data-gkey="${esc(k)}"
+            style="--tier:${t.color};width:${Math.round(96 + 250 * f)}px;min-height:${Math.round(62 + 46 * f)}px"
+            title="${on ? 'Click to remove from plan' : 'Click to add to plan'}">
+            <span class="game-block__edit" data-gedit="${esc(k)}" title="Set expected value">✎</span>
+            <span class="game-block__co">${esc(d.company)}</span>
+            <span class="game-block__name">${esc(name)}</span>
+            <span class="game-block__val">${priced ? `₹${fmtNum(v)}L` : 'TBD'}${on ? ' ✓' : ''}</span>
+          </button>`;
+        }).join('')}
+      </div>
+    </div>`;
+  }).join('');
+
+  const scenPills = `<span class="mpick-group">
+    ${Object.entries(SALES_SCENARIOS).map(([k, s]) =>
+      `<button class="mpick ${state.salesScenario === k ? 'is-active' : ''}" data-scen="${k}">${s.label}</button>`).join('')}
+  </span>`;
+
+  return `<div id="game-root">
+    <div class="section-head" style="margin-top:0">
+      <h2>Path to target — ${salesData.fyLabel}</h2>
+      <span style="display:inline-flex;align-items:center;gap:8px;flex-wrap:wrap">
+        ${scenPills}
+        <button class="mpick" data-gact="auto">⚡ Auto-fill to target</button>
+        <button class="mpick" data-gact="clear">Clear</button>
+      </span>
+    </div>
+    ${tplBDStrip([
+      { label: 'Booked (MIS)', val: `₹${fmtNum(booked)}L`, sub: `${Math.round(booked / target * 100)}% of target` },
+      { label: 'Added from pipeline', val: `₹${fmtNum(added)}L`, sub: `${picked.length} proposal${picked.length !== 1 ? 's' : ''}` },
+      { label: 'Projected', val: `${Math.round(pct)}%`, sub: `₹${fmtNum(total)}L of ${scen.label}`,
+        color: pct >= 100 ? 'var(--won)' : pct >= 70 ? 'var(--warm)' : 'var(--hot)' },
+      { label: gap > 0 ? 'Gap to target' : 'Surplus', val: `₹${fmtNum(Math.abs(gap))}L`,
+        sub: gap > 0 ? 'still to find' : 'above target', color: gap > 0 ? 'var(--ink)' : 'var(--won)' },
+      { label: 'Probability-weighted', val: `${Math.round(weighted / target * 100)}%`, sub: `₹${fmtNum(weighted)}L risk-adjusted` },
+    ])}
+    ${runway}
+    ${stepLine}
+    <div class="chart-card">
+      <div class="chart-card__title">What this means</div>
+      <ul class="ins-bullets">${bullets.map(b => `<li>${b}</li>`).join('')}</ul>
+    </div>
+    <div class="section-head">
+      <h2>Proposals — click to add to the plan</h2>
+      <span class="muted">bigger block = bigger ticket · ✎ sets your expected value</span>
+    </div>
+    ${tray}
+  </div>`;
+}
+
+function wireGame() {
+  const root = document.getElementById('game-root');
+  if (!root) return;
+  root.addEventListener('click', e => {
+    const edit = e.target.closest('[data-gedit]');
+    if (edit) {
+      e.stopPropagation();
+      const k = edit.dataset.gedit;
+      const d = gamePool().find(x => dealKey(x) === k);
+      const cur = d ? gameVal(d) : 0;
+      const ans = prompt(`Expected closing value for ${d ? d.company : 'this proposal'} (₹ Lakhs):`, cur || '');
+      if (ans == null) return;
+      const v = parseFloat(String(ans).replace(/[₹,L\s]/g, ''));
+      if (!isNaN(v) && v > 0) { state.gameCommit[k] = v; gameSave(); render(); }
+      return;
+    }
+    const blk = e.target.closest('[data-gkey]');
+    if (blk) {
+      const k = blk.dataset.gkey;
+      if (k in state.gameCommit) delete state.gameCommit[k];
+      else {
+        const d = gamePool().find(x => dealKey(x) === k);
+        if (d && !(d._val > 0)) {
+          const ans = prompt(`${d.company} has no value in the sheet. Expected closing value (₹ Lakhs):`);
+          const v = parseFloat(String(ans ?? '').replace(/[₹,L\s]/g, ''));
+          if (isNaN(v) || v <= 0) return;
+          state.gameCommit[k] = v;
+        } else state.gameCommit[k] = null; // null = use the sheet value
+      }
+      gameSave(); render();
+      return;
+    }
+    const act = e.target.closest('[data-gact]');
+    if (!act) return;
+    const pool = gamePool();
+    if (act.dataset.gact === 'clear') state.gameCommit = {};
+    if (act.dataset.gact === 'tier') {
+      pool.filter(d => d.type === act.dataset.gtier && d._val > 0)
+        .forEach(d => { const k = dealKey(d); if (!(k in state.gameCommit)) state.gameCommit[k] = null; });
+    }
+    if (act.dataset.gact === 'auto') {
+      // Biggest tickets first until the target is reached (keeps existing picks).
+      const target = (SALES_SCENARIOS[state.salesScenario] || SALES_SCENARIOS.base).total;
+      let run = salesData.months.filter(m => m.actual != null).reduce((s, m) => s + m.actual, 0)
+        + pool.filter(d => dealKey(d) in state.gameCommit).reduce((s, d) => s + gameVal(d), 0);
+      for (const d of pool.filter(d => !(dealKey(d) in state.gameCommit) && d._val > 0)
+                          .sort((a, b) => b._val - a._val)) {
+        if (run >= target) break;
+        state.gameCommit[dealKey(d)] = null;
+        run += d._val;
+      }
+    }
+    gameSave(); render();
   });
 }
 
@@ -1956,7 +2211,7 @@ function render() {
 
   // The filter bar acts on proposal data — hide it on tabs where it has no
   // effect: Sales (MIS feed), Insights (full-book analysis), BD Team (BD feed).
-  const noFilterTabs = ['sales', 'insights', 'bdteam', 'competition'];
+  const noFilterTabs = ['sales', 'game', 'insights', 'bdteam', 'competition'];
   document.getElementById('filterbar').style.display = noFilterTabs.includes(state.tab) ? 'none' : '';
 
   // Chip states
@@ -1977,6 +2232,7 @@ function render() {
     case 'insights': main.innerHTML = viewInsights();        break;
     case 'bdteam':   main.innerHTML = viewBDTeam();          break;
     case 'sales':    main.innerHTML = viewSales();            break;
+    case 'game':     main.innerHTML = viewGame();             break;
     case 'competition': main.innerHTML = viewCompetition();     break;
     default:         main.innerHTML = viewOverview(active);
   }
@@ -2001,6 +2257,7 @@ function wirePerRender() {
   wireBDMonthSelects();
   wireBDSync();
   wireSales();
+  wireGame();
 }
 
 function wireBDSync() {

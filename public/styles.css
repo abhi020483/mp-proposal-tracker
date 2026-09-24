@@ -373,6 +373,79 @@ input  { font-family: inherit; }
 .mpick:hover { border-color: var(--ink-3); background: var(--surface-2); }
 .mpick.is-active { background: var(--ink); color: var(--surface); border-color: var(--ink); }
 
+/* ─── Path to Target (gamified what-if) ─────────────────── */
+.runway {
+  position: relative; height: 54px; margin: 26px 0 6px;
+  background: var(--surface-2); border-radius: var(--radius);
+}
+.runway__seg {
+  position: absolute; top: 0; bottom: 0;
+  border-right: 2px solid var(--surface);
+  display: flex; align-items: center; overflow: hidden;
+  transition: left .35s ease, width .35s ease;
+}
+.runway__seg:first-child { border-radius: var(--radius) 0 0 var(--radius); }
+.runway__seg--booked { background: var(--won); }
+.runway__seg span {
+  padding: 0 8px; font-size: 11px; font-weight: 600; color: #fff;
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+.runway__tick {
+  position: absolute; top: -4px; bottom: -4px; width: 0;
+  border-left: 1px dashed var(--line-2); pointer-events: none;
+}
+.runway__tick span {
+  position: absolute; top: -17px; left: 0; transform: translateX(-50%);
+  font-family: var(--font-mono); font-size: 10px; color: var(--ink-3);
+}
+.runway__target {
+  position: absolute; top: -10px; bottom: -10px; width: 0;
+  border-left: 3px solid var(--ink); z-index: 2; pointer-events: none;
+}
+.runway__target span {
+  position: absolute; top: -18px; left: 0; transform: translateX(-50%);
+  font-size: 11px; font-weight: 700; color: var(--ink); white-space: nowrap;
+}
+.runway__scale {
+  display: flex; justify-content: space-between;
+  font-family: var(--font-mono); font-size: 10px; color: var(--ink-3);
+}
+
+.game-tier { margin-bottom: 18px; }
+.game-tier__head {
+  display: flex; align-items: center; gap: 8px; margin-bottom: 10px;
+  font-size: 13px; font-weight: 600; color: var(--ink);
+}
+.game-tier__head .muted-inline { font-size: 11px; font-weight: 400; color: var(--ink-3); }
+.game-tray { display: flex; flex-wrap: wrap; gap: 8px; align-items: flex-start; }
+.game-block {
+  position: relative; text-align: left;
+  display: flex; flex-direction: column; justify-content: space-between; gap: 3px;
+  padding: 9px 11px; max-width: 100%;
+  background: var(--surface); color: var(--ink);
+  border: 1px solid var(--line); border-left: 4px solid var(--tier);
+  border-radius: var(--radius);
+  transition: transform .12s ease, box-shadow .12s ease, background .15s;
+}
+.game-block:hover { transform: translateY(-2px); box-shadow: var(--shadow-card-hover); }
+.game-block.is-in { background: var(--tier); border-color: var(--tier); color: #fff; }
+.game-block.is-tbd { border-style: dashed; border-left-style: solid; }
+.game-block__co {
+  font-size: 10px; font-weight: 600; letter-spacing: .05em; text-transform: uppercase;
+  opacity: .75; padding-right: 16px;
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+.game-block__name {
+  font-size: 12px; font-weight: 500; line-height: 1.25;
+  display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden;
+}
+.game-block__val { font-family: var(--font-mono); font-size: 14px; font-weight: 700; }
+.game-block__edit {
+  position: absolute; top: 6px; right: 7px; font-size: 12px;
+  opacity: .45; cursor: pointer; line-height: 1;
+}
+.game-block__edit:hover { opacity: 1; }
+
 /* ─── Competition Analysis (embedded dossier) ───────────── */
 .competition-frame {
   width: 100%; height: calc(100vh - 210px); min-height: 560px;
