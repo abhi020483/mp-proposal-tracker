@@ -60,6 +60,7 @@ const state = {
   salesScenario:  'stretch',
   stripSort:      'value',
   gameCommit:     {},
+  gameAssume:     {},
   gameLoaded:     false,
   sortBy:         'value',
   sortDir:        'desc',
@@ -246,21 +247,32 @@ function isHotSide(t) { return t === 'hot' || t === 'super'; }
 
 // Parse the free-text Expected closure (col K) into an approximate Date.
 // Handles "Sep 15", "11th Sept", "Oct Wk-2" (weeks ≈ 4/11/18/25th),
-// bare months ("July" → month-end) and FY-aware years ("Jan 27" → Jan 2027).
-// Returns null for unparseable text ("Q3", "SOW Finalisation").
+// bare months ("July" → month-end), FY-aware years ("Jan 27" → Jan 2027),
+// explicit years ("Jun 2027"), FY quarters ("Q3" → Dec 31) and "next FY".
+// Returns null for text with no date in it ("SOW Finalisation").
 const _CLOSURE_MONTHS = { jan:0, feb:1, mar:2, apr:3, may:4, jun:5, jul:6, aug:7, sep:8, oct:9, nov:10, dec:11 };
 function parseClosureDate(text) {
   if (!text) return null;
   // Strip ordinal suffixes ("11th" → "11") so day numbers parse.
   const t = String(text).toLowerCase().replace(/(\d)(st|nd|rd|th)\b/g, '$1');
+  const now = new Date();
+  const fyStart = now.getMonth() >= 3 ? now.getFullYear() : now.getFullYear() - 1;
+  // "next FY" / "next year" → beyond this FY's end.
+  if (/next\s*(fy|financial|year)/.test(t)) return new Date(fyStart + 1, 5, 30);
   let mon = null;
   for (const k of Object.keys(_CLOSURE_MONTHS)) {
     if (new RegExp('\\b' + k).test(t)) { mon = _CLOSURE_MONTHS[k]; break; }
   }
-  if (mon == null) return null;
-  const now = new Date();
-  const fyStart = now.getMonth() >= 3 ? now.getFullYear() : now.getFullYear() - 1;
-  let year = mon >= 3 ? fyStart : fyStart + 1;      // FY runs Apr → Mar
+  const yr4 = t.match(/\b(20\d\d)\b/);
+  if (mon == null) {
+    // FY quarters: Q1 Apr–Jun … Q4 Jan–Mar → quarter end.
+    const q = t.match(/\bq([1-4])\b/);
+    if (q) return [new Date(fyStart, 5, 30), new Date(fyStart, 8, 30),
+                   new Date(fyStart, 11, 31), new Date(fyStart + 1, 2, 31)][q[1] - 1];
+    return yr4 ? new Date(+yr4[1], 5, 30) : null;
+  }
+  // An explicit 4-digit year wins; otherwise the month is placed in this FY.
+  let year = yr4 ? +yr4[1] : (mon >= 3 ? fyStart : fyStart + 1);      // FY runs Apr → Mar
   let day = 28;                                      // bare month → month-end-ish
   const wk = t.match(/wk\s*-?\s*(\d)/);
   if (wk) {
@@ -1516,10 +1528,11 @@ function wireSales() {
 }
 
 // ─── Path to Target (gamified what-if) ───────────────────────────────────────
-// MIS-booked sales are the base; open proposals are value-sized blocks the MP
-// can pull into the plan to see how far the pipeline gets us toward target.
-// Selections are a per-browser scratchpad (localStorage), keyed by
-// company|deliverable because row ids change on every sync.
+// MIS-booked sales are the base; open proposals closing within this FY are
+// value-sized blocks the MP can pull into the plan to see how far the pipeline
+// gets us toward target. Selections are a per-browser scratchpad
+// (localStorage), keyed by company|deliverable because row ids change on
+// every sync.
 
 const GAME_TIERS = [
   { type: 'super', label: 'Super hot', color: 'var(--super)', prob: 0.9 },
@@ -1529,12 +1542,16 @@ const GAME_TIERS = [
 ];
 const gameTier = t => GAME_TIERS.find(x => x.type === t) || GAME_TIERS[3];
 const dealKey  = d => `${d.company}|${d.deliverable}`;
+const dealName = d => d.deliverable && d.deliverable !== '—' ? d.deliverable : 'Untitled';
 
-function gameLoad() {
-  try { return JSON.parse(localStorage.getItem('mp-game-v1') || '{}') || {}; } catch { return {}; }
+function gameLoad(key) {
+  try { return JSON.parse(localStorage.getItem(key) || '{}') || {}; } catch { return {}; }
 }
 function gameSave() {
-  try { localStorage.setItem('mp-game-v1', JSON.stringify(state.gameCommit)); } catch {}
+  try {
+    localStorage.setItem('mp-game-v1', JSON.stringify(state.gameCommit));
+    localStorage.setItem('mp-game-fy-v1', JSON.stringify(state.gameAssume));
+  } catch {}
 }
 
 function gamePool() {
@@ -1546,6 +1563,22 @@ function gameVal(d) {
   const o = state.gameCommit[dealKey(d)];
   return o != null ? o : (d._val || 0);
 }
+// Where a deal's expected closure (col K) falls relative to this FY.
+function gameFY(d) {
+  const now = new Date();
+  const fyStart = now.getMonth() >= 3 ? now.getFullYear() : now.getFullYear() - 1;
+  const cd = parseClosureDate(d.closure_text);
+  if (!cd) return 'nodate';
+  return cd <= new Date(fyStart + 1, 2, 31, 23, 59) ? 'in' : 'next';
+}
+// Counts toward this FY: dated within it, or undated but confirmed by the MP.
+const gameCounts = d => gameFY(d) === 'in' || (gameFY(d) === 'nodate' && state.gameAssume[dealKey(d)]);
+
+function gameFyEndLabel() {
+  const now = new Date();
+  const fyStart = now.getMonth() >= 3 ? now.getFullYear() : now.getFullYear() - 1;
+  return `Mar ${fyStart + 1}`;
+}
 
 function viewGame() {
   if (!salesData) {
@@ -1553,13 +1586,21 @@ function viewGame() {
     return `<div class="empty" style="color:var(--hot)">Could not load the MIS sheet: ${esc(salesError)}
       <br><button class="mpick" style="margin-top:10px" onclick="salesError=null;render()">Retry</button></div>`;
   }
-  if (!state.gameLoaded) { state.gameCommit = gameLoad(); state.gameLoaded = true; }
+  if (!state.gameLoaded) {
+    state.gameCommit = gameLoad('mp-game-v1');
+    state.gameAssume = gameLoad('mp-game-fy-v1');
+    state.gameLoaded = true;
+  }
 
   const scen   = SALES_SCENARIOS[state.salesScenario] || SALES_SCENARIOS.base;
   const target = scen.total;
   const booked = salesData.months.filter(m => m.actual != null).reduce((s, m) => s + m.actual, 0);
   const pool   = gamePool();
-  const picked = pool.filter(d => dealKey(d) in state.gameCommit)
+  const inFY   = pool.filter(d => gameFY(d) === 'in');
+  const noDate = pool.filter(d => gameFY(d) === 'nodate');
+  const nextFY = pool.filter(d => gameFY(d) === 'next');
+  // A pick only counts while its deal still qualifies for this FY.
+  const picked = pool.filter(d => dealKey(d) in state.gameCommit && gameCounts(d))
     .sort((a, b) => gameVal(b) - gameVal(a));
   const added    = picked.reduce((s, d) => s + gameVal(d), 0);
   const total    = booked + added;
@@ -1567,23 +1608,39 @@ function viewGame() {
   const gap      = target - total;
   const weighted = booked + picked.reduce((s, d) => s + gameVal(d) * gameTier(d.type).prob, 0);
 
-  // ── Runway bar: booked + each picked deal, with target marker ──
+  // ── Runway bar: booked + each picked deal, numbered, with target marker ──
   const scaleMax = Math.max(target * 1.08, total * 1.03);
   const pos = v => (v / scaleMax * 100).toFixed(3);
   let cum = booked;
-  const segs = picked.map(d => {
+  const segs = picked.map((d, i) => {
     const v = gameVal(d), left = cum;
     cum += v;
     const w = v / scaleMax * 100;
-    const name = d.deliverable && d.deliverable !== '—' ? d.deliverable : d.company;
+    const label = w > 3.2 ? `${i + 1}. ${esc(dealName(d))}` : w > 1.1 ? `${i + 1}` : '';
     return `<div class="runway__seg" style="left:${pos(left)}%;width:${w.toFixed(3)}%;background:${gameTier(d.type).color}"
-      title="${esc(d.company)} · ${esc(name)} · ₹${fmtNum(v)}L">${w > 5 ? `<span>${esc(name)}</span>` : ''}</div>`;
+      title="#${i + 1} ${esc(dealName(d))} · ${esc(d.company)} · ₹${fmtNum(v)}L">${label ? `<span>${label}</span>` : ''}</div>`;
   }).join('');
   const ticks = [0.25, 0.5, 0.75].map(f =>
     `<div class="runway__tick" style="left:${pos(target * f)}%"><span>${Math.round(f * 100)}%</span></div>`).join('');
+
+  // Plan list: every project in the plan, in the same numbered order.
+  let run2 = booked;
+  const planRows = picked.map((d, i) => {
+    run2 += gameVal(d);
+    const assumed = gameFY(d) === 'nodate';
+    return `<div class="plan-row">
+      <span class="plan-row__n" style="background:${gameTier(d.type).color}">${i + 1}</span>
+      <span class="plan-row__name"><strong>${esc(dealName(d))}</strong><span>${esc(d.company)} · ${gameTier(d.type).label}</span></span>
+      <span class="plan-row__close ${assumed ? 'is-assumed' : ''}">${assumed ? 'no date · counted by you' : '⏱ ' + esc(d.closure_text)}</span>
+      <span class="plan-row__val">₹${fmtNum(gameVal(d))}L</span>
+      <span class="plan-row__cum">₹${fmtNum(run2)}L · ${Math.round(run2 / target * 100)}%</span>
+      <button class="plan-row__x" data-gkey="${esc(dealKey(d))}" title="Remove from plan">×</button>
+    </div>`;
+  }).join('');
+
   const runway = `<div class="chart-card">
     <div class="chart-card__title">Runway to ${scen.label}
-      <span class="muted-inline">green = booked in MIS · coloured blocks = proposals you've added</span>
+      <span class="muted-inline">green = booked in MIS · numbered blocks = projects you've added (closing by ${gameFyEndLabel()})</span>
     </div>
     <div class="runway">
       <div class="runway__seg runway__seg--booked" style="left:0;width:${pos(booked)}%" title="Booked (MIS) ₹${fmtNum(booked)}L">
@@ -1594,6 +1651,20 @@ function viewGame() {
       <div class="runway__target" style="left:${pos(target)}%"><span>Target ${scen.label}</span></div>
     </div>
     <div class="runway__scale"><span>₹0</span><span>₹${fmtNum(Math.round(scaleMax))}L</span></div>
+    ${picked.length ? `<div class="plan-list">
+      <div class="plan-row plan-row--head">
+        <span></span><span>Project</span><span>Expected closure</span><span>Value</span><span>Running total</span><span></span>
+      </div>
+      <div class="plan-row plan-row--booked">
+        <span class="plan-row__n" style="background:var(--won)">✓</span>
+        <span class="plan-row__name"><strong>Booked sales</strong><span>MIS · ${salesData.fyLabel}</span></span>
+        <span class="plan-row__close">actual</span>
+        <span class="plan-row__val">₹${fmtNum(booked)}L</span>
+        <span class="plan-row__cum">₹${fmtNum(booked)}L · ${Math.round(booked / target * 100)}%</span>
+        <span></span>
+      </div>
+      ${planRows}
+    </div>` : `<div class="chart-card__foot">Click projects below to add them — each one appears here by name, numbered to match the bar.</div>`}
   </div>`;
 
   // ── Step line: cumulative value as each picked deal is added ──
@@ -1608,12 +1679,13 @@ function viewGame() {
     if (crossAt < 0 && run >= target) crossAt = i + 1;
     path += ` L ${xs(i + 1)} ${y(before)} L ${xs(i + 1)} ${y(run)}`;
     return `<circle cx="${xs(i + 1)}" cy="${y(run)}" r="5" style="fill:${gameTier(d.type).color}">
-      <title>#${i + 1} ${esc(d.company)} · ₹${fmtNum(gameVal(d))}L → ₹${fmtNum(run)}L</title></circle>`;
+      <title>#${i + 1} ${esc(dealName(d))} (${esc(d.company)}) · ₹${fmtNum(gameVal(d))}L → ₹${fmtNum(run)}L</title></circle>
+      <text x="${xs(i + 1)}" y="${+y(run) - 10}" text-anchor="middle" style="fill:var(--ink-2);font-size:11px;font-weight:600">${i + 1}</text>`;
   }).join('');
   if (!n) path += ` L ${W - P} ${y(booked)}`;
   const stepLine = `<div class="chart-card">
     <div class="chart-card__title">Climb to target
-      <span class="muted-inline">each step = one proposal, biggest first · dashed line = ${scen.label}</span>
+      <span class="muted-inline">each step = one project (numbers match the plan list) · dashed line = ${scen.label}</span>
     </div>
     <svg viewBox="0 0 ${W} ${H}" style="width:100%;height:auto;display:block">
       <line x1="${P}" x2="${W - P}" y1="${y(target)}" y2="${y(target)}" style="stroke:var(--ink);stroke-width:1.5;stroke-dasharray:6 5"/>
@@ -1623,32 +1695,51 @@ function viewGame() {
       <path d="${path}" style="fill:none;stroke:var(--ink-2);stroke-width:2.5;stroke-linejoin:round"/>
       ${dots}
     </svg>
-    ${!n ? `<div class="chart-card__foot">Add proposals below and the line climbs — each step is one deal closing.</div>` : ''}
   </div>`;
 
-  // ── What the full pipeline could do (largest tickets first) ──
-  const priced = pool.filter(d => gameVal(d) > 0).sort((a, b) => gameVal(b) - gameVal(a));
+  // ── What the in-FY pipeline could do (largest tickets first) ──
+  const priced = inFY.filter(d => gameVal(d) > 0).sort((a, b) => gameVal(b) - gameVal(a));
   let acc = booked, need = -1;
   priced.forEach((d, i) => { acc += gameVal(d); if (need < 0 && acc >= target) need = i + 1; });
   const fullTotal = acc;
-  const tbd = pool.filter(d => !(gameVal(d) > 0)).length;
+  const tbd = inFY.filter(d => !(gameVal(d) > 0)).length;
+  const noDatePriced = noDate.filter(d => d._val > 0);
+  const noDateVal = noDatePriced.reduce((s, d) => s + d._val, 0);
 
   const bullets = [
-    `Booked ₹${fmtNum(booked)}L${picked.length ? ` + ${picked.length} proposal${picked.length !== 1 ? 's' : ''} worth ₹${fmtNum(added)}L` : ''} = <strong>₹${fmtNum(total)}L, ${Math.round(pct)}% of ${scen.label}</strong>.`,
+    `Booked ₹${fmtNum(booked)}L${picked.length ? ` + ${picked.length} project${picked.length !== 1 ? 's' : ''} worth ₹${fmtNum(added)}L` : ''} = <strong>₹${fmtNum(total)}L, ${Math.round(pct)}% of ${scen.label}</strong>.`,
     gap > 0
       ? `Still <strong>₹${fmtNum(gap)}L short</strong> of target with this selection.`
-      : `This selection <strong>clears the target by ₹${fmtNum(-gap)}L</strong>${crossAt > 0 ? ` — the line crosses it at proposal #${crossAt}` : ''}.`,
+      : `This selection <strong>clears the target by ₹${fmtNum(-gap)}L</strong>${crossAt > 0 ? ` — the line crosses it at project #${crossAt}, ${esc(dealName(picked[crossAt - 1]))}` : ''}.`,
     need > 0
-      ? `Taking the biggest tickets first, <strong>the top ${need} open proposals</strong> would get us to target on their own.`
-      : `Even if every priced proposal closed, we'd reach <strong>${Math.round(fullTotal / target * 100)}%</strong> — <strong>₹${fmtNum(target - fullTotal)}L must come from new business</strong> not yet in the pipeline.`,
+      ? `Of the projects expected to close by ${gameFyEndLabel()}, <strong>the top ${need}</strong> by value would get us to target on their own.`
+      : `Even if every priced project closing by ${gameFyEndLabel()} converts, we reach <strong>${Math.round(fullTotal / target * 100)}%</strong> — <strong>₹${fmtNum(target - fullTotal)}L must come from new business</strong> or from undated deals below.`,
+    noDatePriced.length && `<strong>${noDatePriced.length} priced project${noDatePriced.length !== 1 ? 's' : ''} worth ₹${fmtNum(noDateVal)}L have no expected closure date</strong> and are not counted — add a date in column K, or click one below to count it for this discussion.`,
     `Probability-weighted, this selection is worth <strong>₹${fmtNum(weighted)}L (${Math.round(weighted / target * 100)}%)</strong> — super hot at 90%, hot 70%, warm 40%, cold 15%.`,
-    tbd > 0 && `${tbd} open proposal${tbd !== 1 ? 's have' : ' has'} no value yet — click its ✎ to put in an expected figure and see the effect.`,
+    tbd > 0 && `${tbd} in-FY project${tbd !== 1 ? 's have' : ' has'} no value yet — click its ✎ to put in an expected figure.`,
   ].filter(Boolean);
 
-  // ── Block tray, grouped by tier; block size tracks proposal value ──
+  // ── Block tray ──
   const maxV = Math.max(...pool.map(gameVal), 1);
-  const tray = GAME_TIERS.map(t => {
-    const ds = pool.filter(d => d.type === t.type).sort((a, b) => gameVal(b) - gameVal(a));
+  const block = (d, t, mode) => {
+    const k = dealKey(d), v = gameVal(d), on = k in state.gameCommit && gameCounts(d), priced = v > 0;
+    const f = priced ? v / maxV : 0;
+    const disabled = mode === 'next';
+    return `<button class="game-block ${on ? 'is-in' : ''} ${priced ? '' : 'is-tbd'} ${mode !== 'in' ? 'is-out' : ''}"
+      ${disabled ? 'disabled' : `data-gkey="${esc(k)}"`}
+      style="--tier:${t.color};width:${Math.round(110 + 240 * f)}px;min-height:${Math.round(70 + 44 * f)}px"
+      title="${disabled ? `Expected after ${gameFyEndLabel()} — not counted this FY` : on ? 'Click to remove from plan' : 'Click to add to plan'}">
+      ${disabled ? '' : `<span class="game-block__edit" data-gedit="${esc(k)}" title="Set expected value">✎</span>`}
+      <span class="game-block__co">${esc(d.company)}</span>
+      <span class="game-block__name">${esc(dealName(d))}</span>
+      <span class="game-block__foot">
+        <span class="game-block__val">${priced ? `₹${fmtNum(v)}L` : 'TBD'}${on ? ' ✓' : ''}</span>
+        <span class="game-block__when">${d.closure_text ? esc(d.closure_text) : 'no date'}</span>
+      </span>
+    </button>`;
+  };
+  const tierGroups = GAME_TIERS.map(t => {
+    const ds = inFY.filter(d => d.type === t.type).sort((a, b) => gameVal(b) - gameVal(a));
     if (!ds.length) return '';
     const inVal = ds.filter(d => dealKey(d) in state.gameCommit).reduce((s, d) => s + gameVal(d), 0);
     return `<div class="game-tier">
@@ -1657,23 +1748,13 @@ function viewGame() {
         <span class="muted-inline">${ds.length} · ₹${fmtNum(ds.reduce((s, d) => s + gameVal(d), 0)) || 0}L${inVal ? ` · ₹${fmtNum(inVal)}L in plan` : ''}</span>
         <button class="mpick" data-gact="tier" data-gtier="${t.type}" style="margin-left:auto">+ add all</button>
       </div>
-      <div class="game-tray">
-        ${ds.map(d => {
-          const k = dealKey(d), v = gameVal(d), on = k in state.gameCommit, priced = v > 0;
-          const f = priced ? v / maxV : 0;
-          const name = d.deliverable && d.deliverable !== '—' ? d.deliverable : 'Untitled';
-          return `<button class="game-block ${on ? 'is-in' : ''} ${priced ? '' : 'is-tbd'}" data-gkey="${esc(k)}"
-            style="--tier:${t.color};width:${Math.round(96 + 250 * f)}px;min-height:${Math.round(62 + 46 * f)}px"
-            title="${on ? 'Click to remove from plan' : 'Click to add to plan'}">
-            <span class="game-block__edit" data-gedit="${esc(k)}" title="Set expected value">✎</span>
-            <span class="game-block__co">${esc(d.company)}</span>
-            <span class="game-block__name">${esc(name)}</span>
-            <span class="game-block__val">${priced ? `₹${fmtNum(v)}L` : 'TBD'}${on ? ' ✓' : ''}</span>
-          </button>`;
-        }).join('')}
-      </div>
+      <div class="game-tray">${ds.map(d => block(d, t, 'in')).join('')}</div>
     </div>`;
   }).join('');
+  const sideGroup = (list, title, note, mode) => !list.length ? '' : `<div class="game-tier game-tier--out">
+    <div class="game-tier__head">${title}<span class="muted-inline">${list.length} · ₹${fmtNum(list.reduce((s, d) => s + (d._val || 0), 0)) || 0}L · ${note}</span></div>
+    <div class="game-tray">${[...list].sort((a, b) => gameVal(b) - gameVal(a)).map(d => block(d, gameTier(d.type), mode)).join('')}</div>
+  </div>`;
 
   const scenPills = `<span class="mpick-group">
     ${Object.entries(SALES_SCENARIOS).map(([k, s]) =>
@@ -1691,7 +1772,7 @@ function viewGame() {
     </div>
     ${tplBDStrip([
       { label: 'Booked (MIS)', val: `₹${fmtNum(booked)}L`, sub: `${Math.round(booked / target * 100)}% of target` },
-      { label: 'Added from pipeline', val: `₹${fmtNum(added)}L`, sub: `${picked.length} proposal${picked.length !== 1 ? 's' : ''}` },
+      { label: 'Added from pipeline', val: `₹${fmtNum(added)}L`, sub: `${picked.length} project${picked.length !== 1 ? 's' : ''} closing this FY` },
       { label: 'Projected', val: `${Math.round(pct)}%`, sub: `₹${fmtNum(total)}L of ${scen.label}`,
         color: pct >= 100 ? 'var(--won)' : pct >= 70 ? 'var(--warm)' : 'var(--hot)' },
       { label: gap > 0 ? 'Gap to target' : 'Surplus', val: `₹${fmtNum(Math.abs(gap))}L`,
@@ -1705,63 +1786,80 @@ function viewGame() {
       <ul class="ins-bullets">${bullets.map(b => `<li>${b}</li>`).join('')}</ul>
     </div>
     <div class="section-head">
-      <h2>Proposals — click to add to the plan</h2>
+      <h2>Projects closing by ${gameFyEndLabel()} — click to add</h2>
       <span class="muted">bigger block = bigger ticket · ✎ sets your expected value</span>
     </div>
-    ${tray}
+    ${tierGroups || `<div class="empty">No open projects have an expected closure date in this FY yet.</div>`}
+    ${sideGroup(noDate, 'No expected closure date', 'not counted unless you click to confirm it closes this FY', 'nodate')}
+    ${sideGroup(nextFY, `Expected after ${gameFyEndLabel()}`, 'next FY — not counted', 'next')}
   </div>`;
 }
 
 function wireGame() {
   const root = document.getElementById('game-root');
   if (!root) return;
+  const parseAns = a => parseFloat(String(a ?? '').replace(/[₹,L\s]/g, ''));
   root.addEventListener('click', e => {
     const edit = e.target.closest('[data-gedit]');
     if (edit) {
       e.stopPropagation();
       const k = edit.dataset.gedit;
       const d = gamePool().find(x => dealKey(x) === k);
-      const cur = d ? gameVal(d) : 0;
-      const ans = prompt(`Expected closing value for ${d ? d.company : 'this proposal'} (₹ Lakhs):`, cur || '');
+      const ans = prompt(`Expected closing value for ${d ? `${dealName(d)} (${d.company})` : 'this project'}, in ₹ Lakhs:`, (d && gameVal(d)) || '');
       if (ans == null) return;
-      const v = parseFloat(String(ans).replace(/[₹,L\s]/g, ''));
-      if (!isNaN(v) && v > 0) { state.gameCommit[k] = v; gameSave(); render(); }
+      const v = parseAns(ans);
+      if (isNaN(v) || v <= 0) return;
+      if (d && gameFY(d) === 'nodate' && !state.gameAssume[k]) {
+        if (!confirm(`${dealName(d)} has no expected closure date in the sheet. Count it as closing this FY?`)) return;
+        state.gameAssume[k] = true;
+      }
+      state.gameCommit[k] = v;
+      gameSave(); render();
       return;
     }
     const blk = e.target.closest('[data-gkey]');
     if (blk) {
       const k = blk.dataset.gkey;
-      if (k in state.gameCommit) delete state.gameCommit[k];
-      else {
-        const d = gamePool().find(x => dealKey(x) === k);
-        if (d && !(d._val > 0)) {
-          const ans = prompt(`${d.company} has no value in the sheet. Expected closing value (₹ Lakhs):`);
-          const v = parseFloat(String(ans ?? '').replace(/[₹,L\s]/g, ''));
-          if (isNaN(v) || v <= 0) return;
+      const d = gamePool().find(x => dealKey(x) === k);
+      if (k in state.gameCommit && (!d || gameCounts(d))) {
+        delete state.gameCommit[k];
+        delete state.gameAssume[k];
+      } else if (d) {
+        if (gameFY(d) === 'next') return;
+        if (gameFY(d) === 'nodate') {
+          if (!confirm(`${dealName(d)} (${d.company}) has no expected closure date in the sheet. Count it as closing this FY?`)) return;
+          state.gameAssume[k] = true;
+        }
+        if (!(d._val > 0) && state.gameCommit[k] == null) {
+          const v = parseAns(prompt(`${dealName(d)} (${d.company}) has no value in the sheet. Expected closing value, in ₹ Lakhs:`));
+          if (isNaN(v) || v <= 0) { delete state.gameAssume[k]; return; }
           state.gameCommit[k] = v;
-        } else state.gameCommit[k] = null; // null = use the sheet value
+        } else if (!(k in state.gameCommit)) {
+          state.gameCommit[k] = null; // null = use the sheet value
+        }
       }
       gameSave(); render();
       return;
     }
     const act = e.target.closest('[data-gact]');
     if (!act) return;
-    const pool = gamePool();
-    if (act.dataset.gact === 'clear') state.gameCommit = {};
+    // Bulk actions only ever use projects dated within this FY.
+    const inFY = gamePool().filter(d => gameFY(d) === 'in');
+    if (act.dataset.gact === 'clear') { state.gameCommit = {}; state.gameAssume = {}; }
     if (act.dataset.gact === 'tier') {
-      pool.filter(d => d.type === act.dataset.gtier && d._val > 0)
+      inFY.filter(d => d.type === act.dataset.gtier && gameVal(d) > 0)
         .forEach(d => { const k = dealKey(d); if (!(k in state.gameCommit)) state.gameCommit[k] = null; });
     }
     if (act.dataset.gact === 'auto') {
       // Biggest tickets first until the target is reached (keeps existing picks).
       const target = (SALES_SCENARIOS[state.salesScenario] || SALES_SCENARIOS.base).total;
       let run = salesData.months.filter(m => m.actual != null).reduce((s, m) => s + m.actual, 0)
-        + pool.filter(d => dealKey(d) in state.gameCommit).reduce((s, d) => s + gameVal(d), 0);
-      for (const d of pool.filter(d => !(dealKey(d) in state.gameCommit) && d._val > 0)
-                          .sort((a, b) => b._val - a._val)) {
+        + gamePool().filter(d => dealKey(d) in state.gameCommit && gameCounts(d)).reduce((s, d) => s + gameVal(d), 0);
+      for (const d of inFY.filter(d => !(dealKey(d) in state.gameCommit) && gameVal(d) > 0)
+                          .sort((a, b) => gameVal(b) - gameVal(a))) {
         if (run >= target) break;
         state.gameCommit[dealKey(d)] = null;
-        run += d._val;
+        run += gameVal(d);
       }
     }
     gameSave(); render();

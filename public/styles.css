@@ -439,7 +439,46 @@ input  { font-family: inherit; }
   font-size: 12px; font-weight: 500; line-height: 1.25;
   display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden;
 }
+.game-block__foot { display: flex; align-items: baseline; justify-content: space-between; gap: 6px; }
 .game-block__val { font-family: var(--font-mono); font-size: 14px; font-weight: 700; }
+.game-block__when { font-family: var(--font-mono); font-size: 10px; opacity: .7; white-space: nowrap; }
+.game-block.is-out { opacity: .6; }
+.game-block[disabled] { cursor: not-allowed; filter: grayscale(.6); }
+.game-block[disabled]:hover { transform: none; box-shadow: none; }
+.game-tier--out { padding-top: 12px; border-top: 1px dashed var(--line); }
+
+/* Named plan list under the runway — numbers match the bar and the step line */
+.plan-list { margin-top: 16px; border-top: 1px solid var(--line); }
+.plan-row {
+  display: grid; grid-template-columns: 30px minmax(0, 1fr) 150px 80px 130px 26px;
+  align-items: center; gap: 10px; padding: 7px 2px;
+  border-bottom: 1px solid var(--line); font-size: 13px;
+}
+.plan-row--head {
+  font-size: 10px; font-weight: 600; letter-spacing: .06em; text-transform: uppercase;
+  color: var(--ink-3); padding: 8px 2px 6px;
+}
+.plan-row--booked { background: var(--won-soft); }
+.plan-row__n {
+  width: 22px; height: 22px; border-radius: 50%; color: #fff;
+  display: grid; place-items: center; font-size: 11px; font-weight: 700;
+}
+.plan-row__name { display: flex; flex-direction: column; min-width: 0; }
+.plan-row__name strong { font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.plan-row__name span { font-size: 11px; color: var(--ink-3); }
+.plan-row__close { font-family: var(--font-mono); font-size: 12px; font-weight: 600; color: var(--ink-2); }
+.plan-row__close.is-assumed { color: var(--warm); font-weight: 500; font-size: 11px; }
+.plan-row__val { font-family: var(--font-mono); font-weight: 700; text-align: right; }
+.plan-row__cum { font-family: var(--font-mono); font-size: 12px; color: var(--ink-3); text-align: right; }
+.plan-row__x {
+  background: none; color: var(--ink-3); font-size: 16px; line-height: 1;
+  border-radius: 4px; padding: 2px 5px;
+}
+.plan-row__x:hover { background: var(--hot-soft); color: var(--hot); }
+@media (max-width: 720px) {
+  .plan-row { grid-template-columns: 26px minmax(0, 1fr) 70px 24px; }
+  .plan-row__close, .plan-row__cum { display: none; }
+}
 .game-block__edit {
   position: absolute; top: 6px; right: 7px; font-size: 12px;
   opacity: .45; cursor: pointer; line-height: 1;
