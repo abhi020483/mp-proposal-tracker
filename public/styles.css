@@ -377,7 +377,7 @@ input  { font-family: inherit; }
 
 /* ─── Path to Target (gamified what-if) ─────────────────── */
 .runway {
-  position: relative; height: 54px; margin: 26px 0 6px;
+  position: relative; height: 54px; margin: 58px 0 6px;
   background: var(--surface-2); border-radius: var(--radius);
 }
 .runway__seg {
@@ -410,6 +410,21 @@ input  { font-family: inherit; }
   position: absolute; top: -18px; left: 0; transform: translateX(-50%);
   font-size: 11px; font-weight: 700; color: var(--ink); white-space: nowrap;
 }
+/* Running total above the end of the filled bar */
+.runway__total {
+  position: absolute; top: -52px; bottom: 100%; width: 0;
+  border-left: 2px solid var(--ink); z-index: 3; pointer-events: none;
+  transition: left .35s ease;
+}
+.runway__total span {
+  position: absolute; top: 0; left: 0; transform: translate(-50%, -2px);
+  background: var(--ink); color: var(--surface); border-radius: 5px;
+  padding: 3px 8px; white-space: nowrap;
+  font-family: var(--font-mono); font-size: 13px; font-weight: 700;
+}
+.runway__total span em { font-style: normal; font-weight: 500; opacity: .75; margin-left: 4px; }
+.runway__total.is-left span  { transform: translate(-2px, -2px); }
+.runway__total.is-right span { transform: translate(calc(-100% + 2px), -2px); }
 .runway__scale {
   display: flex; justify-content: space-between;
   font-family: var(--font-mono); font-size: 10px; color: var(--ink-3);

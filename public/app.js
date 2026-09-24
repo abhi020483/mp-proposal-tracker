@@ -1711,6 +1711,9 @@ function viewGame() {
       ${segs}
       ${ticks}
       <div class="runway__target" style="left:${pos(target)}%"><span>Target ${scen.label}</span></div>
+      <div class="runway__total ${total / scaleMax < 0.07 ? 'is-left' : total / scaleMax > 0.9 ? 'is-right' : ''}" style="left:${pos(total)}%">
+        <span>₹${fmtNum(total)}L <em>${Math.round(pct)}%</em></span>
+      </div>
     </div>
     <div class="runway__scale"><span>₹0</span><span>₹${fmtNum(Math.round(scaleMax))}L</span></div>
     ${picked.length ? `<div class="plan-list">
@@ -1742,7 +1745,9 @@ function viewGame() {
     path += ` L ${xs(i + 1)} ${y(before)} L ${xs(i + 1)} ${y(run)}`;
     return `<circle cx="${xs(i + 1)}" cy="${y(run)}" r="5" style="fill:${gameTier(d.type).color}">
       <title>#${i + 1} ${esc(dealName(d))} (${esc(d.company)}) · ₹${fmtNum(gameVal(d))}L → ₹${fmtNum(run)}L</title></circle>
-      <text x="${xs(i + 1)}" y="${+y(run) - 10}" text-anchor="middle" style="fill:var(--ink-2);font-size:11px;font-weight:600">${i + 1}</text>`;
+      ${i === n - 1
+        ? `<text x="${xs(i + 1)}" y="${+y(run) - 10}" text-anchor="end" style="fill:var(--ink);font-size:13px;font-weight:700">${i + 1} · ₹${fmtNum(run)}L (${Math.round(run / target * 100)}%)</text>`
+        : `<text x="${xs(i + 1)}" y="${+y(run) - 10}" text-anchor="middle" style="fill:var(--ink-2);font-size:11px;font-weight:600">${i + 1}</text>`}`;
   }).join('');
   if (!n) path += ` L ${W - P} ${y(booked)}`;
   const stepLine = `<div class="chart-card">
