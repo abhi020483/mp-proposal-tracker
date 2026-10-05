@@ -1329,8 +1329,10 @@ function viewSales() {
   </div>`;
 
   // Margins — month on month vs target (independent of the revenue scenario)
-  const pctBadge = (act, tgt) => {
-    if (act == null) return '<span class="muted">—</span>';
+  const pctBadge = (act, tgt, m) => {
+    if (act == null) return m && m.actual != null
+      ? '<span class="badge badge--null" title="Revenue is in the MIS but costs / profit are not yet entered">costs pending</span>'
+      : '<span class="muted">—</span>';
     const cls = tgt != null && act >= tgt ? 'won' : 'hot';
     return `<span class="badge badge--${cls}"><span class="dot"></span>${fmtNum(act)}%</span>`;
   };
@@ -1356,30 +1358,37 @@ function viewSales() {
       <tbody>${months.map(m => `<tr>
         <td class="mono" style="font-size:12px">${m.label}</td>
         <td class="num">${m.omPlan != null ? fmtNum(m.omPlan) + '%' : '<span class="muted">—</span>'}</td>
-        <td class="num">${pctBadge(m.omAct, m.omPlan)}</td>
+        <td class="num">${pctBadge(m.omAct, m.omPlan, m)}</td>
         <td class="num">${m.nmPlan != null ? fmtNum(m.nmPlan) + '%' : '<span class="muted">—</span>'}</td>
-        <td class="num">${pctBadge(m.nmAct, m.nmPlan)}</td>
+        <td class="num">${pctBadge(m.nmAct, m.nmPlan, m)}</td>
       </tr>`).join('')}</tbody>
     </table></div>
   </div>`;
 
   // Margins bar chart — % axis with a zero baseline (net margin can go
   // negative). Closed months: solid achieved bars; future: striped target bars.
-  const H = 140;
-  const mVals = months.flatMap(m => [m.omAct, m.nmAct, m.omPlan, m.nmPlan]).filter(v => v != null);
+  const H = 160;
+  // Axis is clamped to −100…+100 %: a tiny-revenue month (e.g. −589 %) would
+  // otherwise flatten every other bar. Clipped bars get a ▼/▲ cap and the
+  // label still shows the true figure.
+  const CLAMP = 100;
+  const clampV = v => Math.max(-CLAMP, Math.min(CLAMP, v));
+  const mVals = months.flatMap(m => [m.omAct, m.nmAct, m.omPlan, m.nmPlan]).filter(v => v != null).map(clampV);
   const mMax = Math.max(...mVals, 10), mMin = Math.min(...mVals, 0);
   const mRange = (mMax - mMin) || 1;
-  const yPos = v => (v - mMin) / mRange * H;
+  const yPos = v => (clampV(v) - mMin) / mRange * H;
   const zeroY = yPos(0);
   const mbar = (val, tgt, color, isClosed) => {
     const v = isClosed ? val : tgt;
     if (v == null) return `<div class="mbar-track"><div class="mbar-zero" style="bottom:${zeroY}px"></div></div>`;
     const y = yPos(v);
     const bottom = Math.min(y, zeroY), height = Math.max(2, Math.abs(y - zeroY));
+    const clipped = Math.abs(v) > CLAMP;
     return `<div class="mbar-track">
       <div class="mbar-zero" style="bottom:${zeroY}px"></div>
       ${tgt != null && isClosed ? `<div class="hist-col__target" style="bottom:${yPos(tgt)}px"></div>` : ''}
-      <div class="mbar ${isClosed ? '' : 'hist-col__bar--req'}" style="bottom:${bottom}px;height:${height}px;background:${isClosed ? color : 'var(--line-2)'}"></div>
+      <div class="mbar ${isClosed ? '' : 'hist-col__bar--req'} ${clipped ? 'is-clipped' : ''}" style="bottom:${bottom}px;height:${height}px;background:${isClosed ? color : 'var(--line-2)'}" title="${fmtNum(v)}%"></div>
+      ${clipped ? `<div class="mbar-clip" style="bottom:${v < 0 ? bottom - 12 : bottom + height}px">${v < 0 ? '▼' : '▲'}</div>` : ''}
     </div>`;
   };
   const marginChart = `<div class="chart-card">
@@ -1389,11 +1398,13 @@ function viewSales() {
     <div class="hist">
       ${months.map(m => {
         const isClosed = m.actual != null;
-        const lab = isClosed
-          ? `${m.omAct != null ? fmtNum(m.omAct) : '—'} / ${m.nmAct != null ? fmtNum(m.nmAct) : '—'}`
-          : `${m.omPlan != null ? fmtNum(m.omPlan) : '—'} / ${m.nmPlan != null ? fmtNum(m.nmPlan) : '—'}`;
-        return `<div class="hist-col">
-          <div class="hist-col__value" style="font-size:10px">${lab}</div>
+        const pending = isClosed && m.omAct == null && m.nmAct == null;
+        const lab = pending ? '<span style="color:var(--warm)">costs<br>pending</span>'
+          : isClosed
+          ? `<span style="color:var(--won)">${m.omAct != null ? fmtNum(m.omAct) + '%' : '—'}</span><br><span style="color:var(--cold)">${m.nmAct != null ? fmtNum(m.nmAct) + '%' : '—'}</span>`
+          : `${m.omPlan != null ? fmtNum(m.omPlan) + '%' : '—'}<br>${m.nmPlan != null ? fmtNum(m.nmPlan) + '%' : '—'}`;
+        return `<div class="hist-col" ${pending ? 'title="Revenue is in the MIS but direct costs / operating profit are not yet entered, so margins can\'t be computed."' : ''}>
+          <div class="hist-col__value" style="font-size:10.5px;line-height:1.25;font-weight:600">${lab}</div>
           <div class="mbar-group" style="height:${H}px">
             ${mbar(m.omAct, m.omPlan, 'var(--won)', isClosed)}
             ${mbar(m.nmAct, m.nmPlan, 'var(--cold)', isClosed)}
@@ -1402,7 +1413,7 @@ function viewSales() {
         </div>`;
       }).join('')}
     </div>
-    <div class="chart-card__foot">Labels: operating % / net %. Achieved for closed months, targets for open months.</div>
+    <div class="chart-card__foot">Labels: operating % (top) / net % (bottom). Achieved for closed months, targets for open months. Axis capped at ±100% — ▼/▲ marks a bar beyond it (true value in the label).${months.some(m => m.actual != null && m.omAct == null && m.nmAct == null) ? ' <strong style="color:var(--warm)">"Costs pending"</strong> = revenue is in the MIS but direct costs / operating profit aren\'t entered yet.' : ''}</div>
   </div>`;
 
   // If-then table

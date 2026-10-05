@@ -644,6 +644,11 @@ input  { font-family: inherit; }
 }
 .mbar-track { position: relative; flex: 1; }
 .mbar { position: absolute; left: 0; right: 0; border-radius: 3px; }
+.mbar-clip {
+  position: absolute; left: 0; right: 0; text-align: center;
+  font-size: 10px; line-height: 12px; color: var(--hot); font-weight: 700;
+}
+.mbar.is-clipped { opacity: .85; }
 .mbar-zero { position: absolute; left: -2px; right: -2px; border-top: 1px solid var(--line-2); }
 
 /* Striped "required" bars in the Sales if-then chart */
