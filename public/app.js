@@ -1253,8 +1253,10 @@ function viewInsights() {
 
 // ─── Sales (MIS plan vs actuals + scenarios) ─────────────────────────────────
 
-let salesData = null, salesError = null;
+let salesData = null, salesError = null, salesLoadedAt = 0, _salesLoading = false;
 async function loadSalesData(fresh = false) {
+  if (_salesLoading) return;
+  _salesLoading = true;
   try {
     const res = await apiFetch(`/api/sales${fresh ? '?fresh=1' : ''}`);
     if (!res) return;
@@ -1262,8 +1264,11 @@ async function loadSalesData(fresh = false) {
     if (!res.ok) throw new Error(data.error || `HTTP ${res.status}`);
     salesData = data;
     salesError = null;
+    salesLoadedAt = Date.now();
   } catch (e) {
     salesError = e.message;
+  } finally {
+    _salesLoading = false;
   }
   if (state.tab === 'sales' || state.tab === 'game') render();
 }
@@ -2909,6 +2914,7 @@ async function doSync() {
     localStorage.setItem('lastSyncedAt', state.lastSyncedAt);
     updateSyncPill();
     await loadData();
+    loadSalesData(true); // keep Sales / Path to Target on the latest MIS too
     if (data.cold_skipped) alert(data.message); // surface partial-sync notice
   } catch (err) {
     alert('Sync failed: ' + err.message); // [D-6] state.deals untouched on failure
@@ -2928,7 +2934,13 @@ function wireStaticEvents() {
   // Tabs
   document.getElementById('tabs').addEventListener('click', e => {
     const tab = e.target.closest('[data-tab]');
-    if (tab) { state.tab = tab.dataset.tab; render(); }
+    if (tab) {
+      state.tab = tab.dataset.tab;
+      render();
+      // MIS changes month to month — re-pull if this tab's copy is >10 min old.
+      if ((state.tab === 'sales' || state.tab === 'game') && salesData &&
+          Date.now() - salesLoadedAt > 10 * 60 * 1000) loadSalesData(true);
+    }
   });
 
   // Type chips

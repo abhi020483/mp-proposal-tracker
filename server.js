@@ -404,7 +404,7 @@ function parseMISNumber(v) {
 let _salesCache = null; // { at, payload }
 app.get('/api/sales', requireAuth, async (req, res) => {
   try {
-    if (_salesCache && Date.now() - _salesCache.at < 5 * 60 * 1000 && !req.query.fresh) {
+    if (_salesCache && Date.now() - _salesCache.at < 60 * 1000 && !req.query.fresh) {
       return res.json(_salesCache.payload);
     }
     const rows = (await fetchMISCsv()).split('\n').map(parseCSVLine);
