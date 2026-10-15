@@ -61,3 +61,21 @@ DROP POLICY IF EXISTS "log read"  ON proposal_log;
 DROP POLICY IF EXISTS "log write" ON proposal_log;
 CREATE POLICY "log read"  ON proposal_log FOR SELECT USING (true);
 CREATE POLICY "log write" ON proposal_log FOR INSERT WITH CHECK (true);
+
+-- Focus-tab notes: shared comment thread per proposal, keyed company|deliverable
+-- so notes survive the sync's full replace of the proposals table.
+CREATE TABLE IF NOT EXISTS proposal_notes (
+  id         BIGSERIAL PRIMARY KEY,
+  deal_key   TEXT NOT NULL,
+  author     TEXT,
+  body       TEXT NOT NULL,
+  created_at TIMESTAMPTZ DEFAULT NOW()
+);
+CREATE INDEX IF NOT EXISTS proposal_notes_key ON proposal_notes (deal_key);
+ALTER TABLE proposal_notes ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS "notes read"   ON proposal_notes;
+DROP POLICY IF EXISTS "notes write"  ON proposal_notes;
+DROP POLICY IF EXISTS "notes delete" ON proposal_notes;
+CREATE POLICY "notes read"   ON proposal_notes FOR SELECT USING (true);
+CREATE POLICY "notes write"  ON proposal_notes FOR INSERT WITH CHECK (true);
+CREATE POLICY "notes delete" ON proposal_notes FOR DELETE USING (true);

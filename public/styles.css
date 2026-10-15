@@ -1218,3 +1218,45 @@ input  { font-family: inherit; }
   .search { flex: 0 0 100%; }
   .date-block { display: none; }
 }
+
+/* ─── Focus notes ───────────────────────────────────────── */
+.focus-item { display: flex; flex-direction: column; }
+.focus-item.is-open .focus-row { border-bottom-left-radius: 0; border-bottom-right-radius: 0; }
+.focus-row__note {
+  font-size: 12px; color: var(--ink-2); margin-top: 3px;
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+.focus-row__note span { color: var(--ink-3); }
+.note-toggle {
+  margin-top: 4px; font-size: 11px; font-weight: 500;
+  color: var(--ink-3); background: var(--surface-2);
+  border: 1px solid var(--line); border-radius: 999px; padding: 3px 9px;
+}
+.note-toggle:hover { color: var(--ink); border-color: var(--ink-3); }
+.note-toggle.has-notes { color: var(--shared); background: var(--shared-soft); border-color: transparent; font-weight: 600; }
+.note-thread {
+  background: var(--surface-2); border: 1px solid var(--line); border-top: none;
+  border-radius: 0 0 var(--radius) var(--radius);
+  padding: 12px 18px 14px 62px; display: flex; flex-direction: column; gap: 8px;
+}
+.note { background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius); padding: 8px 11px; }
+.note__head { display: flex; align-items: baseline; gap: 8px; font-size: 12px; }
+.note__head span { color: var(--ink-3); font-size: 11px; }
+.note__del { margin-left: auto; background: none; color: var(--ink-3); font-size: 15px; line-height: 1; padding: 0 4px; border-radius: 4px; }
+.note__del:hover { color: var(--hot); background: var(--hot-soft); }
+.note__body { font-size: 13px; color: var(--ink); margin-top: 3px; line-height: 1.45; }
+.note-empty { font-size: 12px; color: var(--ink-3); }
+.note-err { font-size: 12px; color: var(--hot); }
+.note-form { display: grid; grid-template-columns: 150px 1fr auto; gap: 8px; align-items: start; }
+.note-author, .note-input {
+  font: inherit; font-size: 13px; color: var(--ink);
+  background: var(--surface); border: 1px solid var(--line-2);
+  border-radius: var(--radius-sm); padding: 7px 9px; outline: none;
+}
+.note-input { resize: vertical; min-height: 38px; }
+.note-author:focus, .note-input:focus { border-color: var(--ink); }
+.note-post { align-self: stretch; }
+@media (max-width: 720px) {
+  .note-thread { padding-left: 14px; }
+  .note-form { grid-template-columns: 1fr; }
+}

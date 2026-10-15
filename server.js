@@ -372,6 +372,40 @@ app.get('/api/inflow', requireAuth, async (req, res) => {
   res.json(data);
 });
 
+// ─── Proposal notes (Focus tab comments) ─────────────────────────────────────
+// Keyed by company|deliverable, not row id: the sync replaces every proposal
+// row, so ids don't survive but this key does.
+app.get('/api/notes', requireAuth, async (req, res) => {
+  const { data, error } = await supabase
+    .from('proposal_notes')
+    .select('id, deal_key, author, body, created_at')
+    .order('created_at');
+  if (error) return res.status(500).json({ error: error.message });
+  res.json(data);
+});
+
+app.post('/api/notes', requireAuth, async (req, res) => {
+  const key    = String(req.body?.key || '').trim();
+  const author = String(req.body?.author || '').trim().slice(0, 60);
+  const body   = String(req.body?.body || '').trim().slice(0, 2000);
+  if (!key || !body) return res.status(400).json({ error: 'key and body are required' });
+  const { data, error } = await supabase
+    .from('proposal_notes')
+    .insert({ deal_key: key, author: author || null, body })
+    .select('id, deal_key, author, body, created_at')
+    .single();
+  if (error) return res.status(500).json({ error: error.message });
+  res.json(data);
+});
+
+app.delete('/api/notes/:id', requireAuth, async (req, res) => {
+  const id = Number(req.params.id);
+  if (!Number.isInteger(id)) return res.status(400).json({ error: 'bad id' });
+  const { error } = await supabase.from('proposal_notes').delete().eq('id', id);
+  if (error) return res.status(500).json({ error: error.message });
+  res.json({ ok: true });
+});
+
 // ─── Sales (MIS "Plan vs Actual") ────────────────────────────────────────────
 // Reads the finance MIS Google Sheet and returns the current-FY monthly plan
 // and actual revenue (Service + Connect total), in ₹ Lakhs.

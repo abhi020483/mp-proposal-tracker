@@ -56,6 +56,7 @@ const state = {
   requestedCompany:'all',
   focusMin:       'all',
   focusCategory:  'all',
+  noteOpen:       {},
   bdMon:          {},
   salesScenario:  'stretch',
   stripSort:      'value',
@@ -970,7 +971,54 @@ function viewRequested() {
     </div>`;
 }
 
+// ─── Proposal notes (shared, stored server-side) ─────────────────────────────
+let notesData = null, notesError = null, _notesLoading = false;
+async function loadNotes() {
+  if (_notesLoading) return;
+  _notesLoading = true;
+  try {
+    const res = await apiFetch('/api/notes');
+    if (!res) return;
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.error || `HTTP ${res.status}`);
+    notesData = {};
+    for (const n of data) (notesData[n.deal_key] = notesData[n.deal_key] || []).push(n);
+    notesError = null;
+  } catch (e) {
+    notesError = e.message;
+    notesData = notesData || {};
+  } finally {
+    _notesLoading = false;
+  }
+  if (state.tab === 'focus') render();
+}
+const noteKey = d => `${d.company}|${d.deliverable}`;
+const notesFor = d => (notesData && notesData[noteKey(d)]) || [];
+function noteWhen(ts) {
+  const t = new Date(ts);
+  return isNaN(t) ? '' : t.toLocaleString('en-IN', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' });
+}
+function tplNoteThread(d) {
+  const ns = notesFor(d), k = noteKey(d);
+  let author = '';
+  try { author = localStorage.getItem('mp-note-author') || ''; } catch {}
+  return `<div class="note-thread">
+    ${notesError ? `<div class="note-err">Notes unavailable: ${esc(notesError)}${/proposal_notes/.test(notesError) ? ' — run the proposal_notes block in supabase_schema.sql' : ''}</div>` : ''}
+    ${ns.length ? ns.map(n => `<div class="note">
+        <div class="note__head"><strong>${esc(n.author || 'Anonymous')}</strong><span>${noteWhen(n.created_at)}</span>
+          <button class="note__del" data-ndel="${n.id}" title="Delete note">×</button></div>
+        <div class="note__body">${esc(n.body).replace(/\n/g, '<br>')}</div>
+      </div>`).join('') : `<div class="note-empty">No notes yet — add the first one.</div>`}
+    <div class="note-form">
+      <input class="note-author" placeholder="Your name" value="${esc(author)}" maxlength="60">
+      <textarea class="note-input" data-nkey="${esc(k)}" rows="2" placeholder="Add a note — next step, blocker, what the client said… (⌘/Ctrl + Enter to post)"></textarea>
+      <button class="mpick note-post" data-npost="${esc(k)}">Post note</button>
+    </div>
+  </div>`;
+}
+
 function viewFocus() {
+  if (notesData == null && !_notesLoading) loadNotes();
   // Ticket-size discussion view: every open deal ranked by value descending,
   // hot before warm at equal footing — companies intentionally mixed. Cold,
   // won and lost are excluded; search + period filters respected.
@@ -1041,11 +1089,13 @@ function viewFocus() {
     ${catPills}
     ${minChips}
     ${!shown.length ? `<div class="empty">No open deals at this ticket size.</div>` : ''}
-    <div class="focus-list" style="margin-top:14px">
+    <div class="focus-list" id="focus-list" style="margin-top:14px">
       ${shown.map((d, i) => {
         const pInfo = periodInfo(d.time_period);
         const hasTitle = d.deliverable && d.deliverable !== '—';
-        return `<div class="focus-row ${d.type === 'super' ? 'is-super' : d.type === 'hot' ? 'is-hot' : ''}">
+        const ns = notesFor(d), open = !!state.noteOpen[noteKey(d)], last = ns[ns.length - 1];
+        return `<div class="focus-item ${open ? 'is-open' : ''}">
+        <div class="focus-row ${d.type === 'super' ? 'is-super' : d.type === 'hot' ? 'is-hot' : ''}">
           <span class="focus-row__rank">${i + 1}</span>
           <div class="focus-row__val ${d._val == null ? 'is-tbd' : ''}">
             ${d._val != null ? `₹${fmtNum(d._val)}<span class="u">L</span>` : 'TBD'}
@@ -1060,11 +1110,15 @@ function viewFocus() {
             <div class="focus-row__title ${!hasTitle ? 'is-empty' : ''}">
               ${hasTitle ? esc(d.deliverable) : 'Untitled proposal'}
             </div>
+            ${last && !open ? `<div class="focus-row__note">💬 ${esc(last.body.length > 110 ? last.body.slice(0, 110) + '…' : last.body)} <span>— ${esc(last.author || 'Anonymous')}, ${noteWhen(last.created_at)}</span></div>` : ''}
           </div>
           <div class="focus-row__meta">
             <span class="mono" style="font-size:11px;color:var(--ink-3)">${pInfo.label || 'No date'}</span>
             ${d.client_contact ? `<span class="focus-row__contact">${esc(d.client_contact)}</span>` : ''}
+            <button class="note-toggle ${ns.length ? 'has-notes' : ''}" data-ntoggle="${esc(noteKey(d))}">💬 ${ns.length ? `${ns.length} note${ns.length !== 1 ? 's' : ''}` : 'Add note'}</button>
           </div>
+        </div>
+        ${open ? tplNoteThread(d) : ''}
         </div>`;
       }).join('')}
     </div>`;
@@ -2594,6 +2648,7 @@ function wirePerRender() {
   wireRequestedTile();
   wireFocusMin();
   wireFocusCats();
+  wireNotes();
   wireBDMonthSelects();
   wireBDSync();
   wireSales();
@@ -2617,6 +2672,59 @@ function wireBDMonthSelects() {
       state.bdMon[sel.dataset.card] = sel.value;
       render();
     });
+  });
+}
+
+function wireNotes() {
+  const list = document.getElementById('focus-list');
+  if (!list) return;
+  const post = async key => {
+    const ta = [...list.querySelectorAll('.note-input')].find(x => x.dataset.nkey === key);
+    const au = ta?.closest('.note-form')?.querySelector('.note-author');
+    const body = (ta?.value || '').trim();
+    if (!body) { ta?.focus(); return; }
+    const author = (au?.value || '').trim();
+    try { localStorage.setItem('mp-note-author', author); } catch {}
+    ta.disabled = true;
+    try {
+      const res = await apiFetch('/api/notes', { method: 'POST', body: JSON.stringify({ key, author, body }) });
+      if (!res) return;
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || `HTTP ${res.status}`);
+      (notesData[key] = notesData[key] || []).push(data);
+      notesError = null;
+    } catch (e) {
+      notesError = e.message; ta.disabled = false;
+    }
+    render();
+    const again = [...document.querySelectorAll('.note-input')].find(x => x.dataset.nkey === key);
+    if (again && !again.value) again.focus();
+  };
+  list.addEventListener('click', async e => {
+    const tg = e.target.closest('[data-ntoggle]');
+    if (tg) {
+      const k = tg.dataset.ntoggle;
+      if (state.noteOpen[k]) delete state.noteOpen[k]; else state.noteOpen[k] = true;
+      render();
+      const ta = [...document.querySelectorAll('.note-input')].find(x => x.dataset.nkey === k);
+      if (ta) ta.focus();
+      return;
+    }
+    const pb = e.target.closest('[data-npost]');
+    if (pb) { post(pb.dataset.npost); return; }
+    const del = e.target.closest('[data-ndel]');
+    if (del) {
+      if (!confirm('Delete this note?')) return;
+      const id = Number(del.dataset.ndel);
+      const res = await apiFetch(`/api/notes/${id}`, { method: 'DELETE' });
+      if (res && res.ok) for (const k of Object.keys(notesData)) notesData[k] = notesData[k].filter(n => n.id !== id);
+      render();
+    }
+  });
+  list.addEventListener('keydown', e => {
+    if (e.target.classList.contains('note-input') && e.key === 'Enter' && (e.metaKey || e.ctrlKey)) {
+      e.preventDefault(); post(e.target.dataset.nkey);
+    }
   });
 }
 
