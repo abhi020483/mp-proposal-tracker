@@ -2705,6 +2705,7 @@ function wireNotes() {
     if (tg) {
       const k = tg.dataset.ntoggle;
       if (state.noteOpen[k]) delete state.noteOpen[k]; else state.noteOpen[k] = true;
+      if (notesError) loadNotes(); // e.g. the table was just created — retry
       render();
       const ta = [...document.querySelectorAll('.note-input')].find(x => x.dataset.nkey === k);
       if (ta) ta.focus();

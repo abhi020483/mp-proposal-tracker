@@ -79,3 +79,5 @@ DROP POLICY IF EXISTS "notes delete" ON proposal_notes;
 CREATE POLICY "notes read"   ON proposal_notes FOR SELECT USING (true);
 CREATE POLICY "notes write"  ON proposal_notes FOR INSERT WITH CHECK (true);
 CREATE POLICY "notes delete" ON proposal_notes FOR DELETE USING (true);
+-- Make the API see the new table immediately.
+NOTIFY pgrst, 'reload schema';
