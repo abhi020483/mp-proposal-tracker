@@ -2188,9 +2188,10 @@ function bdSum(kpis, bd, months, field) {
   return months.reduce((s, m) => s + (Number(kpis[bd]?.[m]?.[field]) || 0), 0);
 }
 
-// The BD dashboard recomputes meetings/proposals LIVE from its meetings/deals
-// logs; its stored kpis are a snapshot that can lag. Mirror its exact logic
-// (count by calendar month, exclude phone calls, keep manual entries via max).
+// Meetings and proposal value are counted straight from the BD dashboard's
+// sheet-synced logs (meetings / deals), by calendar month, phone calls
+// excluded. Its stored kpis snapshot is NOT used: it keeps stale hand-entered
+// figures (Sonali showed ₹119L against ₹12L in her sheet).
 const BD_MONTH_NUM = { Apr:'04',May:'05',Jun:'06',Jul:'07',Aug:'08',Sep:'09',Oct:'10',Nov:'11',Dec:'12',Jan:'01',Feb:'02',Mar:'03' };
 function bdMonthPrefix(mk) {
   const now = new Date();
@@ -2201,17 +2202,15 @@ function bdMonthPrefix(mk) {
 function bdMeetCount(kpis, meetings, bd, months) {
   return months.reduce((s, mk) => {
     const pre = bdMonthPrefix(mk);
-    const live = meetings.filter(m => m.bd === bd && (m.date || '').startsWith(pre) &&
+    return s + meetings.filter(m => m.bd === bd && (m.date || '').startsWith(pre) &&
       (m.type || 'Physical').toLowerCase() !== 'call').length;
-    return s + Math.max(live, Number(kpis[bd]?.[mk]?.meetings) || 0);
   }, 0);
 }
 function bdPropSum(kpis, deals, bd, months) {
   return months.reduce((s, mk) => {
     const pre = bdMonthPrefix(mk);
-    const live = deals.filter(d => d.bd === bd && (d.meetDate || '').startsWith(pre) && Number(d.value) > 0)
+    return s + deals.filter(d => d.bd === bd && (d.meetDate || '').startsWith(pre) && Number(d.value) > 0)
       .reduce((x, d) => x + Number(d.value), 0);
-    return s + Math.max(live, Number(kpis[bd]?.[mk]?.proposals) || 0);
   }, 0);
 }
 
