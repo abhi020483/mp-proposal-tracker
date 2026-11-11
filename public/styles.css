@@ -1262,3 +1262,4 @@ input  { font-family: inherit; }
   .note-thread { padding-left: 14px; }
   .note-form { grid-template-columns: 1fr; }
 }
+.game-block__val small { font-size: 10px; font-weight: 500; opacity: .75; }

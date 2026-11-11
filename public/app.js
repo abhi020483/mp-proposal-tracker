@@ -1684,8 +1684,10 @@ function gamePool() {
 // Order in the plan: invoiced blocks, then wins, then pipeline by value.
 const planRank = d => d.custom ? 3 : d.type === 'won' ? 2 : d.type === 'po' ? 1 : 0;
 // Value used in the plan: an MP override if set, else the sheet value.
+const poAmount = d => d.po.override != null ? d.po.override : d.po.balance;
 function gameVal(d) {
   if (d.custom) return d.custom.value;
+  if (d.po) return poAmount(d);
   const o = state.gameCommit[dealKey(d)];
   return o != null ? o : (d._val || 0);
 }
@@ -1722,7 +1724,7 @@ function gameScenSave(list) {
 function gameStats(commit, assume, scenKey) {
   const target = (SALES_SCENARIOS[scenKey] || SALES_SCENARIOS.base).total;
   const booked = salesData.months.filter(m => m.actual != null).reduce((s, m) => s + m.actual, 0);
-  const valOf = d => { if (d.custom) return d.custom.value; const o = commit[dealKey(d)]; return o != null ? o : (d._val || 0); };
+  const valOf = d => { if (d.custom) return d.custom.value; if (d.po) return poAmount(d); const o = commit[dealKey(d)]; return o != null ? o : (d._val || 0); };
   const picked = gamePool().filter(d => {
     const k = dealKey(d);
     if (!(k in commit)) return false;
@@ -1924,7 +1926,7 @@ function viewGame() {
       <span class="game-block__co">${esc(d.company)}</span>
       <span class="game-block__name">${esc(dealName(d))}</span>
       <span class="game-block__foot">
-        <span class="game-block__val">${priced ? `₹${fmtNum(v)}L` : 'TBD'}${on ? ' ✓' : ''}</span>
+        <span class="game-block__val">${priced ? `₹${fmtNum(v)}L` : 'TBD'}${d.po && d.po.override != null ? `<small> of ₹${fmtNum(d.po.balance)}L</small>` : ''}${on ? ' ✓' : ''}</span>
         <span class="game-block__when">${stale ? `${esc(d.custom.month)} now in MIS — remove` : d.closure_text ? esc(d.closure_text) : 'no date'}</span>
       </span>
     </button>`;
@@ -2075,7 +2077,7 @@ function wireGame() {
   const root = document.getElementById('game-root');
   if (!root) return;
   const parseAns = a => parseFloat(String(a ?? '').replace(/[₹,L\s]/g, ''));
-  root.addEventListener('click', e => {
+  root.addEventListener('click', async e => {
     const cdel = e.target.closest('[data-gcdel]');
     if (cdel) {
       e.stopPropagation();
@@ -2096,6 +2098,30 @@ function wireGame() {
       if (isNaN(v) || v <= 0) return;
       c.value = v;
       gameSave(); render();
+      return;
+    }
+    if (edit && edit.dataset.gedit.startsWith('po|')) {
+      e.stopPropagation();
+      const d = poDeals().find(x => dealKey(x) === edit.dataset.gedit);
+      if (!d) return;
+      const it = d.po;
+      const ans = prompt(`Amount of ${it.project} (${it.company}) expected this FY, in ₹ Lakhs.\n` +
+        `Open balance ₹${fmtNum(it.balance)}L${it.override != null ? ` · currently set to ₹${fmtNum(it.override)}L${it.overrideBy ? ' by ' + it.overrideBy : ''}` : ''}.\n` +
+        `Saved for everyone. Leave blank to go back to the full balance.`, it.override != null ? it.override : '');
+      if (ans == null) return;
+      const v = parseAns(ans);
+      let by = ''; try { by = localStorage.getItem('mp-note-author') || ''; } catch {}
+      const res = String(ans).trim() === '' || isNaN(v) || v <= 0
+        ? await apiFetch(`/api/po-override?key=${encodeURIComponent(it.key)}`, { method: 'DELETE' })
+        : await apiFetch('/api/po-override', { method: 'PUT', body: JSON.stringify({ key: it.key, amount: v, by }) });
+      if (!res) return;
+      if (!res.ok) {
+        const j = await res.json().catch(() => ({}));
+        alert('Could not save the PO amount: ' + (j.error || res.status) +
+          (/po_overrides/.test(j.error || '') ? '\n\nRun the po_overrides block in supabase_schema.sql.' : ''));
+        return;
+      }
+      await loadPOData(true);
       return;
     }
     if (edit) {

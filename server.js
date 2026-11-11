@@ -368,9 +368,45 @@ app.post('/api/sync', requireAuth, async (req, res) => {
 const PO_SHEET_ID = process.env.PO_SHEET_ID || '1sxHMxejRHIjUqPYgj5UxCVxz9ljrVA69jSxaiOxE3d4';
 const PO_GID      = process.env.PO_GID || '595361791';
 let _poCache = null;
+const poKey = it => `${it.company}|${it.project}|${it.po}`;
+
+// Shared partial amounts ("expect ₹10L of this PO this FY"), stored per PO
+// so everyone sees the same figure. Never cached: edits must show at once.
+async function withPOOverrides(payload) {
+  const { data, error } = await supabase.from('po_overrides').select('po_key, amount, updated_by, updated_at');
+  const map = Object.fromEntries((data || []).map(o => [o.po_key, o]));
+  return {
+    ...payload,
+    overridesError: error ? error.message : null,
+    items: payload.items.map(it => {
+      const o = map[poKey(it)];
+      return { ...it, key: poKey(it), override: o ? Number(o.amount) : null,
+               overrideBy: o?.updated_by || null, overrideAt: o?.updated_at || null };
+    }),
+  };
+}
+
+app.put('/api/po-override', requireAuth, async (req, res) => {
+  const key = String(req.body?.key || '').trim();
+  const amount = Number(req.body?.amount);
+  const by = String(req.body?.by || '').trim().slice(0, 60) || null;
+  if (!key || !(amount > 0)) return res.status(400).json({ error: 'key and a positive amount are required' });
+  const { error } = await supabase.from('po_overrides')
+    .upsert({ po_key: key, amount, updated_by: by, updated_at: new Date().toISOString() });
+  if (error) return res.status(500).json({ error: error.message });
+  res.json({ ok: true });
+});
+
+app.delete('/api/po-override', requireAuth, async (req, res) => {
+  const key = String(req.query.key || '').trim();
+  if (!key) return res.status(400).json({ error: 'key is required' });
+  const { error } = await supabase.from('po_overrides').delete().eq('po_key', key);
+  if (error) return res.status(500).json({ error: error.message });
+  res.json({ ok: true });
+});
 app.get('/api/po', requireAuth, async (req, res) => {
   try {
-    if (_poCache && Date.now() - _poCache.at < 60 * 1000 && !req.query.fresh) return res.json(_poCache.payload);
+    if (_poCache && Date.now() - _poCache.at < 60 * 1000 && !req.query.fresh) return res.json(await withPOOverrides(_poCache.payload));
     const r = await fetch(`https://docs.google.com/spreadsheets/d/${PO_SHEET_ID}/export?format=csv&gid=${PO_GID}`);
     const text = await r.text();
     if (!r.ok || text.trim().startsWith('<')) throw new Error('PO sheet is not accessible — enable link sharing (Anyone with the link → Viewer)');
@@ -411,7 +447,7 @@ app.get('/api/po', requireAuth, async (req, res) => {
     }
     const payload = { items, sheetUrl: `https://docs.google.com/spreadsheets/d/${PO_SHEET_ID}/edit?gid=${PO_GID}`, fetchedAt: new Date().toISOString() };
     _poCache = { at: Date.now(), payload };
-    res.json(payload);
+    res.json(await withPOOverrides(payload));
   } catch (err) {
     res.status(502).json({ error: err.message });
   }

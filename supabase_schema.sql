@@ -81,3 +81,21 @@ CREATE POLICY "notes write"  ON proposal_notes FOR INSERT WITH CHECK (true);
 CREATE POLICY "notes delete" ON proposal_notes FOR DELETE USING (true);
 -- Make the API see the new table immediately.
 NOTIFY pgrst, 'reload schema';
+
+-- Path to Target: shared partial amounts per open PO (company|project|PO no).
+CREATE TABLE IF NOT EXISTS po_overrides (
+  po_key     TEXT PRIMARY KEY,
+  amount     NUMERIC NOT NULL,
+  updated_by TEXT,
+  updated_at TIMESTAMPTZ DEFAULT NOW()
+);
+ALTER TABLE po_overrides ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS "po read"   ON po_overrides;
+DROP POLICY IF EXISTS "po write"  ON po_overrides;
+DROP POLICY IF EXISTS "po update" ON po_overrides;
+DROP POLICY IF EXISTS "po delete" ON po_overrides;
+CREATE POLICY "po read"   ON po_overrides FOR SELECT USING (true);
+CREATE POLICY "po write"  ON po_overrides FOR INSERT WITH CHECK (true);
+CREATE POLICY "po update" ON po_overrides FOR UPDATE USING (true) WITH CHECK (true);
+CREATE POLICY "po delete" ON po_overrides FOR DELETE USING (true);
+NOTIFY pgrst, 'reload schema';
