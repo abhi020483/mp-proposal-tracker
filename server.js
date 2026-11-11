@@ -362,6 +362,61 @@ app.post('/api/sync', requireAuth, async (req, res) => {
   }
 });
 
+// ─── Open PO balances (Path to Target "additional business") ────────────────
+// Reads the PO register sheet; returns every line with an open BALANCE > 0,
+// converted from ₹ to ₹ Lakhs. Columns are found by header name.
+const PO_SHEET_ID = process.env.PO_SHEET_ID || '1sxHMxejRHIjUqPYgj5UxCVxz9ljrVA69jSxaiOxE3d4';
+const PO_GID      = process.env.PO_GID || '595361791';
+let _poCache = null;
+app.get('/api/po', requireAuth, async (req, res) => {
+  try {
+    if (_poCache && Date.now() - _poCache.at < 60 * 1000 && !req.query.fresh) return res.json(_poCache.payload);
+    const r = await fetch(`https://docs.google.com/spreadsheets/d/${PO_SHEET_ID}/export?format=csv&gid=${PO_GID}`);
+    const text = await r.text();
+    if (!r.ok || text.trim().startsWith('<')) throw new Error('PO sheet is not accessible — enable link sharing (Anyone with the link → Viewer)');
+    // Cells contain line breaks inside quotes, so parse the whole file, not per line.
+    const rows = []; let row = [], cur = '', q = false;
+    for (let i = 0; i < text.length; i++) {
+      const ch = text[i];
+      if (q) {
+        if (ch === '"' && text[i + 1] === '"') { cur += '"'; i++; }
+        else if (ch === '"') q = false;
+        else cur += ch;
+      } else if (ch === '"') q = true;
+      else if (ch === ',') { row.push(cur.trim()); cur = ''; }
+      else if (ch === '\n' || ch === '\r') {
+        if (ch === '\r' && text[i + 1] === '\n') i++;
+        row.push(cur.trim()); rows.push(row); row = []; cur = '';
+      } else cur += ch;
+    }
+    if (cur || row.length) { row.push(cur.trim()); rows.push(row); }
+    const hi = rows.findIndex(r => r.some(c => /company/i.test(c)) && r.some(c => /^balance/i.test(c)));
+    if (hi < 0) throw new Error('Could not find the Company / BALANCE header row in the PO sheet');
+    const H = rows[hi].map(h => h.toLowerCase());
+    const col = (...t) => H.findIndex(h => t.some(x => h.includes(x)));
+    const ci = { co: col('company'), pr: col('project'), po: col('purchase order no', 'po no'),
+                 dt: col('purchase order date', 'po date'), poc: col('poc'), open: col('opening'),
+                 type: H.findIndex(h => h === 'type'), bal: H.findIndex(h => h.startsWith('balance')) };
+    const money = v => { const n = parseFloat(String(v || '').replace(/[^0-9.\-]/g, '')); return isNaN(n) ? null : n; };
+    const items = [];
+    for (const r of rows.slice(hi + 1)) {
+      const co = (r[ci.co] || '').trim(), pr = (r[ci.pr] || '').trim();
+      const bal = money(r[ci.bal]);
+      if (!co || bal == null || bal <= 0) continue;
+      items.push({
+        company: co, project: pr || '—', po: (r[ci.po] || '').replace(/\s+/g, ' ').trim(),
+        date: (r[ci.dt] || '').trim(), type: ci.type >= 0 ? (r[ci.type] || '').trim() : '',
+        opening: +((money(r[ci.open]) || 0) / 1e5).toFixed(2), balance: +(bal / 1e5).toFixed(2),
+      });
+    }
+    const payload = { items, sheetUrl: `https://docs.google.com/spreadsheets/d/${PO_SHEET_ID}/edit?gid=${PO_GID}`, fetchedAt: new Date().toISOString() };
+    _poCache = { at: Date.now(), payload };
+    res.json(payload);
+  } catch (err) {
+    res.status(502).json({ error: err.message });
+  }
+});
+
 // Inflow log — first-seen dates for the "proposals logged per month" analysis.
 app.get('/api/inflow', requireAuth, async (req, res) => {
   const { data, error } = await supabase

@@ -1607,6 +1607,7 @@ function wireSales() {
 const GAME_TIERS = [
   { type: 'invoiced', label: 'Invoiced — not yet in MIS', color: 'var(--invoiced)', prob: 1 },
   { type: 'won',      label: 'Closed won — not yet in MIS', color: 'var(--wonplan)', prob: 1 },
+  { type: 'po',       label: 'Open PO balance — POs in hand, to be billed', color: 'var(--po)', prob: 1 },
   { type: 'super', label: 'Super hot', color: 'var(--super)', prob: 0.9 },
   { type: 'hot',   label: 'Hot',       color: 'var(--hot)',   prob: 0.7 },
   { type: 'warm',  label: 'Warm',      color: 'var(--warm)',  prob: 0.4 },
@@ -1650,12 +1651,38 @@ function wonDeals() {
   return state.deals.filter(d => d.status === 'won')
     .map(d => ({ ...d, type: 'won', _origType: d.type, closure_text: d.closure_text || 'closed won' }));
 }
+// Open PO balances from the PO register sheet: business already contracted,
+// still to be billed. Item-wise, picked by hand (and ✎ for a partial amount).
+let poData = null, poError = null, _poLoading = false;
+async function loadPOData(fresh = false) {
+  if (_poLoading) return;
+  _poLoading = true;
+  try {
+    const res = await apiFetch(`/api/po${fresh ? '?fresh=1' : ''}`);
+    if (!res) return;
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.error || `HTTP ${res.status}`);
+    poData = data; poError = null;
+  } catch (e) {
+    poError = e.message;
+  } finally {
+    _poLoading = false;
+  }
+  if (state.tab === 'game') render();
+}
+function poDeals() {
+  return (poData?.items || []).map(it => ({
+    _key: `po|${it.company}|${it.project}|${it.po}`, po: it, type: 'po',
+    company: it.company, deliverable: it.project, _val: it.balance,
+    closure_text: it.po ? `PO ${it.po}` : 'PO', status: null,
+  }));
+}
 function gamePool() {
-  return [...customDeals(), ...wonDeals(), ...state.deals.filter(d =>
+  return [...customDeals(), ...wonDeals(), ...poDeals(), ...state.deals.filter(d =>
     GAME_TIERS.some(t => t.type === d.type) && d.status !== 'won' && d.status !== 'lost')];
 }
 // Order in the plan: invoiced blocks, then wins, then pipeline by value.
-const planRank = d => d.custom ? 2 : d.type === 'won' ? 1 : 0;
+const planRank = d => d.custom ? 3 : d.type === 'won' ? 2 : d.type === 'po' ? 1 : 0;
 // Value used in the plan: an MP override if set, else the sheet value.
 function gameVal(d) {
   if (d.custom) return d.custom.value;
@@ -1665,7 +1692,7 @@ function gameVal(d) {
 // Where a deal's expected closure (col K) falls relative to this FY.
 function gameFY(d) {
   if (d.custom) return customStale(d.custom) ? 'stale' : 'in';
-  if (d.type === 'won') return 'in'; // already closed — no closure date needed
+  if (d.type === 'won' || d.type === 'po') return 'in'; // contracted — no closure date needed
   const now = new Date();
   const fyStart = now.getMonth() >= 3 ? now.getFullYear() : now.getFullYear() - 1;
   const cd = parseClosureDate(d.closure_text);
@@ -1718,6 +1745,7 @@ function viewGame() {
   if (!state.gameLoaded) {
     state.gameCommit = gameLoad('mp-game-v1');
     state.gameAssume = gameLoad('mp-game-fy-v1');
+    if (!poData && !poError) loadPOData();
     state.gameCustom = gameCustomLoad();
     if (state.gameCustom == null) {
       // First visit: pre-create the Sept '26 invoicing block (₹124L) unless
@@ -1847,20 +1875,23 @@ function viewGame() {
   </div>`;
 
   // ── What the in-FY pipeline could do (largest tickets first) ──
-  const priced = inFY.filter(d => !d.custom && d.type !== 'won' && gameVal(d) > 0).sort((a, b) => gameVal(b) - gameVal(a));
+  const priced = inFY.filter(d => !d.custom && d.type !== 'won' && d.type !== 'po' && gameVal(d) > 0).sort((a, b) => gameVal(b) - gameVal(a));
   let acc = booked, need = -1;
   priced.forEach((d, i) => { acc += gameVal(d); if (need < 0 && acc >= target) need = i + 1; });
   const fullTotal = acc;
-  const tbd = inFY.filter(d => !d.custom && d.type !== 'won' && !(gameVal(d) > 0)).length;
+  const tbd = inFY.filter(d => !d.custom && d.type !== 'won' && d.type !== 'po' && !(gameVal(d) > 0)).length;
   const noDatePriced = noDate.filter(d => d._val > 0);
   const noDateVal = noDatePriced.reduce((s, d) => s + d._val, 0);
 
   const staleCustoms = pool.filter(d => d.custom && gameFY(d) === 'stale');
+  const poAll = pool.filter(d => d.type === 'po'), poIn = picked.filter(d => d.type === 'po');
+  const poNote = poAll.length ? `Open PO balances: <strong>₹${fmtNum(poAll.reduce((x, d) => x + d._val, 0))}L across ${poAll.length} POs</strong> still to be billed${poIn.length ? ` — ₹${fmtNum(poIn.reduce((x, d) => x + gameVal(d), 0))}L of it (${poIn.length}) is in this plan` : ' — none in this plan yet'}. Use ✎ on a PO to count only the part you expect to bill this FY.` : '';
   const bullets = [
     ...(picked.some(d => d.type === 'won') ? [(() => {
       const w = picked.filter(d => d.type === 'won');
       return `${w.length} closed win${w.length !== 1 ? 's' : ''} worth <strong>₹${fmtNum(w.reduce((x, d) => x + gameVal(d), 0))}L</strong> counted on top of booked sales — keep only wins whose revenue is <strong>not already</strong> in the MIS ₹${fmtNum(booked)}L.`;
     })()] : []),
+    ...(poNote ? [poNote] : []),
     ...staleCustoms.map(d => `<strong style="color:var(--hot)">${esc(d.custom.name)} no longer counts</strong> — ${esc(d.custom.month)} is now in the MIS, so it's already inside the booked figure. Remove the block with ×.`),
     `Booked ₹${fmtNum(booked)}L${picked.length ? ` + ${picked.length} project${picked.length !== 1 ? 's' : ''} worth ₹${fmtNum(added)}L` : ''} = <strong>₹${fmtNum(total)}L, ${Math.round(pct)}% of ${scen.label}</strong>.`,
     gap > 0
@@ -1902,6 +1933,12 @@ function viewGame() {
     const isInv = t.type === 'invoiced';
     const ds = (isInv ? pool.filter(d => d.custom) : inFY.filter(d => d.type === t.type))
       .sort((a, b) => gameVal(b) - gameVal(a));
+    if (t.type === 'po' && !ds.length) {
+      return `<div class="game-tier"><div class="game-tier__head">
+        <span class="ddot" style="background:${t.color};display:inline-block;margin-right:6px"></span>${t.label}
+        <button class="mpick" data-gact="posync" style="margin-left:auto">↻ Sync POs</button></div>
+        <div class="muted" style="font-size:12px">${poError ? `<span style="color:var(--hot)">PO sheet unavailable: ${esc(poError)}</span>` : _poLoading || !poData ? 'Loading open PO balances…' : 'No open PO balances in the sheet.'}</div></div>`;
+    }
     if (!ds.length && !isInv) return '';
     const inVal = ds.filter(d => dealKey(d) in state.gameCommit).reduce((s, d) => s + gameVal(d), 0);
     return `<div class="game-tier">
@@ -1912,6 +1949,11 @@ function viewGame() {
           ? `<button class="mpick" data-gact="cnew" style="margin-left:auto">+ New block</button>`
           : t.type === 'won'
             ? `<span class="muted-inline" style="margin-left:auto">pick only wins not yet in the MIS booked figure</span>`
+          : t.type === 'po'
+            ? `<span style="margin-left:auto;display:inline-flex;gap:6px;align-items:center">
+                 ${poData?.sheetUrl ? `<a class="mpick" style="text-decoration:none" href="${poData.sheetUrl}" target="_blank" rel="noopener">↗ PO sheet</a>` : ''}
+                 <button class="mpick" data-gact="posync">↻ Sync POs</button>
+                 <button class="mpick" data-gact="tier" data-gtier="po">+ add all</button></span>`
             : `<button class="mpick" data-gact="tier" data-gtier="${t.type}" style="margin-left:auto">+ add all</button>`}
       </div>
       <div class="game-tray">${ds.length
@@ -2100,6 +2142,10 @@ function wireGame() {
     if (!act) return;
     // Bulk actions only ever use projects dated within this FY.
     const inFY = gamePool().filter(d => gameFY(d) === 'in');
+    if (act.dataset.gact === 'posync') {
+      poError = null; poData = null; render(); loadPOData(true);
+      return;
+    }
     if (act.dataset.gact === 'cnew') {
       const now = new Date();
       const name = (prompt('Name for this block (e.g. "Oct \'26 invoicing"):', `${MON3[now.getMonth()]} '${String(now.getFullYear()).slice(2)} invoicing`) || '').trim();
@@ -2151,7 +2197,7 @@ function wireGame() {
       const target = (SALES_SCENARIOS[state.salesScenario] || SALES_SCENARIOS.base).total;
       let run = salesData.months.filter(m => m.actual != null).reduce((s, m) => s + m.actual, 0)
         + gamePool().filter(d => dealKey(d) in state.gameCommit && gameCounts(d)).reduce((s, d) => s + gameVal(d), 0);
-      for (const d of inFY.filter(d => d.type !== 'won' && !(dealKey(d) in state.gameCommit) && gameVal(d) > 0)
+      for (const d of inFY.filter(d => d.type !== 'won' && d.type !== 'po' && !(dealKey(d) in state.gameCommit) && gameVal(d) > 0)
                           .sort((a, b) => gameVal(b) - gameVal(a))) {
         if (run >= target) break;
         state.gameCommit[dealKey(d)] = null;
@@ -3034,6 +3080,7 @@ async function doSync() {
     updateSyncPill();
     await loadData();
     loadSalesData(true); // keep Sales / Path to Target on the latest MIS too
+    if (poData || poError) loadPOData(true); // and the open PO balances
     if (data.cold_skipped) alert(data.message); // surface partial-sync notice
   } catch (err) {
     alert('Sync failed: ' + err.message); // [D-6] state.deals untouched on failure
