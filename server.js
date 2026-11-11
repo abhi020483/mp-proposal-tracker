@@ -453,6 +453,32 @@ app.get('/api/po', requireAuth, async (req, res) => {
   }
 });
 
+// ─── BD account assignments ─────────────────────────────────────────────────
+// The BD dashboard keeps its account master (owner BD, hero, MNC, potential)
+// as an ACCOUNTS array in its page, not in its cloud store, so read it from
+// the deployed page. Cached for an hour; served stale if the page is down.
+const BD_DASH_URL = process.env.BD_DASH_URL || 'https://alphamed-bd-dashboard.onrender.com/AlphaMed_BD_Dashboard_v2.html';
+let _bdAccCache = null;
+app.get('/api/bd-accounts', requireAuth, async (req, res) => {
+  try {
+    if (_bdAccCache && Date.now() - _bdAccCache.at < 60 * 60 * 1000 && !req.query.fresh) return res.json(_bdAccCache.payload);
+    const r = await fetch(BD_DASH_URL);
+    if (!r.ok) throw new Error(`BD dashboard page HTTP ${r.status}`);
+    const html = await r.text();
+    const m = html.match(/ACCOUNTS\s*=\s*(\[[\s\S]*?\]);/);
+    if (!m) throw new Error('Account list not found in the BD dashboard page');
+    const accounts = JSON.parse(m[1]).map(a => ({
+      name: a.name, bd: a.bd, hero: !!a.hero, mnc: !!a.mnc, potential: a.pot || null,
+    }));
+    const payload = { accounts, fetchedAt: new Date().toISOString() };
+    _bdAccCache = { at: Date.now(), payload };
+    res.json(payload);
+  } catch (err) {
+    if (_bdAccCache) return res.json({ ..._bdAccCache.payload, stale: err.message });
+    res.status(502).json({ error: err.message });
+  }
+});
+
 // Inflow log — first-seen dates for the "proposals logged per month" analysis.
 app.get('/api/inflow', requireAuth, async (req, res) => {
   const { data, error } = await supabase

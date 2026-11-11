@@ -2293,6 +2293,103 @@ function tplBDStrip(stats) {
      <span class="ins-stat__sub">${s.sub || ''}</span></div>`).join('')}</div>`;
 }
 
+// Account master from the BD dashboard (owner BD, hero, MNC, potential).
+let bdAccData = null, bdAccError = null, _bdAccLoading = false;
+async function loadBDAccounts() {
+  if (_bdAccLoading) return;
+  _bdAccLoading = true;
+  try {
+    const res = await apiFetch('/api/bd-accounts');
+    if (!res) return;
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.error || `HTTP ${res.status}`);
+    bdAccData = data; bdAccError = null;
+  } catch (e) { bdAccError = e.message; }
+  finally { _bdAccLoading = false; }
+  if (state.tab === 'bdteam') render();
+}
+
+// Meeting/deal account names are free text ("DRL Hyd", "Bayer In"): map them
+// to the account master via the dashboard's aliases, then exact, then prefix
+// match — trying the BD's own accounts first.
+const accNorm = s => String(s || '').toLowerCase().replace(/[^a-z0-9]/g, '');
+function accMatch(raw, own, all, aliases) {
+  const alias = aliases[String(raw || '').toLowerCase().trim()];
+  const n = accNorm(alias || raw);
+  if (!n) return null;
+  for (const list of [own, all]) {
+    const ex = list.find(a => accNorm(a.name) === n);
+    if (ex) return ex;
+  }
+  if (n.length < 4) return null;
+  for (const list of [own, all]) {
+    const px = list.filter(a => { const m = accNorm(a.name); return m.startsWith(n) || n.startsWith(m); });
+    if (px.length === 1) return px[0];
+  }
+  return null;
+}
+
+function tplBDAccounts(bds, meetings, deals) {
+  if (!bdAccData) {
+    if (!bdAccError) loadBDAccounts();
+    return `<div class="chart-card"><div class="chart-card__title">Accounts by BD</div>
+      <div class="muted" style="font-size:12px">${bdAccError ? `<span style="color:var(--hot)">Account list unavailable: ${esc(bdAccError)}</span>` : 'Loading account list…'}</div></div>`;
+  }
+  const all = bdAccData.accounts, aliases = bdData.accountAliases || {};
+  const now = new Date();
+  const fyStart = now.getMonth() >= 3 ? now.getFullYear() : now.getFullYear() - 1;
+  const fyFrom = `${fyStart}-04`, fyTo = `${fyStart + 1}-03-31`;
+  const inFY = s => s && s >= fyFrom && s <= fyTo;
+  const owners = [...new Set([...bds, ...all.map(a => a.bd)])]
+    .filter(bd => !(bdData.bdInactive || []).includes(bd));
+
+  const cards = owners.map(bd => {
+    const own = all.filter(a => a.bd === bd);
+    const stat = new Map(own.map(a => [a.name, { a, meet: 0, last: null, val: 0 }]));
+    const other = new Map();
+    for (const m of meetings.filter(m => m.bd === bd && inFY(m.date) && (m.type || 'Physical').toLowerCase() !== 'call')) {
+      const hit = accMatch(m.account, own, all, aliases);
+      if (hit && stat.has(hit.name)) {
+        const st = stat.get(hit.name); st.meet++; if (!st.last || m.date > st.last) st.last = m.date;
+      } else {
+        const k = hit ? hit.name : (m.account || '—');
+        other.set(k, (other.get(k) || 0) + 1);
+      }
+    }
+    let otherVal = 0;
+    for (const d of deals.filter(d => d.bd === bd && inFY(d.meetDate) && Number(d.value) > 0)) {
+      const hit = accMatch(d.account, own, all, aliases);
+      if (hit && stat.has(hit.name)) stat.get(hit.name).val += Number(d.value);
+      else otherVal += Number(d.value);
+    }
+    const rows = [...stat.values()].sort((x, y) => y.meet - x.meet || y.val - x.val || x.a.name.localeCompare(y.a.name));
+    const engaged = rows.filter(r => r.meet > 0).length;
+    const val = rows.reduce((s, r) => s + r.val, 0);
+    const lastTxt = d => d ? new Date(d).toLocaleDateString('en-IN', { day: '2-digit', month: 'short' }) : '';
+    return `<div class="acc-card">
+      <div class="acc-card__head">
+        <span class="legend-dot" style="background:${bdColor(bd)}"></span>
+        <strong>${esc(bd)}</strong>
+        <span class="muted-inline">${own.length} account${own.length !== 1 ? 's' : ''} · ${engaged} met this FY${val ? ` · ₹${fmtNum(val)}L proposals on own accounts` : ''}</span>
+      </div>
+      ${own.length ? `<div class="acc-list">${rows.map(r => `<div class="acc-chip ${r.meet ? '' : 'is-idle'}"
+          title="${esc(r.a.name)}${r.a.potential ? ' · ' + esc(r.a.potential) + ' potential' : ''}${r.last ? ' · last met ' + lastTxt(r.last) : ' · no meeting this FY'}">
+          <span class="acc-chip__name">${r.a.hero ? '★ ' : ''}${esc(r.a.name)}${r.a.mnc ? ' <em>MNC</em>' : ''}</span>
+          <span class="acc-chip__num">${r.meet ? `${r.meet} mtg${r.meet !== 1 ? 's' : ''}` : 'not met'}${r.val ? ` · ₹${fmtNum(r.val)}L` : ''}</span>
+        </div>`).join('')}</div>` : '<div class="muted" style="font-size:12px">No accounts assigned in the BD dashboard.</div>'}
+      ${other.size || otherVal ? `<div class="acc-other">Outside own accounts${otherVal ? ` — ₹${fmtNum(otherVal)}L proposals` : ''}${other.size ? `: ${[...other.entries()].sort((a, b) => b[1] - a[1]).map(([k, n]) => `${esc(k)} (${n} mtg${n !== 1 ? 's' : ''})`).join(' · ')}` : ''}</div>` : ''}
+    </div>`;
+  }).join('');
+
+  const idle = all.filter(a => !(bdData.bdInactive || []).includes(a.bd)).length;
+  return `<div class="chart-card" style="margin-top:12px">
+    <div class="chart-card__title">Accounts by BD
+      <span class="muted-inline">${idle} accounts from the BD dashboard's account master · ★ hero account · meetings & proposal value this FY · grey = not met yet</span>
+    </div>
+    <div class="acc-grid">${cards}</div>
+  </div>`;
+}
+
 function viewBDTeam() {
   if (!bdData) {
     if (!bdError) { loadBDData(); return `<div class="loading-state">Loading BD dashboard data…</div>`; }
@@ -2443,7 +2540,8 @@ function viewBDTeam() {
       ${trend}
       ${countDonut('Meeting outcomes', outcomeEntries, 'out')}
       ${countDonut('Meetings by account', accountEntries, 'acc')}
-    </div>`;
+    </div>
+    ${tplBDAccounts(bds, meetings, deals)}`;
 }
 
 // Compact BD section for the Insights tab.

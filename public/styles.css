@@ -1263,3 +1263,21 @@ input  { font-family: inherit; }
   .note-form { grid-template-columns: 1fr; }
 }
 .game-block__val small { font-size: 10px; font-weight: 500; opacity: .75; }
+
+/* ─── BD Team: accounts by BD ───────────────────────────── */
+.acc-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(340px, 1fr)); gap: 12px; }
+.acc-card { border: 1px solid var(--line); border-radius: var(--radius); padding: 11px 13px; background: var(--surface); }
+.acc-card__head { display: flex; align-items: center; gap: 8px; margin-bottom: 9px; font-size: 13.5px; flex-wrap: wrap; }
+.acc-card__head .muted-inline { font-size: 11px; color: var(--ink-3); }
+.acc-list { display: flex; flex-wrap: wrap; gap: 6px; }
+.acc-chip {
+  display: flex; flex-direction: column; gap: 1px;
+  border: 1px solid var(--line); border-radius: 6px; padding: 5px 9px; background: var(--surface-2);
+}
+.acc-chip__name { font-size: 12px; font-weight: 600; color: var(--ink); }
+.acc-chip__name em { font-style: normal; font-size: 9px; font-weight: 700; color: var(--shared); margin-left: 3px; letter-spacing: .04em; }
+.acc-chip__num { font-family: var(--font-mono); font-size: 10.5px; color: var(--ink-2); }
+.acc-chip.is-idle { background: transparent; border-style: dashed; }
+.acc-chip.is-idle .acc-chip__name { color: var(--ink-3); }
+.acc-chip.is-idle .acc-chip__num { color: var(--hot); }
+.acc-other { margin-top: 8px; font-size: 11.5px; color: var(--ink-3); }
