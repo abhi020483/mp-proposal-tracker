@@ -2713,6 +2713,18 @@ function tplInflowCard() {
 
 const COMPETITION_URL = 'https://vercel-deploy-nu-smoky-43.vercel.app';
 const OUTREACH_URL    = 'https://alphamed-team-outreach.vercel.app';
+const SEO_URL         = 'https://onealphamed-seo-dashboard.vercel.app/';
+
+function viewSEO() {
+  return `
+    <div class="section-head" style="margin-top:0">
+      <h2>SEO</h2>
+      <a class="sort-toggle" style="text-decoration:none" href="${SEO_URL}" target="_blank" rel="noopener"
+         title="Open in its own tab">↗ Open full screen</a>
+    </div>
+    <iframe class="competition-frame" src="${SEO_URL}"
+      title="OneAlphaMed SEO Dashboard" loading="lazy"></iframe>`;
+}
 
 function viewOutreach() {
   return `
@@ -2786,7 +2798,7 @@ function render() {
 
   // The filter bar acts on proposal data — hide it on tabs where it has no
   // effect: Sales (MIS feed), Insights (full-book analysis), BD Team (BD feed).
-  const noFilterTabs = ['sales', 'game', 'insights', 'bdteam', 'competition', 'outreach'];
+  const noFilterTabs = ['sales', 'game', 'insights', 'bdteam', 'competition', 'outreach', 'seo'];
   document.getElementById('filterbar').style.display = noFilterTabs.includes(state.tab) ? 'none' : '';
 
   // Chip states
@@ -2810,6 +2822,7 @@ function render() {
     case 'game':     main.innerHTML = viewGame();             break;
     case 'competition': main.innerHTML = viewCompetition();     break;
     case 'outreach': main.innerHTML = viewOutreach();         break;
+    case 'seo':      main.innerHTML = viewSEO();              break;
     default:         main.innerHTML = viewOverview(active);
   }
 
