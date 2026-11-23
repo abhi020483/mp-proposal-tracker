@@ -479,6 +479,43 @@ app.get('/api/bd-accounts', requireAuth, async (req, res) => {
   }
 });
 
+// ─── Newsletter metrics (Pharma Pulse email outreach) ───────────────────────
+// Per-edition email metrics (sent, opens, clicks, replies). The feed URL is
+// read from the NEWSLETTER_API_URL env var. Cached for 30 minutes; served
+// stale if the feed goes down.
+let _nlCache = null;
+const nlNum = v => (v == null || v === '' || isNaN(Number(v)) ? null : Number(v));
+app.get('/api/newsletter', requireAuth, async (req, res) => {
+  const url = process.env.NEWSLETTER_API_URL;
+  if (!url) return res.status(503).json({ error: 'Newsletter feed not configured (NEWSLETTER_API_URL is not set on the server)' });
+  try {
+    if (_nlCache && Date.now() - _nlCache.at < 30 * 60 * 1000 && !req.query.fresh) return res.json(_nlCache.payload);
+    const r = await fetch(url, { signal: AbortSignal.timeout(15000) });
+    if (!r.ok) throw new Error(`Newsletter feed HTTP ${r.status}`);
+    const d = await r.json();
+    if (!Array.isArray(d.campaigns)) throw new Error('Unexpected newsletter feed format');
+    const campaigns = d.campaigns
+      .filter(c => c && c.sentDate)
+      .map(c => ({
+        name: String(c.campaignName || '').replace(/^Newsletter_\s*/i, '').trim(),
+        audience: c.audience || '—',
+        sentDate: c.sentDate,
+        sent: nlNum(c.sent), delivered: nlNum(c.delivered), opened: nlNum(c.opened),
+        clicked: nlNum(c.clicked), replies: nlNum(c.replies),
+        unsubscribed: nlNum(c.unsubscribed), bounced: nlNum(c.bounced),
+        openRate: nlNum(c.openRate), clickRate: nlNum(c.clickRate),
+      }))
+      .sort((a, b) => a.sentDate.localeCompare(b.sentDate));
+    const payload = { campaigns, sourceUpdated: d.lastUpdated || null, fetchedAt: new Date().toISOString() };
+    _nlCache = { at: Date.now(), payload };
+    res.json(payload);
+  } catch (err) {
+    const msg = err.name === 'TimeoutError' ? 'Newsletter feed timed out' : err.message;
+    if (_nlCache) return res.json({ ..._nlCache.payload, stale: msg });
+    res.status(502).json({ error: msg });
+  }
+});
+
 // Inflow log — first-seen dates for the "proposals logged per month" analysis.
 app.get('/api/inflow', requireAuth, async (req, res) => {
   const { data, error } = await supabase

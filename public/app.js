@@ -2715,6 +2715,207 @@ const COMPETITION_URL = 'https://vercel-deploy-nu-smoky-43.vercel.app';
 const OUTREACH_URL    = 'https://alphamed-team-outreach.vercel.app';
 const SEO_URL         = 'https://onealphamed-seo-dashboard.vercel.app/';
 
+// ─── Newsletter (Pharma Pulse email outreach metrics) ───────────────────────
+// Per-edition email metrics from the newsletter analytics feed, via
+// /api/newsletter. One audience at a time (Marketing = brand teams, the
+// primary readers; Doctors).
+let nlData = null, nlError = null, _nlLoading = false, nlAudience = 'Marketing';
+async function loadNewsletter(fresh = false) {
+  if (_nlLoading) return;
+  _nlLoading = true;
+  try {
+    const res = await apiFetch(`/api/newsletter${fresh ? '?fresh=1' : ''}`);
+    if (!res) return;
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.error || `HTTP ${res.status}`);
+    nlData = data; nlError = null;
+  } catch (e) {
+    // Keep showing the last data we have; flag it as stale instead.
+    if (nlData) nlData = { ...nlData, stale: e.message }; else nlError = e.message;
+  } finally { _nlLoading = false; }
+  if (state.tab === 'newsletter') render();
+}
+
+const nlPct  = v => v == null ? '—' : `${fmtNum(Math.round(v * 10) / 10)}%`;
+const nlAvg  = (rows, f) => { const v = rows.map(r => r[f]).filter(x => x != null); return v.length ? v.reduce((s, x) => s + x, 0) / v.length : null; };
+const nlSum  = (rows, f) => rows.reduce((s, r) => s + (r[f] || 0), 0);
+const nlIST  = (iso, o) => new Date(iso).toLocaleString('en-IN', { timeZone: 'Asia/Kolkata', ...o });
+const nlDate = iso => nlIST(iso, { day: '2-digit', month: 'short', year: '2-digit' });
+
+function nlDelta(v, base) {
+  if (v == null || base == null) return '';
+  const d = Math.round((v - base) * 10) / 10;
+  return `<span style="color:${d >= 0 ? 'var(--won)' : 'var(--hot)'}">${d >= 0 ? '▲' : '▼'} ${fmtNum(Math.abs(d))} pts</span> vs prior-8 avg ${nlPct(base)}`;
+}
+
+function nlBars(title, sub, rows, f, avg) {
+  const max = Math.max(...rows.map(r => r[f] || 0), avg || 0, 0.1);
+  return `<div class="chart-card">
+    <div class="chart-card__title">${title} <span class="muted-inline">${sub}</span></div>
+    <div class="hist">${rows.map(r => {
+      const v = r[f] || 0;
+      return `<div class="hist-col" title="${esc(r.name)} · sent ${nlDate(r.sentDate)}">
+        <div class="hist-col__value">${nlPct(r[f])}</div>
+        <div class="hist-col__stack" style="height:120px">
+          ${avg != null ? `<div class="hist-col__target" style="bottom:${Math.min(116, avg / max * 116)}px"></div>` : ''}
+          <div class="hist-col__bar" style="height:${Math.max(3, v / max * 116)}px;background:${avg != null && v >= avg ? 'var(--won)' : 'var(--hot)'}"></div>
+        </div>
+        <div class="hist-col__label">${nlIST(r.sentDate, { day: '2-digit', month: 'short' })}</div>
+      </div>`;
+    }).join('')}</div>
+  </div>`;
+}
+
+function viewNewsletter() {
+  if (!nlData) {
+    if (!nlError) { loadNewsletter(); return `<div class="loading-state">Loading newsletter metrics…</div>`; }
+    return `<div class="empty" style="color:var(--hot)">Newsletter metrics unavailable: ${esc(nlError)}
+      <br><button class="mpick" style="margin-top:10px" onclick="nlError=null;render()">Retry</button></div>`;
+  }
+  const all  = nlData.campaigns || [];
+  const auds = [...new Set(all.map(c => c.audience))]
+    .sort((a, b) => (b === 'Marketing') - (a === 'Marketing') || a.localeCompare(b));
+  if (!auds.includes(nlAudience) && auds.length) nlAudience = auds.includes('Marketing') ? 'Marketing' : auds[0];
+  const rows = all.filter(c => c.audience === nlAudience);
+
+  const audPills = `<span class="mpick-group">${auds.map(a =>
+    `<button class="mpick ${a === nlAudience ? 'is-active' : ''}" data-nl-aud="${esc(a)}">${esc(a)}</button>`).join('')}</span>`;
+  const updated = nlData.sourceUpdated || nlData.fetchedAt;
+  const head = `<div class="section-head" style="margin-top:0">
+      <h2>Newsletter — Pharma Pulse</h2>
+      <span style="display:inline-flex;align-items:center;gap:10px;flex-wrap:wrap">
+        <span class="muted">Metrics updated ${updated ? nlIST(updated, { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' }) : '—'}</span>
+        ${audPills}
+        <button id="nl-refresh" class="sort-toggle" type="button" title="Re-pull the newsletter metrics">↻ Refresh</button>
+      </span>
+    </div>
+    ${nlData.stale ? `<div class="empty" style="color:var(--hot);padding:10px;margin-bottom:12px">Live feed unavailable (${esc(nlData.stale)}) — showing the last metrics pulled.</div>` : ''}`;
+  if (!rows.length) return head + `<div class="empty">No editions for this audience yet.</div>`;
+
+  const last   = rows[rows.length - 1];
+  const prior  = rows.slice(-9, -1);
+  const recent = rows.slice(-12);
+  const early  = (Date.now() - new Date(last.sentDate)) / 36e5 < 36;
+  const best   = rows.reduce((b, r) => ((r.clickRate ?? -1) > (b.clickRate ?? -1) ? r : b), rows[0]);
+  const avgOpen = nlAvg(rows, 'openRate'), avgClick = nlAvg(rows, 'clickRate');
+
+  const kpis = `<div class="kpis">
+    <div class="kpi">
+      <div class="kpi__label">Last edition — open rate${early ? ' (early read)' : ''}</div>
+      <div class="kpi__value">${nlPct(last.openRate)}</div>
+      <div class="kpi__delta">${nlDelta(last.openRate, nlAvg(prior, 'openRate'))}</div>
+    </div>
+    <div class="kpi">
+      <div class="kpi__label">Last edition — click rate</div>
+      <div class="kpi__value">${nlPct(last.clickRate)}</div>
+      <div class="kpi__delta"><strong>${last.clicked ?? '—'}</strong> clicks · ${nlDelta(last.clickRate, nlAvg(prior, 'clickRate'))}</div>
+    </div>
+    <div class="kpi">
+      <div class="kpi__label">Last edition — replies</div>
+      <div class="kpi__value">${last.replies ?? '—'}</div>
+      <div class="kpi__delta">${esc(last.name)} · ${nlIST(last.sentDate, { weekday: 'short' })} ${nlDate(last.sentDate)}</div>
+    </div>
+    <div class="kpi">
+      <div class="kpi__label">Editions sent</div>
+      <div class="kpi__value">${rows.length}</div>
+      <div class="kpi__delta"><strong>${nlSum(rows, 'sent').toLocaleString('en-IN')}</strong> emails since ${nlDate(rows[0].sentDate)}</div>
+    </div>
+    <div class="kpi">
+      <div class="kpi__label">Avg open rate</div>
+      <div class="kpi__value">${nlPct(avgOpen)}</div>
+      <div class="kpi__delta">per edition, all-time</div>
+    </div>
+    <div class="kpi">
+      <div class="kpi__label">Avg click rate</div>
+      <div class="kpi__value">${nlPct(avgClick)}</div>
+      <div class="kpi__delta">per edition, all-time</div>
+    </div>
+    <div class="kpi kpi--won">
+      <div class="kpi__label">Best click rate</div>
+      <div class="kpi__value">${nlPct(best.clickRate)}</div>
+      <div class="kpi__delta">${esc(best.name)}</div>
+    </div>
+  </div>`;
+
+  const charts = `<div style="display:flex;flex-direction:column;gap:12px;margin-top:12px">
+    ${nlBars('Open rate — last 12 editions', 'green = at or above the all-time average · dash = average', recent, 'openRate', avgOpen)}
+    ${nlBars('Click rate — last 12 editions', 'green = at or above the all-time average · dash = average', recent, 'clickRate', avgClick)}
+  </div>`;
+
+  // Send day (IST) vs performance
+  const byDay = new Map();
+  for (const r of rows) {
+    const d = nlIST(r.sentDate, { weekday: 'long' });
+    if (!byDay.has(d)) byDay.set(d, []);
+    byDay.get(d).push(r);
+  }
+  const dayStats = [...byDay.entries()].sort((a, b) => b[1].length - a[1].length).map(([d, rs]) =>
+    `<div class="ins-stat"><span class="ins-stat__label">${d} sends</span>
+      <span class="ins-stat__val">${nlPct(nlAvg(rs, 'openRate'))} open</span>
+      <span class="ins-stat__sub">${nlPct(nlAvg(rs, 'clickRate'))} click · ${rs.length} edition${rs.length !== 1 ? 's' : ''}</span></div>`).join('');
+  const days = `<div class="chart-card" style="margin-top:12px">
+    <div class="chart-card__title">Send day vs performance <span class="muted-inline">average per edition, India time</span></div>
+    <div class="ins-stats">${dayStats}</div></div>`;
+
+  // Month on month
+  const byMonth = new Map();
+  for (const r of rows) {
+    const k = nlIST(r.sentDate, { year: 'numeric', month: '2-digit' });
+    if (!byMonth.has(k)) byMonth.set(k, []);
+    byMonth.get(k).push(r);
+  }
+  const monthly = `<div class="chart-card" style="margin-top:12px">
+    <div class="chart-card__title">Month on month</div>
+    <div class="table-wrap"><table class="data-table">
+      <thead><tr><th>Month</th><th style="text-align:right">Editions</th><th style="text-align:right">Emails sent</th>
+        <th style="text-align:right">Avg open</th><th style="text-align:right">Avg click</th><th style="text-align:right">Clicks</th>
+        <th style="text-align:right">Replies</th><th style="text-align:right">Unsubscribes</th><th style="text-align:right">Bounces</th></tr></thead>
+      <tbody>${[...byMonth.values()].reverse().map(rs => `<tr>
+        <td class="mono" style="font-size:12px">${nlIST(rs[0].sentDate, { month: 'short', year: 'numeric' })}</td>
+        <td class="num">${rs.length}</td>
+        <td class="num">${nlSum(rs, 'sent').toLocaleString('en-IN')}</td>
+        <td class="num">${nlPct(nlAvg(rs, 'openRate'))}</td>
+        <td class="num">${nlPct(nlAvg(rs, 'clickRate'))}</td>
+        <td class="num">${nlSum(rs, 'clicked')}</td>
+        <td class="num">${nlSum(rs, 'replies')}</td>
+        <td class="num">${nlSum(rs, 'unsubscribed')}</td>
+        <td class="num">${nlSum(rs, 'bounced')}</td>
+      </tr>`).join('')}</tbody>
+    </table></div></div>`;
+
+  // Every edition, newest first
+  const editions = `<div class="chart-card" style="margin-top:12px">
+    <div class="chart-card__title">All editions — ${esc(nlAudience)} <span class="muted-inline">★ best click rate</span></div>
+    <div class="table-wrap"><table class="data-table">
+      <thead><tr><th>Sent (IST)</th><th>Edition</th><th style="text-align:right">Sent</th>
+        <th style="text-align:right">Open rate</th><th style="text-align:right">Click rate</th><th style="text-align:right">Clicks</th>
+        <th style="text-align:right">Replies</th><th style="text-align:right">Unsub</th><th style="text-align:right">Bounced</th></tr></thead>
+      <tbody>${[...rows].reverse().map(r => `<tr>
+        <td class="mono" style="font-size:12px;white-space:nowrap">${nlIST(r.sentDate, { weekday: 'short' })} ${nlDate(r.sentDate)}, ${nlIST(r.sentDate, { hour: '2-digit', minute: '2-digit' })}</td>
+        <td>${r === best ? '★ ' : ''}${esc(r.name)}</td>
+        <td class="num">${r.sent != null ? r.sent.toLocaleString('en-IN') : '—'}</td>
+        <td class="num">${nlPct(r.openRate)}</td>
+        <td class="num">${nlPct(r.clickRate)}</td>
+        <td class="num">${r.clicked ?? '—'}</td>
+        <td class="num">${r.replies ?? '—'}</td>
+        <td class="num">${r.unsubscribed ?? '—'}</td>
+        <td class="num">${r.bounced ?? '—'}</td>
+      </tr>`).join('')}</tbody>
+    </table></div></div>`;
+
+  return head + kpis + charts + days + monthly + editions;
+}
+
+function wireNewsletter() {
+  document.querySelectorAll('[data-nl-aud]').forEach(b =>
+    b.addEventListener('click', () => { nlAudience = b.dataset.nlAud; render(); }));
+  const btn = document.getElementById('nl-refresh');
+  if (btn) btn.addEventListener('click', async () => {
+    btn.disabled = true; btn.textContent = '↻ Refreshing…';
+    await loadNewsletter(true);
+  });
+}
+
 function viewSEO() {
   return `
     <div class="section-head" style="margin-top:0">
@@ -2798,7 +2999,7 @@ function render() {
 
   // The filter bar acts on proposal data — hide it on tabs where it has no
   // effect: Sales (MIS feed), Insights (full-book analysis), BD Team (BD feed).
-  const noFilterTabs = ['sales', 'game', 'insights', 'bdteam', 'competition', 'outreach', 'seo'];
+  const noFilterTabs = ['sales', 'game', 'insights', 'bdteam', 'competition', 'outreach', 'seo', 'newsletter'];
   document.getElementById('filterbar').style.display = noFilterTabs.includes(state.tab) ? 'none' : '';
 
   // Chip states
@@ -2823,6 +3024,7 @@ function render() {
     case 'competition': main.innerHTML = viewCompetition();     break;
     case 'outreach': main.innerHTML = viewOutreach();         break;
     case 'seo':      main.innerHTML = viewSEO();              break;
+    case 'newsletter': main.innerHTML = viewNewsletter();     break;
     default:         main.innerHTML = viewOverview(active);
   }
 
@@ -2848,6 +3050,7 @@ function wirePerRender() {
   wireBDSync();
   wireSales();
   wireGame();
+  wireNewsletter();
 }
 
 function wireBDSync() {

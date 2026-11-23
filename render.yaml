@@ -11,5 +11,7 @@ services:
         sync: false
       - key: APP_PASSWORD
         sync: false
+      - key: NEWSLETTER_API_URL
+        sync: false
       - key: NODE_ENV
         value: production
