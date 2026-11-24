@@ -1,0 +1,2609 @@
+{
+ "asOf": "24 Nov 2026",
+ "note": "Story-type tags per Pharma Pulse edition, from the drafts/designed issues in Drive. Categories only; no metrics.",
+ "campaigns": {
+  "Newsletter": "8th to 14th Nov, 2025",
+  "Newsletter 2": "15th to 21st Nov, 2025",
+  "22-28 Nov": "22nd to 28th Nov, 2025",
+  "News letter 5 - 12th dec": "5th to 12th December 2025",
+  "Newsletter 13th - 19th dec": "13th -19th Dec 2025",
+  "20-26 December 2025": "20th -26th Dec 2025",
+  "27 Dec 25-2 Jan 2026": "27th Dec 2025 -2nd Jan 2026",
+  "3rd - 9th January 2026": "3rd -9th Jan 2026",
+  "10th - 16th January 2026": "10th-16th Jan 2026",
+  "17th - 23rd January 2026": "17th -23rd Jan 2026",
+  "Newsletter 24th - 30th": "24th-30th Jan 2026",
+  "31st Jan \u2013 6th Feb 2026": "31st Jan - 6th Feb 2026",
+  "7th \u201313th Feb 2026": "7th - 13th Feb 2026",
+  "14th \u201320th Feb 2026": "14th - 20th Feb 2026",
+  "21th \u201327th Feb 2026": "21st - 27th Feb 2026",
+  "28th Feb \u20136th Mar 2026": "28th Feb - 6th March 2026",
+  "7th March\u201313th Mar 2026": "7th - 13th March 2026",
+  "21th March\u201327th Mar 2026": "21th - 27th March 2026",
+  "4th\u201310th April 2026": "4th - 10th April 2026",
+  "11th\u201317th April 2026": "11th - 17th April 2026",
+  "02nd\u201308th May 2026": "2nd- 8th May 2026",
+  "09th \u2013 15th  May 2026": "9th- 15th May 2026",
+  "16th \u2013 22nd May 2026": "16th- 22nd May 2026",
+  "23rd \u2013 29th May 2026": "23rd- 29th May 2026",
+  "30th May \u2013 5th June 2026": "30th May-5th June 2026",
+  "4th \u2013 10th July 2026": "4th -10th July 2026",
+  "18th \u2013 24th July 2026": "18th July 2026 to 24th July 2026",
+  "25th \u2013 31st July 2026": "25th -31th July 2026",
+  "8th \u2013 14th August 2026": "8th August 2026 to 14th August 2026",
+  "15th \u2013 21st August 2026": "15th August 2026 to 21st August 2026",
+  "22nd \u2013 28th August 2026": "22nd August 2026 to 28th August 2026",
+  "29th Aug \u2013 4th Sept 2026": "29th August 2026 to 4th September 2026",
+  "5th-11th September 2026": "5th to 11th September 2026",
+  "12th to 18th September 2026": "12th to 18th September 2026",
+  "26th Sept to 02nd Oct 2026": "26th Sept to 02nd Oct 2026",
+  "03rd to 09th October 2026": "03rd to 09th Oct 2026",
+  "10th to 16th October 2026": "10th to 16th October 2026",
+  "17th \u2013 23rd October 2026": "17th to 23rd October 2026",
+  "24th to 30th October 2026": "24th to 30th October 2026",
+  "31st October to 06th November 2026": "31st October to 06th November 2026",
+  "07th to 13th November 2026": "07th to 13th November 2026",
+  "14th to 20th November 2026": "14th to 20th November 2026",
+  "21st to 27th November 2026": "21st to 27th November 2026",
+  "14th March\u201320th Mar 2026": "14th March 2026 to 20th March 2026",
+  "20th March\u201327th Mar 2026": "21th - 27th March 2026"
+ },
+ "editions": [
+  {
+   "dates": "28th November to 4th December 2026",
+   "items": [
+    {
+     "section": "Top 3 Headlines",
+     "category": "india_regulation"
+    },
+    {
+     "section": "Top 3 Headlines",
+     "category": "india_pricing"
+    },
+    {
+     "section": "Top 3 Headlines",
+     "category": "business_deals"
+    },
+    {
+     "section": "Campaign Crushes",
+     "category": "brand_campaign"
+    },
+    {
+     "section": "Campaign Crushes",
+     "category": "india_regulation"
+    },
+    {
+     "section": "Digital Decode",
+     "category": "market_data"
+    },
+    {
+     "section": "Digital Decode",
+     "category": "business_deals"
+    },
+    {
+     "section": "Digital Decode",
+     "category": "digital_ai_marketing"
+    },
+    {
+     "section": "Digital Decode",
+     "category": "digital_ai_marketing"
+    },
+    {
+     "section": "Patient Power Plays",
+     "category": "india_regulation"
+    },
+    {
+     "section": "Patient Power Plays",
+     "category": "product_launch_approval"
+    },
+    {
+     "section": "India Insider",
+     "category": "india_regulation"
+    },
+    {
+     "section": "India Insider",
+     "category": "us_global_policy"
+    }
+   ]
+  },
+  {
+   "dates": "21st to 27th November 2026",
+   "items": [
+    {
+     "section": "Top 3 Headlines",
+     "category": "india_pricing"
+    },
+    {
+     "section": "Top 3 Headlines",
+     "category": "india_regulation"
+    },
+    {
+     "section": "Top 3 Headlines",
+     "category": "market_data"
+    },
+    {
+     "section": "Campaign Crushes",
+     "category": "india_regulation"
+    },
+    {
+     "section": "Campaign Crushes",
+     "category": "product_launch_approval"
+    },
+    {
+     "section": "Digital Decode",
+     "category": "digital_ai_marketing"
+    },
+    {
+     "section": "Digital Decode",
+     "category": "india_regulation"
+    },
+    {
+     "section": "India Insider",
+     "category": "product_launch_approval"
+    },
+    {
+     "section": "India Insider",
+     "category": "market_data"
+    }
+   ]
+  },
+  {
+   "dates": "14th to 20th November 2026",
+   "items": [
+    {
+     "section": "Top 3 Headlines",
+     "category": "india_regulation"
+    },
+    {
+     "section": "Top 3 Headlines",
+     "category": "us_global_policy"
+    },
+    {
+     "section": "Top 3 Headlines",
+     "category": "product_launch_approval"
+    },
+    {
+     "section": "Campaign Crushes",
+     "category": "product_launch_approval"
+    },
+    {
+     "section": "Digital Decode",
+     "category": "digital_ai_marketing"
+    },
+    {
+     "section": "Digital Decode",
+     "category": "digital_ai_marketing"
+    },
+    {
+     "section": "Patient Power Plays",
+     "category": "india_pricing"
+    },
+    {
+     "section": "Patient Power Plays",
+     "category": "india_pricing"
+    },
+    {
+     "section": "Patient Power Plays",
+     "category": "india_regulation"
+    },
+    {
+     "section": "India Insider",
+     "category": "business_deals"
+    },
+    {
+     "section": "India Insider",
+     "category": "business_deals"
+    },
+    {
+     "section": "India Insider",
+     "category": "business_deals"
+    },
+    {
+     "section": "India Insider",
+     "category": "financial_markets"
+    }
+   ]
+  },
+  {
+   "dates": "07th to 13th November 2026",
+   "items": [
+    {
+     "section": "Top 3 Headlines",
+     "category": "india_pricing"
+    },
+    {
+     "section": "Top 3 Headlines",
+     "category": "india_regulation"
+    },
+    {
+     "section": "Top 3 Headlines",
+     "category": "product_launch_approval"
+    },
+    {
+     "section": "Campaign Crushes",
+     "category": "brand_campaign"
+    },
+    {
+     "section": "Campaign Crushes",
+     "category": "product_launch_approval"
+    },
+    {
+     "section": "Digital Decode",
+     "category": "india_regulation"
+    },
+    {
+     "section": "Patient Power Plays",
+     "category": "india_pricing"
+    },
+    {
+     "section": "Patient Power Plays",
+     "category": "product_launch_approval"
+    },
+    {
+     "section": "Patient Power Plays",
+     "category": "patient_access"
+    },
+    {
+     "section": "India Insider",
+     "category": "india_pricing"
+    },
+    {
+     "section": "India Insider",
+     "category": "market_data"
+    }
+   ]
+  },
+  {
+   "dates": "31st October to 06th November 2026",
+   "items": [
+    {
+     "section": "Top 3 Headlines",
+     "category": "india_regulation"
+    },
+    {
+     "section": "Top 3 Headlines",
+     "category": "product_launch_approval"
+    },
+    {
+     "section": "Top 3 Headlines",
+     "category": "financial_markets"
+    },
+    {
+     "section": "Campaign Crushes",
+     "category": "financial_markets"
+    },
+    {
+     "section": "Digital Decode",
+     "category": "digital_ai_marketing"
+    },
+    {
+     "section": "Patient Power Plays",
+     "category": "india_pricing"
+    },
+    {
+     "section": "Patient Power Plays",
+     "category": "product_launch_approval"
+    },
+    {
+     "section": "Patient Power Plays",
+     "category": "product_launch_approval"
+    },
+    {
+     "section": "Patient Power Plays",
+     "category": "product_launch_approval"
+    },
+    {
+     "section": "India Insider",
+     "category": "india_regulation"
+    }
+   ]
+  },
+  {
+   "dates": "24th to 30th October 2026",
+   "items": [
+    {
+     "section": "Top 3 Headlines",
+     "category": "financial_markets"
+    },
+    {
+     "section": "Top 3 Headlines",
+     "category": "business_deals"
+    },
+    {
+     "section": "Top 3 Headlines",
+     "category": "india_pricing"
+    },
+    {
+     "section": "Campaign Crushes",
+     "category": "market_data"
+    },
+    {
+     "section": "Campaign Crushes",
+     "category": "business_deals"
+    },
+    {
+     "section": "Digital Decode",
+     "category": "other"
+    },
+    {
+     "section": "Digital Decode",
+     "category": "digital_ai_marketing"
+    },
+    {
+     "section": "Patient Power Plays",
+     "category": "india_pricing"
+    },
+    {
+     "section": "India Insider",
+     "category": "us_global_policy"
+    },
+    {
+     "section": "India Insider",
+     "category": "india_regulation"
+    },
+    {
+     "section": "India Insider",
+     "category": "business_deals"
+    },
+    {
+     "section": "India Insider",
+     "category": "india_pricing"
+    }
+   ]
+  },
+  {
+   "dates": "17th to 23rd October 2026",
+   "items": [
+    {
+     "section": "Top 3 Headlines",
+     "category": "india_regulation"
+    },
+    {
+     "section": "Top 3 Headlines",
+     "category": "india_pricing"
+    },
+    {
+     "section": "Top 3 Headlines",
+     "category": "other"
+    },
+    {
+     "section": "Campaign Crushes",
+     "category": "other"
+    },
+    {
+     "section": "Digital Decode",
+     "category": "business_deals"
+    },
+    {
+     "section": "Digital Decode",
+     "category": "digital_ai_marketing"
+    },
+    {
+     "section": "Patient Power Plays",
+     "category": "india_regulation"
+    },
+    {
+     "section": "Patient Power Plays",
+     "category": "patient_access"
+    },
+    {
+     "section": "India Insider",
+     "category": "business_deals"
+    },
+    {
+     "section": "India Insider",
+     "category": "financial_markets"
+    },
+    {
+     "section": "India Insider",
+     "category": "india_regulation"
+    }
+   ]
+  },
+  {
+   "dates": "10th to 16th October 2026",
+   "items": [
+    {
+     "section": "Top 3 Headlines",
+     "category": "us_global_policy"
+    },
+    {
+     "section": "Top 3 Headlines",
+     "category": "clinical_rnd"
+    },
+    {
+     "section": "Top 3 Headlines",
+     "category": "clinical_rnd"
+    },
+    {
+     "section": "Top 3 Headlines",
+     "category": "clinical_rnd"
+    },
+    {
+     "section": "Top 3 Headlines",
+     "category": "other"
+    },
+    {
+     "section": "Campaign Crushes",
+     "category": "india_regulation"
+    },
+    {
+     "section": "Campaign Crushes",
+     "category": "india_regulation"
+    },
+    {
+     "section": "Campaign Crushes",
+     "category": "product_launch_approval"
+    },
+    {
+     "section": "Digital Decode",
+     "category": "digital_ai_marketing"
+    },
+    {
+     "section": "Patient Power Plays",
+     "category": "india_pricing"
+    },
+    {
+     "section": "Patient Power Plays",
+     "category": "business_deals"
+    },
+    {
+     "section": "Patient Power Plays",
+     "category": "india_regulation"
+    },
+    {
+     "section": "Patient Power Plays",
+     "category": "clinical_rnd"
+    },
+    {
+     "section": "Patient Power Plays",
+     "category": "us_global_policy"
+    },
+    {
+     "section": "Patient Power Plays",
+     "category": "india_regulation"
+    },
+    {
+     "section": "Patient Power Plays",
+     "category": "product_launch_approval"
+    },
+    {
+     "section": "India Insider",
+     "category": "other"
+    },
+    {
+     "section": "India Insider",
+     "category": "other"
+    },
+    {
+     "section": "India Insider",
+     "category": "other"
+    },
+    {
+     "section": "India Insider",
+     "category": "other"
+    },
+    {
+     "section": "India Insider",
+     "category": "product_launch_approval"
+    },
+    {
+     "section": "India Insider",
+     "category": "business_deals"
+    },
+    {
+     "section": "India Insider",
+     "category": "other"
+    }
+   ]
+  },
+  {
+   "dates": "03rd to 09th Oct 2026",
+   "items": [
+    {
+     "section": "Top 3 Headlines",
+     "category": "us_global_policy"
+    },
+    {
+     "section": "Top 3 Headlines",
+     "category": "business_deals"
+    },
+    {
+     "section": "Top 3 Headlines",
+     "category": "market_data"
+    },
+    {
+     "section": "Campaign Crushes",
+     "category": "brand_campaign"
+    },
+    {
+     "section": "Campaign Crushes",
+     "category": "brand_campaign"
+    },
+    {
+     "section": "Digital Decode",
+     "category": "digital_ai_marketing"
+    },
+    {
+     "section": "Patient Power Plays",
+     "category": "india_pricing"
+    },
+    {
+     "section": "Patient Power Plays",
+     "category": "india_regulation"
+    },
+    {
+     "section": "Patient Power Plays",
+     "category": "business_deals"
+    },
+    {
+     "section": "Patient Power Plays",
+     "category": "india_regulation"
+    },
+    {
+     "section": "India Insider",
+     "category": "us_global_policy"
+    },
+    {
+     "section": "India Insider",
+     "category": "india_regulation"
+    }
+   ]
+  },
+  {
+   "dates": "26th Sept to 02nd Oct 2026",
+   "items": [
+    {
+     "section": "Top 3 Headlines",
+     "category": "financial_markets"
+    },
+    {
+     "section": "Top 3 Headlines",
+     "category": "clinical_rnd"
+    },
+    {
+     "section": "Top 3 Headlines",
+     "category": "india_regulation"
+    },
+    {
+     "section": "Campaign Crushes",
+     "category": "other"
+    },
+    {
+     "section": "Campaign Crushes",
+     "category": "digital_ai_marketing"
+    },
+    {
+     "section": "Campaign Crushes",
+     "category": "us_global_policy"
+    },
+    {
+     "section": "Digital Decode",
+     "category": "digital_ai_marketing"
+    },
+    {
+     "section": "Digital Decode",
+     "category": "digital_ai_marketing"
+    },
+    {
+     "section": "Patient Power Plays",
+     "category": "patient_access"
+    },
+    {
+     "section": "Patient Power Plays",
+     "category": "clinical_rnd"
+    },
+    {
+     "section": "Patient Power Plays",
+     "category": "product_launch_approval"
+    },
+    {
+     "section": "India Insider",
+     "category": "other"
+    },
+    {
+     "section": "India Insider",
+     "category": "market_data"
+    },
+    {
+     "section": "India Insider",
+     "category": "market_data"
+    },
+    {
+     "section": "India Insider",
+     "category": "product_launch_approval"
+    }
+   ]
+  },
+  {
+   "dates": "12th to 18th September 2026",
+   "items": [
+    {
+     "section": "Top 3 Headlines",
+     "category": "us_global_policy"
+    },
+    {
+     "section": "Top 3 Headlines",
+     "category": "business_deals"
+    },
+    {
+     "section": "Top 3 Headlines",
+     "category": "clinical_rnd"
+    },
+    {
+     "section": "Campaign Crushes",
+     "category": "brand_campaign"
+    },
+    {
+     "section": "Digital Decode",
+     "category": "digital_ai_marketing"
+    },
+    {
+     "section": "Digital Decode",
+     "category": "onealphamed_own"
+    },
+    {
+     "section": "Patient Power Plays",
+     "category": "clinical_rnd"
+    },
+    {
+     "section": "Patient Power Plays",
+     "category": "product_launch_approval"
+    },
+    {
+     "section": "Patient Power Plays",
+     "category": "business_deals"
+    },
+    {
+     "section": "India Insider",
+     "category": "india_pricing"
+    },
+    {
+     "section": "India Insider",
+     "category": "other"
+    },
+    {
+     "section": "India Insider",
+     "category": "india_regulation"
+    }
+   ]
+  },
+  {
+   "dates": "5th to 11th September 2026",
+   "items": [
+    {
+     "section": "Top 3 Headlines",
+     "category": "us_global_policy"
+    },
+    {
+     "section": "Top 3 Headlines",
+     "category": "market_data"
+    },
+    {
+     "section": "Top 3 Headlines",
+     "category": "india_regulation"
+    },
+    {
+     "section": "Campaign Crushes",
+     "category": "clinical_rnd"
+    },
+    {
+     "section": "Digital Decode",
+     "category": "financial_markets"
+    },
+    {
+     "section": "Patient Power Plays",
+     "category": "product_launch_approval"
+    },
+    {
+     "section": "Patient Power Plays",
+     "category": "india_regulation"
+    },
+    {
+     "section": "Patient Power Plays",
+     "category": "india_pricing"
+    },
+    {
+     "section": "India Insider",
+     "category": "us_global_policy"
+    },
+    {
+     "section": "India Insider",
+     "category": "other"
+    }
+   ]
+  },
+  {
+   "dates": "29th August 2026 to 4th September 2026",
+   "items": [
+    {
+     "section": "Top 3 Headlines",
+     "category": "onealphamed_own"
+    },
+    {
+     "section": "Top 3 Headlines",
+     "category": "india_regulation"
+    },
+    {
+     "section": "Top 3 Headlines",
+     "category": "business_deals"
+    },
+    {
+     "section": "Campaign Crushes",
+     "category": "product_launch_approval"
+    },
+    {
+     "section": "Campaign Crushes",
+     "category": "us_global_policy"
+    },
+    {
+     "section": "Campaign Crushes",
+     "category": "product_launch_approval"
+    },
+    {
+     "section": "Digital Decode",
+     "category": "digital_ai_marketing"
+    },
+    {
+     "section": "Patient Power Plays",
+     "category": "clinical_rnd"
+    },
+    {
+     "section": "Patient Power Plays",
+     "category": "india_regulation"
+    },
+    {
+     "section": "India Insider",
+     "category": "business_deals"
+    },
+    {
+     "section": "India Insider",
+     "category": "financial_markets"
+    }
+   ]
+  },
+  {
+   "dates": "22nd August 2026 to 28th August 2026",
+   "items": [
+    {
+     "section": "Top 3 Headlines",
+     "category": "us_global_policy"
+    },
+    {
+     "section": "Top 3 Headlines",
+     "category": "other"
+    },
+    {
+     "section": "Top 3 Headlines",
+     "category": "other"
+    },
+    {
+     "section": "Campaign Crushes",
+     "category": "business_deals"
+    },
+    {
+     "section": "Digital Decode",
+     "category": "digital_ai_marketing"
+    },
+    {
+     "section": "Patient Power Plays",
+     "category": "india_regulation"
+    },
+    {
+     "section": "Patient Power Plays",
+     "category": "india_regulation"
+    },
+    {
+     "section": "Patient Power Plays",
+     "category": "india_regulation"
+    },
+    {
+     "section": "India Insider",
+     "category": "india_regulation"
+    },
+    {
+     "section": "India Insider",
+     "category": "other"
+    }
+   ]
+  },
+  {
+   "dates": "15th August 2026 to 21st August 2026",
+   "items": [
+    {
+     "section": "Top 3 Headlines",
+     "category": "india_regulation"
+    },
+    {
+     "section": "Top 3 Headlines",
+     "category": "india_pricing"
+    },
+    {
+     "section": "Top 3 Headlines",
+     "category": "india_regulation"
+    },
+    {
+     "section": "Campaign Crushes",
+     "category": "market_data"
+    },
+    {
+     "section": "Digital Decode",
+     "category": "digital_ai_marketing"
+    },
+    {
+     "section": "Patient Power Plays",
+     "category": "india_regulation"
+    },
+    {
+     "section": "Patient Power Plays",
+     "category": "india_regulation"
+    },
+    {
+     "section": "India Insider",
+     "category": "us_global_policy"
+    },
+    {
+     "section": "India Insider",
+     "category": "market_data"
+    },
+    {
+     "section": "India Insider",
+     "category": "india_regulation"
+    }
+   ]
+  },
+  {
+   "dates": "8th August 2026 to 14th August 2026",
+   "items": [
+    {
+     "section": "Top 3 Headlines",
+     "category": "india_regulation"
+    },
+    {
+     "section": "Top 3 Headlines",
+     "category": "business_deals"
+    },
+    {
+     "section": "Top 3 Headlines",
+     "category": "financial_markets"
+    },
+    {
+     "section": "Top 3 Headlines",
+     "category": "other"
+    },
+    {
+     "section": "Top 3 Headlines",
+     "category": "other"
+    },
+    {
+     "section": "Campaign Crushes",
+     "category": "product_launch_approval"
+    },
+    {
+     "section": "Campaign Crushes",
+     "category": "product_launch_approval"
+    },
+    {
+     "section": "Campaign Crushes",
+     "category": "product_launch_approval"
+    },
+    {
+     "section": "Digital Decode",
+     "category": "digital_ai_marketing"
+    },
+    {
+     "section": "Patient Power Plays",
+     "category": "product_launch_approval"
+    },
+    {
+     "section": "Patient Power Plays",
+     "category": "other"
+    },
+    {
+     "section": "India Insider",
+     "category": "us_global_policy"
+    },
+    {
+     "section": "India Insider",
+     "category": "product_launch_approval"
+    },
+    {
+     "section": "India Insider",
+     "category": "financial_markets"
+    },
+    {
+     "section": "India Insider",
+     "category": "india_pricing"
+    }
+   ]
+  },
+  {
+   "dates": "18th July 2026 to 24th July 2026",
+   "items": [
+    {
+     "section": "Top 3 Headlines",
+     "category": "business_deals"
+    },
+    {
+     "section": "Top 3 Headlines",
+     "category": "business_deals"
+    },
+    {
+     "section": "Top 3 Headlines",
+     "category": "business_deals"
+    },
+    {
+     "section": "Top 3 Headlines",
+     "category": "business_deals"
+    },
+    {
+     "section": "Top 3 Headlines",
+     "category": "india_regulation"
+    },
+    {
+     "section": "Top 3 Headlines",
+     "category": "india_regulation"
+    },
+    {
+     "section": "Campaign Crushes",
+     "category": "other"
+    },
+    {
+     "section": "Campaign Crushes",
+     "category": "clinical_rnd"
+    },
+    {
+     "section": "Campaign Crushes",
+     "category": "financial_markets"
+    },
+    {
+     "section": "Digital Decode",
+     "category": "digital_ai_marketing"
+    },
+    {
+     "section": "Patient Power Plays",
+     "category": "product_launch_approval"
+    },
+    {
+     "section": "Patient Power Plays",
+     "category": "product_launch_approval"
+    },
+    {
+     "section": "Patient Power Plays",
+     "category": "india_pricing"
+    },
+    {
+     "section": "Patient Power Plays",
+     "category": "india_regulation"
+    },
+    {
+     "section": "Patient Power Plays",
+     "category": "india_regulation"
+    },
+    {
+     "section": "India Insider",
+     "category": "india_regulation"
+    },
+    {
+     "section": "India Insider",
+     "category": "business_deals"
+    },
+    {
+     "section": "India Insider",
+     "category": "business_deals"
+    },
+    {
+     "section": "India Insider",
+     "category": "india_regulation"
+    }
+   ]
+  },
+  {
+   "dates": "14th March 2026 to 20th March 2026",
+   "items": [
+    {
+     "section": "Top 3 Headlines",
+     "category": "other"
+    },
+    {
+     "section": "Top 3 Headlines",
+     "category": "market_data"
+    },
+    {
+     "section": "Top 3 Headlines",
+     "category": "us_global_policy"
+    },
+    {
+     "section": "AI Spotlight",
+     "category": "digital_ai_marketing"
+    },
+    {
+     "section": "Campaign Crushes",
+     "category": "other"
+    },
+    {
+     "section": "Digital Decode",
+     "category": "business_deals"
+    },
+    {
+     "section": "Patient Power Plays",
+     "category": "india_regulation"
+    },
+    {
+     "section": "Patient Power Plays",
+     "category": "business_deals"
+    },
+    {
+     "section": "India Insider",
+     "category": "other"
+    },
+    {
+     "section": "India Insider",
+     "category": "us_global_policy"
+    },
+    {
+     "section": "India Insider",
+     "category": "india_pricing"
+    }
+   ]
+  },
+  {
+   "dates": "5th to 12th December 2025",
+   "items": [
+    {
+     "section": "Top 3 Headlines",
+     "category": "product_launch_approval"
+    },
+    {
+     "section": "Top 3 Headlines",
+     "category": "financial_markets"
+    },
+    {
+     "section": "Top 3 Headlines",
+     "category": "us_global_policy"
+    },
+    {
+     "section": "AI Spotlight",
+     "category": "product_launch_approval"
+    },
+    {
+     "section": "AI Spotlight",
+     "category": "product_launch_approval"
+    },
+    {
+     "section": "Campaign Crushes",
+     "category": "financial_markets"
+    },
+    {
+     "section": "Campaign Crushes",
+     "category": "financial_markets"
+    },
+    {
+     "section": "Digital Decode",
+     "category": "patient_access"
+    },
+    {
+     "section": "Digital Decode",
+     "category": "financial_markets"
+    },
+    {
+     "section": "Patient Power Plays",
+     "category": "product_launch_approval"
+    },
+    {
+     "section": "Patient Power Plays",
+     "category": "other"
+    },
+    {
+     "section": "India Insider",
+     "category": "other"
+    },
+    {
+     "section": "India Insider",
+     "category": "other"
+    },
+    {
+     "section": "India Insider",
+     "category": "india_regulation"
+    },
+    {
+     "section": "India Insider",
+     "category": "business_deals"
+    }
+   ]
+  },
+  {
+   "dates": "25th -31th July 2026",
+   "items": [
+    {
+     "section": "Unknown",
+     "category": "business_deals"
+    },
+    {
+     "section": "Unknown",
+     "category": "business_deals"
+    },
+    {
+     "section": "Unknown",
+     "category": "product_launch_approval"
+    },
+    {
+     "section": "Unknown",
+     "category": "brand_campaign"
+    },
+    {
+     "section": "Digital Decode",
+     "category": "digital_ai_marketing"
+    },
+    {
+     "section": "Patient Power Plays",
+     "category": "product_launch_approval"
+    },
+    {
+     "section": "Unknown",
+     "category": "digital_ai_marketing"
+    },
+    {
+     "section": "India Insider",
+     "category": "other"
+    },
+    {
+     "section": "Unknown",
+     "category": "other"
+    },
+    {
+     "section": "Unknown",
+     "category": "other"
+    },
+    {
+     "section": "Unknown",
+     "category": "market_data"
+    }
+   ]
+  },
+  {
+   "dates": "4th -10th July 2026",
+   "items": [
+    {
+     "section": "Unknown",
+     "category": "us_global_policy"
+    },
+    {
+     "section": "Unknown",
+     "category": "us_global_policy"
+    },
+    {
+     "section": "Unknown",
+     "category": "business_deals"
+    },
+    {
+     "section": "Digital Decode",
+     "category": "india_pricing"
+    },
+    {
+     "section": "Unknown",
+     "category": "clinical_rnd"
+    },
+    {
+     "section": "Patient Power Plays",
+     "category": "india_regulation"
+    },
+    {
+     "section": "Unknown",
+     "category": "india_regulation"
+    },
+    {
+     "section": "Unknown",
+     "category": "product_launch_approval"
+    },
+    {
+     "section": "India Insider",
+     "category": "business_deals"
+    },
+    {
+     "section": "Unknown",
+     "category": "financial_markets"
+    }
+   ]
+  },
+  {
+   "dates": "4th - 10th April 2026",
+   "items": [
+    {
+     "section": "Unknown",
+     "category": "other"
+    },
+    {
+     "section": "Unknown",
+     "category": "other"
+    },
+    {
+     "section": "Unknown",
+     "category": "business_deals"
+    },
+    {
+     "section": "Unknown",
+     "category": "digital_ai_marketing"
+    },
+    {
+     "section": "Campaign Crushes",
+     "category": "market_data"
+    },
+    {
+     "section": "Unknown",
+     "category": "financial_markets"
+    },
+    {
+     "section": "Unknown",
+     "category": "product_launch_approval"
+    },
+    {
+     "section": "Patient Power Plays",
+     "category": "india_regulation"
+    },
+    {
+     "section": "Unknown",
+     "category": "india_regulation"
+    },
+    {
+     "section": "India Insider",
+     "category": "other"
+    },
+    {
+     "section": "Unknown",
+     "category": "financial_markets"
+    },
+    {
+     "section": "Unknown",
+     "category": "other"
+    }
+   ]
+  },
+  {
+   "dates": "1st to 7th Nov, 2025",
+   "items": [
+    {
+     "section": "Unknown",
+     "category": "business_deals"
+    },
+    {
+     "section": "Unknown",
+     "category": "other"
+    },
+    {
+     "section": "Unknown",
+     "category": "business_deals"
+    },
+    {
+     "section": "Unknown",
+     "category": "product_launch_approval"
+    },
+    {
+     "section": "Unknown",
+     "category": "clinical_rnd"
+    },
+    {
+     "section": "Unknown",
+     "category": "clinical_rnd"
+    },
+    {
+     "section": "Unknown",
+     "category": "brand_campaign"
+    },
+    {
+     "section": "Unknown",
+     "category": "financial_markets"
+    },
+    {
+     "section": "Unknown",
+     "category": "financial_markets"
+    },
+    {
+     "section": "Unknown",
+     "category": "financial_markets"
+    },
+    {
+     "section": "Unknown",
+     "category": "financial_markets"
+    },
+    {
+     "section": "Digital Decode",
+     "category": "financial_markets"
+    },
+    {
+     "section": "Patient Power Plays",
+     "category": "india_regulation"
+    },
+    {
+     "section": "Patient Power Plays",
+     "category": "india_regulation"
+    },
+    {
+     "section": "Unknown",
+     "category": "other"
+    },
+    {
+     "section": "India Insider",
+     "category": "business_deals"
+    },
+    {
+     "section": "India Insider",
+     "category": "business_deals"
+    },
+    {
+     "section": "Unknown",
+     "category": "us_global_policy"
+    }
+   ]
+  },
+  {
+   "dates": "8th to 14th Nov, 2025",
+   "items": [
+    {
+     "section": "Unknown",
+     "category": "india_regulation"
+    },
+    {
+     "section": "Unknown",
+     "category": "market_data"
+    },
+    {
+     "section": "Unknown",
+     "category": "market_data"
+    },
+    {
+     "section": "Unknown",
+     "category": "clinical_rnd"
+    },
+    {
+     "section": "Campaign Crushes",
+     "category": "brand_campaign"
+    },
+    {
+     "section": "Unknown",
+     "category": "digital_ai_marketing"
+    },
+    {
+     "section": "Unknown",
+     "category": "india_regulation"
+    },
+    {
+     "section": "Unknown",
+     "category": "patient_access"
+    },
+    {
+     "section": "Unknown",
+     "category": "digital_ai_marketing"
+    },
+    {
+     "section": "Unknown",
+     "category": "us_global_policy"
+    },
+    {
+     "section": "Unknown",
+     "category": "us_global_policy"
+    },
+    {
+     "section": "Patient Power Plays",
+     "category": "india_regulation"
+    },
+    {
+     "section": "Unknown",
+     "category": "brand_campaign"
+    },
+    {
+     "section": "Unknown",
+     "category": "digital_ai_marketing"
+    },
+    {
+     "section": "India Insider",
+     "category": "business_deals"
+    },
+    {
+     "section": "Unknown",
+     "category": "us_global_policy"
+    }
+   ]
+  },
+  {
+   "dates": "15th to 21st Nov, 2025",
+   "items": [
+    {
+     "section": "Unknown",
+     "category": "india_pricing"
+    },
+    {
+     "section": "Unknown",
+     "category": "business_deals"
+    },
+    {
+     "section": "Unknown",
+     "category": "financial_markets"
+    },
+    {
+     "section": "Unknown",
+     "category": "product_launch_approval"
+    },
+    {
+     "section": "Top 3 Headlines",
+     "category": "clinical_rnd"
+    },
+    {
+     "section": "Top 3 Headlines",
+     "category": "clinical_rnd"
+    },
+    {
+     "section": "Unknown",
+     "category": "digital_ai_marketing"
+    },
+    {
+     "section": "Unknown",
+     "category": "india_regulation"
+    },
+    {
+     "section": "Unknown",
+     "category": "brand_campaign"
+    },
+    {
+     "section": "Unknown",
+     "category": "brand_campaign"
+    },
+    {
+     "section": "Unknown",
+     "category": "digital_ai_marketing"
+    },
+    {
+     "section": "Unknown",
+     "category": "digital_ai_marketing"
+    },
+    {
+     "section": "Digital Decode",
+     "category": "digital_ai_marketing"
+    },
+    {
+     "section": "Digital Decode",
+     "category": "business_deals"
+    },
+    {
+     "section": "Patient Power Plays",
+     "category": "product_launch_approval"
+    },
+    {
+     "section": "Unknown",
+     "category": "india_regulation"
+    },
+    {
+     "section": "India Insider",
+     "category": "india_regulation"
+    },
+    {
+     "section": "Unknown",
+     "category": "market_data"
+    }
+   ]
+  },
+  {
+   "dates": "22nd to 28th Nov, 2025",
+   "items": [
+    {
+     "section": "Unknown",
+     "category": "product_launch_approval"
+    },
+    {
+     "section": "Unknown",
+     "category": "financial_markets"
+    },
+    {
+     "section": "AI Spotlight",
+     "category": "financial_markets"
+    },
+    {
+     "section": "Unknown",
+     "category": "digital_ai_marketing"
+    },
+    {
+     "section": "Campaign Crushes",
+     "category": "other"
+    },
+    {
+     "section": "Digital Decode",
+     "category": "digital_ai_marketing"
+    },
+    {
+     "section": "Patient Power Plays",
+     "category": "patient_access"
+    },
+    {
+     "section": "India Insider",
+     "category": "other"
+    },
+    {
+     "section": "Unknown",
+     "category": "india_regulation"
+    },
+    {
+     "section": "Unknown",
+     "category": "india_pricing"
+    }
+   ]
+  },
+  {
+   "dates": "29th Nov-5th Dec 2025",
+   "items": [
+    {
+     "section": "Unknown",
+     "category": "clinical_rnd"
+    },
+    {
+     "section": "Unknown",
+     "category": "financial_markets"
+    },
+    {
+     "section": "Unknown",
+     "category": "business_deals"
+    },
+    {
+     "section": "Top 3 Headlines",
+     "category": "product_launch_approval"
+    },
+    {
+     "section": "Unknown",
+     "category": "other"
+    },
+    {
+     "section": "Unknown",
+     "category": "market_data"
+    },
+    {
+     "section": "Digital Decode",
+     "category": "digital_ai_marketing"
+    },
+    {
+     "section": "Unknown",
+     "category": "digital_ai_marketing"
+    },
+    {
+     "section": "Unknown",
+     "category": "brand_campaign"
+    },
+    {
+     "section": "Unknown",
+     "category": "india_regulation"
+    },
+    {
+     "section": "Unknown",
+     "category": "other"
+    },
+    {
+     "section": "Unknown",
+     "category": "other"
+    }
+   ]
+  },
+  {
+   "dates": "13th -19th Dec 2025",
+   "items": [
+    {
+     "section": "Unknown",
+     "category": "market_data"
+    },
+    {
+     "section": "Top 3 Headlines",
+     "category": "market_data"
+    },
+    {
+     "section": "Unknown",
+     "category": "business_deals"
+    },
+    {
+     "section": "Unknown",
+     "category": "business_deals"
+    },
+    {
+     "section": "Digital Decode",
+     "category": "digital_ai_marketing"
+    },
+    {
+     "section": "Unknown",
+     "category": "other"
+    },
+    {
+     "section": "Patient Power Plays",
+     "category": "india_regulation"
+    },
+    {
+     "section": "Unknown",
+     "category": "other"
+    },
+    {
+     "section": "Unknown",
+     "category": "brand_campaign"
+    },
+    {
+     "section": "Unknown",
+     "category": "other"
+    },
+    {
+     "section": "Unknown",
+     "category": "financial_markets"
+    },
+    {
+     "section": "Unknown",
+     "category": "product_launch_approval"
+    }
+   ]
+  },
+  {
+   "dates": "20th -26th Dec 2025",
+   "items": [
+    {
+     "section": "Unknown",
+     "category": "product_launch_approval"
+    },
+    {
+     "section": "Unknown",
+     "category": "india_regulation"
+    },
+    {
+     "section": "Unknown",
+     "category": "financial_markets"
+    },
+    {
+     "section": "Top 3 Headlines",
+     "category": "digital_ai_marketing"
+    },
+    {
+     "section": "Unknown",
+     "category": "product_launch_approval"
+    },
+    {
+     "section": "Unknown",
+     "category": "business_deals"
+    },
+    {
+     "section": "Unknown",
+     "category": "us_global_policy"
+    },
+    {
+     "section": "Patient Power Plays",
+     "category": "india_pricing"
+    },
+    {
+     "section": "Unknown",
+     "category": "other"
+    },
+    {
+     "section": "Unknown",
+     "category": "other"
+    },
+    {
+     "section": "India Insider",
+     "category": "india_regulation"
+    },
+    {
+     "section": "India Insider",
+     "category": "market_data"
+    },
+    {
+     "section": "India Insider",
+     "category": "business_deals"
+    }
+   ]
+  },
+  {
+   "dates": "27th Dec 2025 -2nd Jan 2026",
+   "items": [
+    {
+     "section": "Unknown",
+     "category": "product_launch_approval"
+    },
+    {
+     "section": "Unknown",
+     "category": "product_launch_approval"
+    },
+    {
+     "section": "Unknown",
+     "category": "other"
+    },
+    {
+     "section": "Unknown",
+     "category": "digital_ai_marketing"
+    },
+    {
+     "section": "Unknown",
+     "category": "us_global_policy"
+    },
+    {
+     "section": "Campaign Crushes",
+     "category": "financial_markets"
+    },
+    {
+     "section": "Patient Power Plays",
+     "category": "patient_access"
+    },
+    {
+     "section": "India Insider",
+     "category": "business_deals"
+    },
+    {
+     "section": "Unknown",
+     "category": "business_deals"
+    },
+    {
+     "section": "Unknown",
+     "category": "us_global_policy"
+    }
+   ]
+  },
+  {
+   "dates": "3rd -9th Jan 2026",
+   "items": [
+    {
+     "section": "Unknown",
+     "category": "product_launch_approval"
+    },
+    {
+     "section": "Unknown",
+     "category": "clinical_rnd"
+    },
+    {
+     "section": "Unknown",
+     "category": "market_data"
+    },
+    {
+     "section": "Campaign Crushes",
+     "category": "other"
+    },
+    {
+     "section": "Digital Decode",
+     "category": "product_launch_approval"
+    },
+    {
+     "section": "Patient Power Plays",
+     "category": "india_regulation"
+    },
+    {
+     "section": "Unknown",
+     "category": "product_launch_approval"
+    },
+    {
+     "section": "India Insider",
+     "category": "india_regulation"
+    },
+    {
+     "section": "Unknown",
+     "category": "financial_markets"
+    }
+   ]
+  },
+  {
+   "dates": "10th-16th Jan 2026",
+   "items": [
+    {
+     "section": "Unknown",
+     "category": "business_deals"
+    },
+    {
+     "section": "Unknown",
+     "category": "other"
+    },
+    {
+     "section": "Unknown",
+     "category": "other"
+    },
+    {
+     "section": "Unknown",
+     "category": "market_data"
+    },
+    {
+     "section": "Unknown",
+     "category": "clinical_rnd"
+    },
+    {
+     "section": "Campaign Crushes",
+     "category": "market_data"
+    },
+    {
+     "section": "India Insider",
+     "category": "india_regulation"
+    }
+   ]
+  },
+  {
+   "dates": "17th -23rd Jan 2026",
+   "items": [
+    {
+     "section": "Unknown",
+     "category": "india_regulation"
+    },
+    {
+     "section": "Unknown",
+     "category": "other"
+    },
+    {
+     "section": "Unknown",
+     "category": "digital_ai_marketing"
+    },
+    {
+     "section": "Unknown",
+     "category": "other"
+    },
+    {
+     "section": "Unknown",
+     "category": "product_launch_approval"
+    },
+    {
+     "section": "Unknown",
+     "category": "other"
+    },
+    {
+     "section": "Campaign Crushes",
+     "category": "india_regulation"
+    },
+    {
+     "section": "Unknown",
+     "category": "financial_markets"
+    },
+    {
+     "section": "Unknown",
+     "category": "business_deals"
+    }
+   ]
+  },
+  {
+   "dates": "24th-30th Jan 2026",
+   "items": [
+    {
+     "section": "Unknown",
+     "category": "business_deals"
+    },
+    {
+     "section": "Unknown",
+     "category": "market_data"
+    },
+    {
+     "section": "Unknown",
+     "category": "digital_ai_marketing"
+    },
+    {
+     "section": "Unknown",
+     "category": "digital_ai_marketing"
+    },
+    {
+     "section": "Unknown",
+     "category": "market_data"
+    },
+    {
+     "section": "Unknown",
+     "category": "product_launch_approval"
+    },
+    {
+     "section": "Campaign Crushes",
+     "category": "brand_campaign"
+    },
+    {
+     "section": "Patient Power Plays",
+     "category": "other"
+    },
+    {
+     "section": "India Insider",
+     "category": "financial_markets"
+    },
+    {
+     "section": "Unknown",
+     "category": "other"
+    }
+   ]
+  },
+  {
+   "dates": "31st Jan - 6th Feb 2026",
+   "items": [
+    {
+     "section": "Unknown",
+     "category": "us_global_policy"
+    },
+    {
+     "section": "Unknown",
+     "category": "us_global_policy"
+    },
+    {
+     "section": "Unknown",
+     "category": "digital_ai_marketing"
+    },
+    {
+     "section": "Unknown",
+     "category": "digital_ai_marketing"
+    },
+    {
+     "section": "Unknown",
+     "category": "digital_ai_marketing"
+    },
+    {
+     "section": "Unknown",
+     "category": "product_launch_approval"
+    },
+    {
+     "section": "Unknown",
+     "category": "other"
+    },
+    {
+     "section": "Patient Power Plays",
+     "category": "product_launch_approval"
+    },
+    {
+     "section": "Unknown",
+     "category": "other"
+    },
+    {
+     "section": "Unknown",
+     "category": "financial_markets"
+    },
+    {
+     "section": "Unknown",
+     "category": "business_deals"
+    },
+    {
+     "section": "India Insider",
+     "category": "india_regulation"
+    }
+   ]
+  },
+  {
+   "dates": "7th - 13th Feb 2026",
+   "items": [
+    {
+     "section": "Unknown",
+     "category": "other"
+    },
+    {
+     "section": "Unknown",
+     "category": "us_global_policy"
+    },
+    {
+     "section": "Unknown",
+     "category": "other"
+    },
+    {
+     "section": "Unknown",
+     "category": "us_global_policy"
+    },
+    {
+     "section": "Campaign Crushes",
+     "category": "market_data"
+    },
+    {
+     "section": "Unknown",
+     "category": "india_regulation"
+    },
+    {
+     "section": "Patient Power Plays",
+     "category": "other"
+    },
+    {
+     "section": "Unknown",
+     "category": "us_global_policy"
+    },
+    {
+     "section": "India Insider",
+     "category": "financial_markets"
+    },
+    {
+     "section": "Unknown",
+     "category": "other"
+    },
+    {
+     "section": "Unknown",
+     "category": "business_deals"
+    }
+   ]
+  },
+  {
+   "dates": "14th - 20th Feb 2026",
+   "items": [
+    {
+     "section": "Unknown",
+     "category": "other"
+    },
+    {
+     "section": "Unknown",
+     "category": "clinical_rnd"
+    },
+    {
+     "section": "Unknown",
+     "category": "business_deals"
+    },
+    {
+     "section": "Campaign Crushes",
+     "category": "brand_campaign"
+    },
+    {
+     "section": "Unknown",
+     "category": "brand_campaign"
+    },
+    {
+     "section": "Digital Decode",
+     "category": "digital_ai_marketing"
+    },
+    {
+     "section": "Unknown",
+     "category": "india_regulation"
+    },
+    {
+     "section": "Unknown",
+     "category": "patient_access"
+    },
+    {
+     "section": "Unknown",
+     "category": "business_deals"
+    }
+   ]
+  },
+  {
+   "dates": "21st - 27th Feb 2026",
+   "items": [
+    {
+     "section": "Unknown",
+     "category": "product_launch_approval"
+    },
+    {
+     "section": "Unknown",
+     "category": "product_launch_approval"
+    },
+    {
+     "section": "Top 3 Headlines",
+     "category": "digital_ai_marketing"
+    },
+    {
+     "section": "Unknown",
+     "category": "other"
+    },
+    {
+     "section": "Unknown",
+     "category": "business_deals"
+    },
+    {
+     "section": "Unknown",
+     "category": "business_deals"
+    },
+    {
+     "section": "Unknown",
+     "category": "other"
+    },
+    {
+     "section": "Unknown",
+     "category": "india_pricing"
+    },
+    {
+     "section": "Unknown",
+     "category": "other"
+    }
+   ]
+  },
+  {
+   "dates": "28th Feb - 6th March 2026",
+   "items": [
+    {
+     "section": "Unknown",
+     "category": "business_deals"
+    },
+    {
+     "section": "Unknown",
+     "category": "other"
+    },
+    {
+     "section": "Unknown",
+     "category": "digital_ai_marketing"
+    },
+    {
+     "section": "Top 3 Headlines",
+     "category": "digital_ai_marketing"
+    },
+    {
+     "section": "Unknown",
+     "category": "digital_ai_marketing"
+    },
+    {
+     "section": "Unknown",
+     "category": "business_deals"
+    },
+    {
+     "section": "Unknown",
+     "category": "market_data"
+    },
+    {
+     "section": "Unknown",
+     "category": "product_launch_approval"
+    },
+    {
+     "section": "Unknown",
+     "category": "product_launch_approval"
+    },
+    {
+     "section": "Unknown",
+     "category": "us_global_policy"
+    }
+   ]
+  },
+  {
+   "dates": "7th - 13th March 2026",
+   "items": [
+    {
+     "section": "Unknown",
+     "category": "product_launch_approval"
+    },
+    {
+     "section": "Unknown",
+     "category": "product_launch_approval"
+    },
+    {
+     "section": "Unknown",
+     "category": "digital_ai_marketing"
+    },
+    {
+     "section": "Top 3 Headlines",
+     "category": "digital_ai_marketing"
+    },
+    {
+     "section": "Unknown",
+     "category": "brand_campaign"
+    },
+    {
+     "section": "Unknown",
+     "category": "other"
+    },
+    {
+     "section": "Unknown",
+     "category": "india_regulation"
+    },
+    {
+     "section": "Unknown",
+     "category": "us_global_policy"
+    }
+   ]
+  },
+  {
+   "dates": "21th - 27th March 2026",
+   "items": [
+    {
+     "section": "Unknown",
+     "category": "product_launch_approval"
+    },
+    {
+     "section": "Unknown",
+     "category": "business_deals"
+    },
+    {
+     "section": "Unknown",
+     "category": "digital_ai_marketing"
+    },
+    {
+     "section": "Unknown",
+     "category": "digital_ai_marketing"
+    },
+    {
+     "section": "Unknown",
+     "category": "other"
+    },
+    {
+     "section": "Unknown",
+     "category": "business_deals"
+    },
+    {
+     "section": "Patient Power Plays",
+     "category": "market_data"
+    },
+    {
+     "section": "Unknown",
+     "category": "other"
+    },
+    {
+     "section": "Unknown",
+     "category": "market_data"
+    },
+    {
+     "section": "Unknown",
+     "category": "india_regulation"
+    },
+    {
+     "section": "Top 3 Headlines",
+     "category": "india_pricing"
+    }
+   ]
+  },
+  {
+   "dates": "11th - 17th April 2026",
+   "items": [
+    {
+     "section": "Unknown",
+     "category": "market_data"
+    },
+    {
+     "section": "Unknown",
+     "category": "us_global_policy"
+    },
+    {
+     "section": "Unknown",
+     "category": "product_launch_approval"
+    },
+    {
+     "section": "Top 3 Headlines",
+     "category": "digital_ai_marketing"
+    },
+    {
+     "section": "Unknown",
+     "category": "india_pricing"
+    },
+    {
+     "section": "Unknown",
+     "category": "business_deals"
+    },
+    {
+     "section": "Unknown",
+     "category": "india_regulation"
+    },
+    {
+     "section": "Unknown",
+     "category": "india_regulation"
+    },
+    {
+     "section": "Unknown",
+     "category": "market_data"
+    }
+   ]
+  },
+  {
+   "dates": "25th April - 1st May 2026",
+   "items": [
+    {
+     "section": "Unknown",
+     "category": "market_data"
+    },
+    {
+     "section": "Patient Power Plays",
+     "category": "financial_markets"
+    },
+    {
+     "section": "Unknown",
+     "category": "market_data"
+    },
+    {
+     "section": "Unknown",
+     "category": "digital_ai_marketing"
+    },
+    {
+     "section": "Unknown",
+     "category": "digital_ai_marketing"
+    },
+    {
+     "section": "Unknown",
+     "category": "brand_campaign"
+    },
+    {
+     "section": "Unknown",
+     "category": "business_deals"
+    },
+    {
+     "section": "Unknown",
+     "category": "india_regulation"
+    },
+    {
+     "section": "Unknown",
+     "category": "india_pricing"
+    },
+    {
+     "section": "India Insider",
+     "category": "other"
+    }
+   ]
+  },
+  {
+   "dates": "2nd- 8th May 2026",
+   "items": [
+    {
+     "section": "Unknown",
+     "category": "financial_markets"
+    },
+    {
+     "section": "Unknown",
+     "category": "business_deals"
+    },
+    {
+     "section": "Unknown",
+     "category": "business_deals"
+    },
+    {
+     "section": "Unknown",
+     "category": "clinical_rnd"
+    },
+    {
+     "section": "Campaign Crushes",
+     "category": "digital_ai_marketing"
+    },
+    {
+     "section": "Unknown",
+     "category": "financial_markets"
+    },
+    {
+     "section": "Patient Power Plays",
+     "category": "business_deals"
+    },
+    {
+     "section": "Unknown",
+     "category": "us_global_policy"
+    },
+    {
+     "section": "Unknown",
+     "category": "india_regulation"
+    },
+    {
+     "section": "Unknown",
+     "category": "financial_markets"
+    }
+   ]
+  },
+  {
+   "dates": "9th- 15th May 2026",
+   "items": [
+    {
+     "section": "Unknown",
+     "category": "us_global_policy"
+    },
+    {
+     "section": "Unknown",
+     "category": "financial_markets"
+    },
+    {
+     "section": "Unknown",
+     "category": "financial_markets"
+    },
+    {
+     "section": "Unknown",
+     "category": "digital_ai_marketing"
+    },
+    {
+     "section": "Patient Power Plays",
+     "category": "financial_markets"
+    },
+    {
+     "section": "Unknown",
+     "category": "financial_markets"
+    },
+    {
+     "section": "Unknown",
+     "category": "financial_markets"
+    },
+    {
+     "section": "Unknown",
+     "category": "india_regulation"
+    },
+    {
+     "section": "India Insider",
+     "category": "digital_ai_marketing"
+    },
+    {
+     "section": "Unknown",
+     "category": "other"
+    },
+    {
+     "section": "Unknown",
+     "category": "financial_markets"
+    },
+    {
+     "section": "AI Spotlight",
+     "category": "market_data"
+    },
+    {
+     "section": "Unknown",
+     "category": "product_launch_approval"
+    },
+    {
+     "section": "Unknown",
+     "category": "clinical_rnd"
+    },
+    {
+     "section": "Unknown",
+     "category": "us_global_policy"
+    },
+    {
+     "section": "Unknown",
+     "category": "other"
+    },
+    {
+     "section": "Unknown",
+     "category": "other"
+    }
+   ]
+  },
+  {
+   "dates": "16th- 22nd May 2026",
+   "items": [
+    {
+     "section": "Unknown",
+     "category": "business_deals"
+    },
+    {
+     "section": "AI Spotlight",
+     "category": "market_data"
+    },
+    {
+     "section": "Unknown",
+     "category": "market_data"
+    },
+    {
+     "section": "Unknown",
+     "category": "business_deals"
+    },
+    {
+     "section": "Unknown",
+     "category": "digital_ai_marketing"
+    },
+    {
+     "section": "Unknown",
+     "category": "financial_markets"
+    },
+    {
+     "section": "Unknown",
+     "category": "product_launch_approval"
+    },
+    {
+     "section": "Unknown",
+     "category": "financial_markets"
+    },
+    {
+     "section": "Unknown",
+     "category": "financial_markets"
+    },
+    {
+     "section": "Unknown",
+     "category": "other"
+    },
+    {
+     "section": "Unknown",
+     "category": "other"
+    },
+    {
+     "section": "Unknown",
+     "category": "patient_access"
+    },
+    {
+     "section": "Unknown",
+     "category": "india_regulation"
+    },
+    {
+     "section": "Unknown",
+     "category": "market_data"
+    },
+    {
+     "section": "Unknown",
+     "category": "business_deals"
+    },
+    {
+     "section": "Unknown",
+     "category": "market_data"
+    },
+    {
+     "section": "Unknown",
+     "category": "product_launch_approval"
+    }
+   ]
+  },
+  {
+   "dates": "23rd- 29th May 2026",
+   "items": [
+    {
+     "section": "Unknown",
+     "category": "product_launch_approval"
+    },
+    {
+     "section": "Unknown",
+     "category": "other"
+    },
+    {
+     "section": "Unknown",
+     "category": "other"
+    },
+    {
+     "section": "Unknown",
+     "category": "business_deals"
+    },
+    {
+     "section": "Unknown",
+     "category": "india_regulation"
+    },
+    {
+     "section": "Unknown",
+     "category": "clinical_rnd"
+    },
+    {
+     "section": "Unknown",
+     "category": "financial_markets"
+    },
+    {
+     "section": "Unknown",
+     "category": "financial_markets"
+    },
+    {
+     "section": "Unknown",
+     "category": "us_global_policy"
+    },
+    {
+     "section": "Unknown",
+     "category": "us_global_policy"
+    },
+    {
+     "section": "Unknown",
+     "category": "india_pricing"
+    },
+    {
+     "section": "Patient Power Plays",
+     "category": "other"
+    },
+    {
+     "section": "Unknown",
+     "category": "other"
+    },
+    {
+     "section": "Top 3 Headlines",
+     "category": "product_launch_approval"
+    },
+    {
+     "section": "Unknown",
+     "category": "product_launch_approval"
+    },
+    {
+     "section": "Unknown",
+     "category": "other"
+    },
+    {
+     "section": "Unknown",
+     "category": "clinical_rnd"
+    }
+   ]
+  },
+  {
+   "dates": "30th May-5th June 2026",
+   "items": [
+    {
+     "section": "Unknown",
+     "category": "product_launch_approval"
+    },
+    {
+     "section": "Unknown",
+     "category": "clinical_rnd"
+    },
+    {
+     "section": "Unknown",
+     "category": "financial_markets"
+    },
+    {
+     "section": "Unknown",
+     "category": "financial_markets"
+    },
+    {
+     "section": "Digital Decode",
+     "category": "digital_ai_marketing"
+    },
+    {
+     "section": "Unknown",
+     "category": "clinical_rnd"
+    },
+    {
+     "section": "Unknown",
+     "category": "other"
+    },
+    {
+     "section": "Unknown",
+     "category": "clinical_rnd"
+    },
+    {
+     "section": "Unknown",
+     "category": "business_deals"
+    },
+    {
+     "section": "Unknown",
+     "category": "financial_markets"
+    }
+   ]
+  }
+ ]
+}

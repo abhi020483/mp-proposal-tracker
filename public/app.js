@@ -2737,6 +2737,106 @@ async function loadNewsletter(fresh = false) {
 }
 
 const nlPct  = v => v == null ? '—' : `${fmtNum(Math.round(v * 10) / 10)}%`;
+// Zoho's "Doctors" list is the medical newsletter (same issue, minus the Jobs block).
+const nlAudLabel = a => (a === 'Doctors' ? 'Medical (Doctors)' : a);
+
+// ── Content mix vs clicks ──
+// Zoho gives clicks per edition, not per link, so this can only compare
+// editions that carried a type of story with editions that didn't.
+const NL_CATS = {
+  india_pricing: 'India drug pricing (NPPA/DPCO)', india_regulation: 'India regulation & enforcement',
+  brand_campaign: 'Brand / marketing campaigns', digital_ai_marketing: 'AI, digital & martech',
+  product_launch_approval: 'Product launches & approvals', clinical_rnd: 'Clinical trials & R&D',
+  business_deals: 'Deals, M&A & investments', financial_markets: 'Earnings & stock moves',
+  us_global_policy: 'US / global policy & USFDA', market_data: 'Market data & rankings',
+  patient_access: 'Patient access & affordability', onealphamed_own: 'OneAlphaMed features', other: 'Other',
+};
+// Each Zoho send is linked to its tagged edition in data/newsletter-content.json.
+function nlTagsFor(name) {
+  const c = nlData.content;
+  const dates = c && c.campaigns && c.campaigns[name];
+  return dates ? (c.editions || []).find(e => e.dates === dates) || null : null;
+}
+
+// One-line mix for an edition, e.g. "Regulation 3 · Pricing 2 · Deals 2"
+function nlMix(t) {
+  const n = {};
+  for (const i of t.items) n[i.category] = (n[i.category] || 0) + 1;
+  return Object.entries(n).sort((a, b) => b[1] - a[1])
+    .map(([k, v]) => `${NL_SHORT[k] || k} ${v}`).join(' · ');
+}
+const NL_SHORT = {
+  india_pricing: 'Pricing', india_regulation: 'Regulation', brand_campaign: 'Campaigns',
+  digital_ai_marketing: 'AI/digital', product_launch_approval: 'Launches', clinical_rnd: 'R&D',
+  business_deals: 'Deals', financial_markets: 'Earnings', us_global_policy: 'US/global',
+  market_data: 'Market data', patient_access: 'Access', onealphamed_own: 'OneAlphaMed', other: 'Other',
+};
+
+function nlContent(all) {
+  const c = nlData.content;
+  if (!c || !(c.editions || []).length) return '';
+  const mk = all.filter(r => r.audience === 'Marketing' && r.clickRate != null)
+    .map(r => ({ r, tags: nlTagsFor(r.name) })).filter(x => x.tags);
+  if (mk.length < 6) return '';
+  const top2 = [...mk].sort((a, b) => b.r.clickRate - a.r.clickRate).slice(0, 2);
+  const rest = mk.filter(x => !top2.includes(x));
+  const has  = (x, cat) => x.tags.items.some(i => i.category === cat);
+  const avgC = xs => xs.length ? xs.reduce((s, x) => s + x.r.clickRate, 0) / xs.length : null;
+  const rows = Object.keys(NL_CATS).map(cat => {
+    const w = mk.filter(x => has(x, cat)), wo = mk.filter(x => !has(x, cat));
+    const w2 = rest.filter(x => has(x, cat)), wo2 = rest.filter(x => !has(x, cat));
+    return { cat, n: w.length, a: avgC(w), b: avgC(wo), a2: avgC(w2), b2: avgC(wo2), n2: w2.length };
+  }).filter(x => x.cat !== 'other' && x.n >= 3 && x.n < mk.length)
+    .sort((x, y) => ((y.a2 ?? 0) - (y.b2 ?? 0)) - ((x.a2 ?? 0) - (x.b2 ?? 0)));
+  const p2 = v => v == null ? '—' : `${v.toFixed(2)}%`;
+  const diff = (a, b) => (a == null || b == null) ? '<span class="muted">—</span>'
+    : `<span style="color:${a >= b ? 'var(--won)' : 'var(--hot)'}">${a >= b ? '+' : '−'}${Math.abs(a - b).toFixed(2)} pts</span>`;
+  return `<div class="chart-card" style="margin-top:12px">
+    <div class="chart-card__title">Which news types sit in the higher-click editions — Marketing list
+      <span class="muted-inline">${mk.length} editions with story tags · as of ${esc(c.asOf || '—')} · small sample, read as a pointer not proof</span></div>
+    <div class="muted" style="font-size:12px;margin-bottom:8px">Zoho reports clicks per edition, not per story, so this compares editions that carried each type of story with editions that didn't.
+      Two editions (${top2.map(x => esc(x.r.name)).join(' and ')}) are far above the rest, so the "excluding top 2" columns are the fairer read. The medical (Doctors) list gets 0–2 clicks per edition, too few to analyse this way.</div>
+    <div class="table-wrap"><table class="data-table">
+      <thead><tr><th>News type</th><th style="text-align:right">Editions carrying it</th>
+        <th style="text-align:right">Avg click — with</th><th style="text-align:right">without</th><th style="text-align:right">Difference</th>
+        <th style="text-align:right">Excl. top 2 — with</th><th style="text-align:right">without</th><th style="text-align:right">Difference</th></tr></thead>
+      <tbody>${rows.map(x => `<tr>
+        <td>${esc(NL_CATS[x.cat])}</td>
+        <td class="num">${x.n} of ${mk.length}</td>
+        <td class="num">${p2(x.a)}</td><td class="num">${p2(x.b)}</td><td class="num">${diff(x.a, x.b)}</td>
+        <td class="num">${x.n2 ? p2(x.a2) : '—'}</td><td class="num">${p2(x.b2)}</td><td class="num">${x.n2 ? diff(x.a2, x.b2) : '<span class="muted">—</span>'}</td>
+      </tr>`).join('')}</tbody>
+    </table></div></div>`;
+}
+
+// Marketing vs Medical, over the period both lists were running.
+function nlCompare(all) {
+  const docs = all.filter(c => c.audience === 'Doctors');
+  if (!docs.length || !all.some(c => c.audience === 'Marketing')) return '';
+  const from = docs[0].sentDate;
+  const row = aud => {
+    const rs = all.filter(c => c.audience === aud && c.sentDate >= from);
+    return `<tr>
+      <td><strong>${esc(nlAudLabel(aud))}</strong></td>
+      <td class="num">${rs.length}</td>
+      <td class="num">${rs.length ? Math.round(nlSum(rs, 'sent') / rs.length).toLocaleString('en-IN') : '—'}</td>
+      <td class="num">${nlPct(nlAvg(rs, 'openRate'))}</td>
+      <td class="num">${nlPct(nlAvg(rs, 'clickRate'))}</td>
+      <td class="num">${nlSum(rs, 'clicked')}</td>
+      <td class="num">${nlSum(rs, 'replies')}</td>
+      <td class="num">${nlSum(rs, 'unsubscribed')}</td>
+    </tr>`;
+  };
+  return `<div class="chart-card" style="margin-top:12px">
+    <div class="chart-card__title">Marketing vs Medical newsletter
+      <span class="muted-inline">same issue to both lists · since ${nlDate(from)}, when the medical list started · average per edition</span></div>
+    <div class="table-wrap"><table class="data-table">
+      <thead><tr><th>List</th><th style="text-align:right">Editions</th><th style="text-align:right">Avg list size</th>
+        <th style="text-align:right">Avg open</th><th style="text-align:right">Avg click</th><th style="text-align:right">Total clicks</th>
+        <th style="text-align:right">Replies</th><th style="text-align:right">Unsubscribes</th></tr></thead>
+      <tbody>${row('Marketing')}${row('Doctors')}</tbody>
+    </table></div></div>`;
+}
 const nlAvg  = (rows, f) => { const v = rows.map(r => r[f]).filter(x => x != null); return v.length ? v.reduce((s, x) => s + x, 0) / v.length : null; };
 const nlSum  = (rows, f) => rows.reduce((s, r) => s + (r[f] || 0), 0);
 const nlIST  = (iso, o) => new Date(iso).toLocaleString('en-IN', { timeZone: 'Asia/Kolkata', ...o });
@@ -2779,10 +2879,10 @@ function viewNewsletter() {
   const rows = all.filter(c => c.audience === nlAudience);
 
   const audPills = `<span class="mpick-group">${auds.map(a =>
-    `<button class="mpick ${a === nlAudience ? 'is-active' : ''}" data-nl-aud="${esc(a)}">${esc(a)}</button>`).join('')}</span>`;
+    `<button class="mpick ${a === nlAudience ? 'is-active' : ''}" data-nl-aud="${esc(a)}">${esc(nlAudLabel(a))}</button>`).join('')}</span>`;
   const updated = nlData.sourceUpdated || nlData.fetchedAt;
   const head = `<div class="section-head" style="margin-top:0">
-      <h2>Newsletter — Pharma Pulse</h2>
+      <h2>Newsletter — Pharma Pulse · ${esc(nlAudLabel(nlAudience))}</h2>
       <span style="display:inline-flex;align-items:center;gap:10px;flex-wrap:wrap">
         <span class="muted">Metrics updated ${updated ? nlIST(updated, { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' }) : '—'}</span>
         ${audPills}
@@ -2885,14 +2985,14 @@ function viewNewsletter() {
 
   // Every edition, newest first
   const editions = `<div class="chart-card" style="margin-top:12px">
-    <div class="chart-card__title">All editions — ${esc(nlAudience)} <span class="muted-inline">★ best click rate</span></div>
+    <div class="chart-card__title">All editions — ${esc(nlAudLabel(nlAudience))} <span class="muted-inline">★ best click rate</span></div>
     <div class="table-wrap"><table class="data-table">
       <thead><tr><th>Sent (IST)</th><th>Edition</th><th style="text-align:right">Sent</th>
         <th style="text-align:right">Open rate</th><th style="text-align:right">Click rate</th><th style="text-align:right">Clicks</th>
         <th style="text-align:right">Replies</th><th style="text-align:right">Unsub</th><th style="text-align:right">Bounced</th></tr></thead>
-      <tbody>${[...rows].reverse().map(r => `<tr>
+      <tbody>${[...rows].reverse().map(r => { const t = nlTagsFor(r.name); return `<tr>
         <td class="mono" style="font-size:12px;white-space:nowrap">${nlIST(r.sentDate, { weekday: 'short' })} ${nlDate(r.sentDate)}, ${nlIST(r.sentDate, { hour: '2-digit', minute: '2-digit' })}</td>
-        <td>${r === best ? '★ ' : ''}${esc(r.name)}</td>
+        <td>${r === best ? '★ ' : ''}${esc(r.name)}${t ? `<div class="muted" style="font-size:11px">${esc(nlMix(t))}</div>` : ''}</td>
         <td class="num">${r.sent != null ? r.sent.toLocaleString('en-IN') : '—'}</td>
         <td class="num">${nlPct(r.openRate)}</td>
         <td class="num">${nlPct(r.clickRate)}</td>
@@ -2900,10 +3000,10 @@ function viewNewsletter() {
         <td class="num">${r.replies ?? '—'}</td>
         <td class="num">${r.unsubscribed ?? '—'}</td>
         <td class="num">${r.bounced ?? '—'}</td>
-      </tr>`).join('')}</tbody>
+      </tr>`; }).join('')}</tbody>
     </table></div></div>`;
 
-  return head + kpis + charts + days + monthly + editions;
+  return head + kpis + nlCompare(all) + charts + nlContent(all) + days + monthly + editions;
 }
 
 function wireNewsletter() {

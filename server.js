@@ -4,6 +4,7 @@ const cors = require('cors');
 const crypto = require('crypto');
 const { createClient } = require('@supabase/supabase-js');
 const path = require('path');
+const fs = require('fs');
 
 // [C-2] Guard: fail fast if critical env vars are missing
 if (!process.env.APP_PASSWORD) {
@@ -487,6 +488,14 @@ app.get('/api/bd-accounts', requireAuth, async (req, res) => {
 // Cached for 30 minutes; served stale if the feed goes down.
 const NEWSLETTER_DEFAULT_URL = 'https://anurayan-cloud.github.io/newsletter-dashboard/data.json';
 let _nlCache = null;
+// Story-type tags per edition (which kinds of news each issue carried), built
+// from the newsletter drafts — see data/newsletter-content.json.
+function nlContentTags() {
+  try {
+    const d = JSON.parse(fs.readFileSync(path.join(__dirname, 'data', 'newsletter-content.json'), 'utf8'));
+    return { asOf: d.asOf || null, campaigns: d.campaigns || {}, editions: Array.isArray(d.editions) ? d.editions : [] };
+  } catch { return null; }
+}
 const nlNum = v => (v == null || v === '' || isNaN(Number(v)) ? null : Number(v));
 app.get('/api/newsletter', requireAuth, async (req, res) => {
   const url = process.env.NEWSLETTER_API_URL || NEWSLETTER_DEFAULT_URL;
@@ -508,7 +517,7 @@ app.get('/api/newsletter', requireAuth, async (req, res) => {
         openRate: nlNum(c.openRate), clickRate: nlNum(c.clickRate),
       }))
       .sort((a, b) => a.sentDate.localeCompare(b.sentDate));
-    const payload = { campaigns, sourceUpdated: d.lastUpdated || null, fetchedAt: new Date().toISOString() };
+    const payload = { campaigns, content: nlContentTags(), sourceUpdated: d.lastUpdated || null, fetchedAt: new Date().toISOString() };
     _nlCache = { at: Date.now(), payload };
     res.json(payload);
   } catch (err) {
