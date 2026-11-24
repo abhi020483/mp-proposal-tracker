@@ -480,14 +480,16 @@ app.get('/api/bd-accounts', requireAuth, async (req, res) => {
 });
 
 // ─── Newsletter metrics (Pharma Pulse email outreach) ───────────────────────
-// Per-edition email metrics (sent, opens, clicks, replies). The feed URL is
-// read from the NEWSLETTER_API_URL env var. Cached for 30 minutes; served
-// stale if the feed goes down.
+// Per-edition email metrics (sent, opens, clicks, replies) pulled from Zoho
+// Campaigns by the newsletter-dashboard project, which publishes them as
+// data.json on GitHub Pages. NEWSLETTER_API_URL overrides the source. Zoho
+// itself can't be called from here: it rejects API calls from cloud IPs.
+// Cached for 30 minutes; served stale if the feed goes down.
+const NEWSLETTER_DEFAULT_URL = 'https://anurayan-cloud.github.io/newsletter-dashboard/data.json';
 let _nlCache = null;
 const nlNum = v => (v == null || v === '' || isNaN(Number(v)) ? null : Number(v));
 app.get('/api/newsletter', requireAuth, async (req, res) => {
-  const url = process.env.NEWSLETTER_API_URL;
-  if (!url) return res.status(503).json({ error: 'Newsletter feed not configured (NEWSLETTER_API_URL is not set on the server)' });
+  const url = process.env.NEWSLETTER_API_URL || NEWSLETTER_DEFAULT_URL;
   try {
     if (_nlCache && Date.now() - _nlCache.at < 30 * 60 * 1000 && !req.query.fresh) return res.json(_nlCache.payload);
     const r = await fetch(url, { signal: AbortSignal.timeout(15000) });
