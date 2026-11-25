@@ -3175,7 +3175,13 @@ function viewHome() {
           <div><h2>Howrah Bridge</h2><p>Bengali kitchen &amp; catering · Mumbai</p></div>
           <button class="btn btn--primary btn--swap" data-go="hb" data-hover="See today's orders →">Open workspace</button>
         </header>
-        <p class="biz__note">Sales order book rebuilt from the order sheets, with customers, dishes, locations and the SEO plan. It keeps its own sign-in, so its numbers show after you log in there.</p>
+        <div class="hstats hstats--two">
+          ${stat('Order book', 'Sales', 'by month, customer, dish')}
+          ${stat('Customers', 'Retention', 'active, at risk, lapsed')}
+          ${stat('Catering', 'Leads', 'corporate and events')}
+          ${stat('Search', 'SEO plan', 'keywords and site health')}
+        </div>
+        <p class="biz__note">Numbers show after you sign in to Howrah Bridge; it keeps its own login.</p>
         <div class="hlinks">
           ${link('hb', 'Order book & SEO', 'Sales, customers, dishes')}
           <a class="hlink" href="https://howrahbridge.co.in" target="_blank" rel="noopener"><span class="hlink__t">Website</span><span class="hlink__h">howrahbridge.co.in</span><span class="hlink__a" aria-hidden="true">↗</span></a>
