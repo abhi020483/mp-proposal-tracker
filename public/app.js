@@ -3202,11 +3202,12 @@ function cmdBuild(q) {
     .filter(([, m]) => hit(m.label) || hit(m.group || '') || hit(m.ws === 'hb' ? 'howrah bridge' : 'onealphamed'))
     .map(([k, m]) => ({ g: 'Go to', t: m.label, h: m.ws === 'hb' ? 'Howrah Bridge' : m.group ? `OneAlphaMed · ${m.group}` : 'Control Centre', run: () => goTab(k) }));
   const deals = !ql ? [] : state.deals
+    .filter(d => d.status !== 'lost')
     .filter(d => `${d.company} ${d.deliverable} ${d.client_contact || ''}`.toLowerCase().includes(ql))
     .slice(0, 8)
     .map(d => ({ g: 'Proposals', t: `${d.company} — ${d.deliverable && d.deliverable !== '—' ? d.deliverable : 'Untitled'}`,
                  h: `${d._val != null ? '₹' + fmtNum(d._val) + 'L' : 'TBD'} · ${d.status === 'won' ? 'won' : d.type}`,
-                 run: () => { state.query = ql; const si = document.getElementById('search-input'); if (si) si.value = ql; state.type = 'all'; state.period = 'all'; goTab(d.status === 'won' ? 'won' : 'pipeline'); } }));
+                 run: () => { state.query = ql; const si = document.getElementById('search-input'); if (si) si.value = ql; state.type = d.type === 'cold' && d.status !== 'won' ? 'cold' : 'all'; state.period = 'all'; goTab(d.status === 'won' ? 'won' : 'pipeline'); } }));
   return [...actions, ...pages, ...deals];
 }
 function cmdRender() {
@@ -3846,6 +3847,9 @@ function logout() {
   salesData = null; salesError = null;
   bdData = null; bdError = null;
   state.tab = 'home';
+  // Drop the Howrah Bridge frame so its session isn't left on screen.
+  const hbSlot = document.getElementById('hb-frame-slot');
+  if (hbSlot) hbSlot.innerHTML = '';
   document.getElementById('main-app').style.display = 'none';
   document.getElementById('auth-overlay').style.display = 'flex';
   const err = document.getElementById('auth-err');

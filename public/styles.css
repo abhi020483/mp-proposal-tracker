@@ -1480,3 +1480,24 @@ kbd {
   box-shadow: var(--shadow-2);
 }
 .auth-mark { background: linear-gradient(135deg, #3B6BFF, #17B5A6); color: #fff; border-radius: 10px; }
+
+/* Hover-swap buttons reserve room for the longer label, so nothing clips */
+.btn--swap { display: inline-grid; justify-items: center; align-items: center; gap: 0; }
+.btn--swap::before { content: attr(data-hover); height: 0; visibility: hidden; overflow: hidden; white-space: nowrap; }
+
+/* Top bar holds together at laptop widths */
+.crumb, .topbar .brand-name { white-space: nowrap; }
+.topbar__brand { flex-shrink: 0; }
+.topsearch { flex: 1 1 180px; min-width: 0; }
+@media (max-width: 1320px) { .date-block { display: none; } }
+@media (max-width: 1180px) { .topbar .btn--ghost.only-oam { display: none; } }
+@media (max-width: 1060px) { .sync-pill { display: none; } }
+@media (max-width: 860px) {
+  .topbar { padding: 10px 14px; gap: 8px; }
+  .topsearch { flex: 0 0 38px; width: 38px; height: 36px; padding: 0; justify-content: center; }
+  .topbar__actions { gap: 4px; margin-left: auto; }
+  .topbar .btn--swap::before { display: none; }
+  .topbar .btn--swap:hover { color: var(--ink-inv); }
+  .topbar .btn--swap::after { display: none; }
+  .hb-wrap { padding: 16px 14px 32px; }
+}
