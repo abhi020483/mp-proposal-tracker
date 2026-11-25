@@ -46,7 +46,8 @@ const CO_PALETTE = [
 // ─── State ────────────────────────────────────────────────────────────────────
 
 const state = {
-  tab:            'overview',
+  tab:            'home',
+  ws:             'oam',
   query:          '',
   type:           'all',
   period:         'all',
@@ -1324,7 +1325,7 @@ async function loadSalesData(fresh = false) {
   } finally {
     _salesLoading = false;
   }
-  if (state.tab === 'sales' || state.tab === 'game') render();
+  if (state.tab === 'sales' || state.tab === 'game' || state.tab === 'home') render();
 }
 
 const SALES_SCENARIOS = {
@@ -3072,6 +3073,195 @@ function renderPeriodChips() {
     }).join('');
 }
 
+// ─── Control-centre shell ────────────────────────────────────────────────────
+
+const HB_URL = 'https://howrah-bridge-order-book.vercel.app/';
+const TAB_META = {
+  home:        { label: 'Home' },
+  overview:    { label: 'Overview',        ws: 'oam', group: 'Pipeline' },
+  pipeline:    { label: 'Pipeline',        ws: 'oam', group: 'Pipeline' },
+  focus:       { label: 'Focus',           ws: 'oam', group: 'Pipeline' },
+  kanban:      { label: 'Kanban',          ws: 'oam', group: 'Pipeline' },
+  requested:   { label: 'Requested',       ws: 'oam', group: 'Pipeline' },
+  won:         { label: 'Won',             ws: 'oam', group: 'Pipeline' },
+  data:        { label: 'Data',            ws: 'oam', group: 'Pipeline' },
+  sales:       { label: 'Sales',           ws: 'oam', group: 'Revenue' },
+  game:        { label: 'Path to Target',  ws: 'oam', group: 'Revenue' },
+  bdteam:      { label: 'BD Team',         ws: 'oam', group: 'Team' },
+  outreach:    { label: 'Team Outreach',   ws: 'oam', group: 'Team' },
+  insights:    { label: 'Insights',        ws: 'oam', group: 'Market' },
+  competition: { label: 'Competition',     ws: 'oam', group: 'Market' },
+  seo:         { label: 'SEO',             ws: 'oam', group: 'Market' },
+  newsletter:  { label: 'Newsletter',      ws: 'oam', group: 'Market' },
+  hb:          { label: 'Order book & SEO', ws: 'hb' },
+};
+const MORE_TABS = ['kanban', 'requested', 'won', 'data'];
+
+function setMoreOpen(open) {
+  const box = document.getElementById('side-more'), btn = document.getElementById('side-more-btn');
+  if (!box || !btn) return;
+  box.hidden = !open;
+  btn.setAttribute('aria-expanded', String(open));
+}
+
+function goTab(tab) {
+  if (!TAB_META[tab]) return;
+  state.tab = tab;
+  render();
+  window.scrollTo(0, 0);
+  if ((tab === 'sales' || tab === 'game') && salesData && Date.now() - salesLoadedAt > 10 * 60 * 1000) loadSalesData(true);
+}
+
+// Created once and never re-rendered, so the Howrah Bridge sign-in survives
+// tab switches and syncs.
+function ensureHBFrame() {
+  const slot = document.getElementById('hb-frame-slot');
+  if (!slot || slot.firstChild) return;
+  const f = document.createElement('iframe');
+  f.className = 'competition-frame';
+  f.title = 'Howrah Bridge order book';
+  f.src = HB_URL;
+  slot.appendChild(f);
+}
+
+function viewHome() {
+  if (!salesData && !salesError) loadSalesData();
+  const open   = state.deals.filter(d => (isHotSide(d.type) || d.type === 'warm') && d.status !== 'won' && d.status !== 'lost');
+  const supers = open.filter(d => d.type === 'super');
+  const won    = state.deals.filter(d => d.status === 'won');
+  const booked = salesData ? salesData.months.filter(m => m.actual != null).reduce((s, m) => s + m.actual, 0) : null;
+  const target = (SALES_SCENARIOS[state.salesScenario] || SALES_SCENARIOS.base);
+  const pct    = booked != null ? Math.round(booked / target.total * 100) : null;
+  const hour   = new Date().getHours();
+  const hello  = hour < 12 ? 'Good morning' : hour < 17 ? 'Good afternoon' : 'Good evening';
+  const stat = (label, val, sub) => `<div class="hstat"><span class="hstat__label">${label}</span><span class="hstat__val">${val}</span><span class="hstat__sub">${sub}</span></div>`;
+  const link = (tab, label, hint) => `<button class="hlink" data-go="${tab}"><span class="hlink__t">${label}</span><span class="hlink__h">${hint}</span><span class="hlink__a" aria-hidden="true">→</span></button>`;
+
+  return `
+    <section class="home-hero">
+      <div>
+        <p class="home-hero__eyebrow">${fmtDate().sub} · ${fmtDate().day}</p>
+        <h1 class="home-hero__title">${hello}. Two businesses, one view.</h1>
+        <p class="home-hero__sub">Pipeline, revenue, team and market for OneAlphaMed, and the order book for Howrah Bridge.</p>
+      </div>
+      <button class="btn btn--primary btn--swap btn--lg" data-cmd-open data-hover="Search or run an action">⌘K  Quick actions</button>
+    </section>
+
+    <div class="biz-grid">
+      <article class="biz biz--oam">
+        <header class="biz__head">
+          <span class="biz__mark">OA</span>
+          <div><h2>OneAlphaMed</h2><p>Medical communications · FY ${salesData ? esc(salesData.fyLabel.replace('FY ', '')) : '2026-27'}</p></div>
+          <button class="btn btn--primary btn--swap" data-go="overview" data-hover="See the pipeline →">Open workspace</button>
+        </header>
+        <div class="hstats">
+          ${stat('Open pipeline', `₹${fmtNum(sumVals(open)) || 0}L`, `${open.length} proposals`)}
+          ${stat('Super hot', `₹${fmtNum(sumVals(supers)) || 0}L`, `${supers.length} priority deals`)}
+          ${stat('Booked sales', booked != null ? `₹${fmtNum(booked)}L` : '…', pct != null ? `${pct}% of ${target.label}` : salesError ? 'MIS unavailable' : 'loading MIS')}
+          ${stat('Closed won', `₹${fmtNum(sumVals(won)) || 0}L`, `${won.length} deals`)}
+        </div>
+        ${pct != null ? `<div class="biz__meter" title="${pct}% of ${target.label}"><span style="width:${Math.min(100, pct)}%"></span></div>` : ''}
+        <div class="hlinks">
+          ${link('game', 'Path to Target', 'What closes the gap')}
+          ${link('focus', 'Focus', 'Biggest tickets first')}
+          ${link('sales', 'Sales', 'Plan vs actual, margins')}
+          ${link('bdteam', 'BD Team', 'Meetings and accounts')}
+        </div>
+      </article>
+
+      <article class="biz biz--hb">
+        <header class="biz__head">
+          <span class="biz__mark">HB</span>
+          <div><h2>Howrah Bridge</h2><p>Bengali kitchen &amp; catering · Mumbai</p></div>
+          <button class="btn btn--primary btn--swap" data-go="hb" data-hover="See today's orders →">Open workspace</button>
+        </header>
+        <p class="biz__note">Sales order book rebuilt from the order sheets, with customers, dishes, locations and the SEO plan. It keeps its own sign-in, so its numbers show after you log in there.</p>
+        <div class="hlinks">
+          ${link('hb', 'Order book & SEO', 'Sales, customers, dishes')}
+          <a class="hlink" href="https://howrahbridge.co.in" target="_blank" rel="noopener"><span class="hlink__t">Website</span><span class="hlink__h">howrahbridge.co.in</span><span class="hlink__a" aria-hidden="true">↗</span></a>
+        </div>
+      </article>
+    </div>`;
+}
+
+// ─── Search + action palette (⌘K) ────────────────────────────────────────────
+
+let cmdItems = [], cmdIndex = 0;
+function cmdBuild(q) {
+  const ql = q.trim().toLowerCase();
+  const hit = t => !ql || t.toLowerCase().includes(ql);
+  const actions = [
+    { t: 'Sync proposals from the sheet', h: 'OneAlphaMed', run: () => doSync() },
+    { t: 'Refresh sales from the MIS', h: 'OneAlphaMed', run: () => loadSalesData(true) },
+    { t: 'Open the proposal sheet', h: 'Google Sheets ↗', run: () => window.open('https://docs.google.com/spreadsheets/d/1LqPp8lbv13kXGfZJZnRWrO_AZmV5iwlGk66JgqcSNm8/edit', '_blank', 'noopener') },
+    { t: 'Open Howrah Bridge order book in a new tab', h: 'Howrah Bridge ↗', run: () => window.open(HB_URL, '_blank', 'noopener') },
+    { t: 'Switch light / dark theme', h: 'Appearance', run: () => document.getElementById('theme-toggle').click() },
+    { t: 'Log out', h: 'Session', run: () => logout() },
+  ].filter(a => hit(a.t)).map(a => ({ ...a, g: 'Actions' }));
+  const pages = Object.entries(TAB_META)
+    .filter(([, m]) => hit(m.label) || hit(m.group || '') || hit(m.ws === 'hb' ? 'howrah bridge' : 'onealphamed'))
+    .map(([k, m]) => ({ g: 'Go to', t: m.label, h: m.ws === 'hb' ? 'Howrah Bridge' : m.group ? `OneAlphaMed · ${m.group}` : 'Control Centre', run: () => goTab(k) }));
+  const deals = !ql ? [] : state.deals
+    .filter(d => `${d.company} ${d.deliverable} ${d.client_contact || ''}`.toLowerCase().includes(ql))
+    .slice(0, 8)
+    .map(d => ({ g: 'Proposals', t: `${d.company} — ${d.deliverable && d.deliverable !== '—' ? d.deliverable : 'Untitled'}`,
+                 h: `${d._val != null ? '₹' + fmtNum(d._val) + 'L' : 'TBD'} · ${d.status === 'won' ? 'won' : d.type}`,
+                 run: () => { state.query = ql; const si = document.getElementById('search-input'); if (si) si.value = ql; state.type = 'all'; state.period = 'all'; goTab(d.status === 'won' ? 'won' : 'pipeline'); } }));
+  return [...actions, ...pages, ...deals];
+}
+function cmdRender() {
+  const list = document.getElementById('cmd-list');
+  cmdItems = cmdBuild(document.getElementById('cmd-input').value);
+  cmdIndex = Math.min(cmdIndex, Math.max(0, cmdItems.length - 1));
+  let last = '';
+  list.innerHTML = cmdItems.length ? cmdItems.map((it, i) => {
+    const head = it.g !== last ? `<div class="cmd__group">${it.g}</div>` : '';
+    last = it.g;
+    return `${head}<button class="cmd__item ${i === cmdIndex ? 'is-active' : ''}" data-ci="${i}"><span>${esc(it.t)}</span><em>${esc(it.h)}</em></button>`;
+  }).join('') : `<div class="cmd__empty">Nothing matches. Try a company, a section or "sync".</div>`;
+  list.querySelector('.is-active')?.scrollIntoView({ block: 'nearest' });
+}
+function cmdOpen() {
+  const el = document.getElementById('cmd');
+  el.hidden = false;
+  const inp = document.getElementById('cmd-input');
+  inp.value = ''; cmdIndex = 0; cmdRender(); inp.focus();
+}
+function cmdClose() { document.getElementById('cmd').hidden = true; }
+function cmdRun(i) { const it = cmdItems[i]; if (!it) return; cmdClose(); it.run(); }
+
+function wireShell() {
+  document.querySelectorAll('.ws-btn').forEach(b => b.addEventListener('click', () => {
+    state.ws = b.dataset.ws;
+    goTab(state.ws === 'hb' ? 'hb' : 'overview');
+  }));
+  document.getElementById('side-more-btn').addEventListener('click', () =>
+    setMoreOpen(document.getElementById('side-more').hidden));
+  document.getElementById('main').addEventListener('click', e => {
+    const go = e.target.closest('[data-go]');
+    if (go) { goTab(go.dataset.go); return; }
+    if (e.target.closest('[data-cmd-open]')) cmdOpen();
+  });
+  document.getElementById('topsearch').addEventListener('click', cmdOpen);
+  document.getElementById('actions-btn').addEventListener('click', cmdOpen);
+  const cmd = document.getElementById('cmd'), inp = document.getElementById('cmd-input');
+  cmd.addEventListener('click', e => {
+    if (e.target.closest('[data-cmd-close]')) { cmdClose(); return; }
+    const it = e.target.closest('[data-ci]');
+    if (it) cmdRun(+it.dataset.ci);
+  });
+  inp.addEventListener('input', () => { cmdIndex = 0; cmdRender(); });
+  inp.addEventListener('keydown', e => {
+    if (e.key === 'ArrowDown') { e.preventDefault(); cmdIndex = Math.min(cmdItems.length - 1, cmdIndex + 1); cmdRender(); }
+    else if (e.key === 'ArrowUp') { e.preventDefault(); cmdIndex = Math.max(0, cmdIndex - 1); cmdRender(); }
+    else if (e.key === 'Enter') { e.preventDefault(); cmdRun(cmdIndex); }
+  });
+  document.addEventListener('keydown', e => {
+    if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 'k') { e.preventDefault(); cmd.hidden ? cmdOpen() : cmdClose(); }
+    else if (e.key === 'Escape' && !cmd.hidden) cmdClose();
+  });
+}
+
 // ─── Render ───────────────────────────────────────────────────────────────────
 
 function render() {
@@ -3094,12 +3284,27 @@ function render() {
   const countMap = { overview: active.length, pipeline: active.length, kanban: all.length, won: won.length, data: all.length, requested: reqCount, focus: allActive.length, insights: state.deals.length, bdteam: (bdData?.meetings || []).length, sales: (salesData?.months || []).length };
   document.getElementById('results-count').textContent = `${countMap[state.tab] || 0} proposals`;
 
-  // Active tab highlight
-  document.querySelectorAll('.tab').forEach(t => t.classList.toggle('is-active', t.dataset.tab === state.tab));
+  // Shell state: workspace, active item, page title, folded "More" group
+  const meta = TAB_META[state.tab] || TAB_META.home;
+  if (meta.ws) state.ws = meta.ws;
+  const appEl = document.getElementById('main-app');
+  appEl.dataset.ws = state.ws;
+  appEl.dataset.tab = state.tab;
+  document.querySelectorAll('.tab[data-tab]').forEach(t => t.classList.toggle('is-active', t.dataset.tab === state.tab));
+  document.querySelectorAll('.ws-btn').forEach(b => b.classList.toggle('is-active', b.dataset.ws === state.ws));
+  document.getElementById('crumb').textContent = meta.ws === 'hb' ? 'Howrah Bridge' : meta.group ? `OneAlphaMed · ${meta.group}` : 'Control Centre';
+  document.getElementById('page-title').textContent = meta.label;
+  if (MORE_TABS.includes(state.tab)) setMoreOpen(true);
+
+  // Howrah Bridge lives in a persistent frame outside #main
+  const isHB = state.tab === 'hb';
+  document.getElementById('hb-wrap').hidden = !isHB;
+  document.getElementById('main').hidden = isHB;
+  if (isHB) ensureHBFrame();
 
   // The filter bar acts on proposal data — hide it on tabs where it has no
   // effect: Sales (MIS feed), Insights (full-book analysis), BD Team (BD feed).
-  const noFilterTabs = ['sales', 'game', 'insights', 'bdteam', 'competition', 'outreach', 'seo', 'newsletter'];
+  const noFilterTabs = ['sales', 'game', 'insights', 'bdteam', 'competition', 'outreach', 'seo', 'newsletter', 'home', 'hb'];
   document.getElementById('filterbar').style.display = noFilterTabs.includes(state.tab) ? 'none' : '';
 
   // Chip states
@@ -3110,6 +3315,8 @@ function render() {
   // Main content
   const main = document.getElementById('main');
   switch (state.tab) {
+    case 'home':     main.innerHTML = viewHome();           break;
+    case 'hb':       break; // persistent frame, nothing to render
     case 'overview': main.innerHTML = viewOverview(active); break;
     case 'pipeline': main.innerHTML = viewPipeline(active); break;
     case 'kanban':   main.innerHTML = tplKanban();          break;
@@ -3125,7 +3332,7 @@ function render() {
     case 'outreach': main.innerHTML = viewOutreach();         break;
     case 'seo':      main.innerHTML = viewSEO();              break;
     case 'newsletter': main.innerHTML = viewNewsletter();     break;
-    default:         main.innerHTML = viewOverview(active);
+    default:         main.innerHTML = viewHome();
   }
 
   wirePerRender();
@@ -3553,14 +3760,9 @@ function wireStaticEvents() {
   // Tabs
   document.getElementById('tabs').addEventListener('click', e => {
     const tab = e.target.closest('[data-tab]');
-    if (tab) {
-      state.tab = tab.dataset.tab;
-      render();
-      // MIS changes month to month — re-pull if this tab's copy is >10 min old.
-      if ((state.tab === 'sales' || state.tab === 'game') && salesData &&
-          Date.now() - salesLoadedAt > 10 * 60 * 1000) loadSalesData(true);
-    }
+    if (tab) goTab(tab.dataset.tab);
   });
+  wireShell();
 
   // Type chips
   document.getElementById('type-chips').addEventListener('click', e => {
@@ -3580,7 +3782,7 @@ function wireStaticEvents() {
 
   // ⌘K
   document.addEventListener('keydown', e => {
-    if ((e.metaKey || e.ctrlKey) && e.key === 'k') { e.preventDefault(); search.focus(); }
+    if (e.key === '/' && !/input|textarea|select/i.test(document.activeElement?.tagName || '') && !document.getElementById('filterbar').style.display) { e.preventDefault(); search.focus(); }
   });
 
   // Sync button
@@ -3643,7 +3845,7 @@ function logout() {
   state.deals = [];
   salesData = null; salesError = null;
   bdData = null; bdError = null;
-  state.tab = 'overview';
+  state.tab = 'home';
   document.getElementById('main-app').style.display = 'none';
   document.getElementById('auth-overlay').style.display = 'flex';
   const err = document.getElementById('auth-err');
@@ -3683,7 +3885,7 @@ async function login() {
       ? 'Network error — check your connection and retry.'
       : (e.message || 'Login failed. Try again.');
     btn.disabled = false;
-    btn.textContent = 'Access dashboard →';
+    btn.textContent = 'Enter control centre →';
     document.getElementById('pw').value = '';
     document.getElementById('pw').focus();
   }
