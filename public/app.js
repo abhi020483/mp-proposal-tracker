@@ -2714,6 +2714,7 @@ function tplInflowCard() {
 
 const COMPETITION_URL = 'https://vercel-deploy-nu-smoky-43.vercel.app';
 const OUTREACH_URL    = 'https://alphamed-team-outreach.vercel.app';
+const PROSPECT_URL    = 'https://pharma-prospecting-dashboard.vercel.app/';
 const SEO_URL         = 'https://onealphamed-seo-dashboard.vercel.app/';
 
 // ─── Newsletter (Pharma Pulse email outreach metrics) ───────────────────────
@@ -3089,6 +3090,7 @@ const TAB_META = {
   game:        { label: 'Path to Target',  ws: 'oam', group: 'Revenue' },
   bdteam:      { label: 'BD Team',         ws: 'oam', group: 'Team' },
   outreach:    { label: 'Team Outreach',   ws: 'oam', group: 'Team' },
+  prospecting: { label: 'Prospecting',     ws: 'oam', group: 'Team' },
   insights:    { label: 'Insights',        ws: 'oam', group: 'Market' },
   competition: { label: 'Competition',     ws: 'oam', group: 'Market' },
   seo:         { label: 'SEO',             ws: 'oam', group: 'Market' },
@@ -3114,6 +3116,15 @@ function goTab(tab) {
 
 // Created once and never re-rendered, so the Howrah Bridge sign-in survives
 // tab switches and syncs.
+function ensureFrame(slotId, url, title) {
+  const slot = document.getElementById(slotId);
+  if (!slot || slot.firstChild) return;
+  const f = document.createElement('iframe');
+  f.className = 'competition-frame';
+  f.title = title;
+  f.src = url;
+  slot.appendChild(f);
+}
 function ensureHBFrame() {
   const slot = document.getElementById('hb-frame-slot');
   if (!slot || slot.firstChild) return;
@@ -3304,14 +3315,16 @@ function render() {
   if (MORE_TABS.includes(state.tab)) setMoreOpen(true);
 
   // Howrah Bridge lives in a persistent frame outside #main
-  const isHB = state.tab === 'hb';
+  const isHB = state.tab === 'hb', isPR = state.tab === 'prospecting';
   document.getElementById('hb-wrap').hidden = !isHB;
-  document.getElementById('main').hidden = isHB;
+  document.getElementById('pr-wrap').hidden = !isPR;
+  document.getElementById('main').hidden = isHB || isPR;
   if (isHB) ensureHBFrame();
+  if (isPR) ensureFrame('pr-frame-slot', PROSPECT_URL, 'Pharma prospecting dashboard');
 
   // The filter bar acts on proposal data — hide it on tabs where it has no
   // effect: Sales (MIS feed), Insights (full-book analysis), BD Team (BD feed).
-  const noFilterTabs = ['sales', 'game', 'insights', 'bdteam', 'competition', 'outreach', 'seo', 'newsletter', 'home', 'hb'];
+  const noFilterTabs = ['sales', 'game', 'insights', 'bdteam', 'competition', 'outreach', 'seo', 'newsletter', 'home', 'hb', 'prospecting'];
   document.getElementById('filterbar').style.display = noFilterTabs.includes(state.tab) ? 'none' : '';
 
   // Chip states
@@ -3324,6 +3337,7 @@ function render() {
   switch (state.tab) {
     case 'home':     main.innerHTML = viewHome();           break;
     case 'hb':       break; // persistent frame, nothing to render
+    case 'prospecting': break; // persistent frame (own sign-in), nothing to render
     case 'overview': main.innerHTML = viewOverview(active); break;
     case 'pipeline': main.innerHTML = viewPipeline(active); break;
     case 'kanban':   main.innerHTML = tplKanban();          break;
@@ -3856,6 +3870,8 @@ function logout() {
   // Drop the Howrah Bridge frame so its session isn't left on screen.
   const hbSlot = document.getElementById('hb-frame-slot');
   if (hbSlot) hbSlot.innerHTML = '';
+  const prSlot = document.getElementById('pr-frame-slot');
+  if (prSlot) prSlot.innerHTML = '';
   document.getElementById('main-app').style.display = 'none';
   document.getElementById('auth-overlay').style.display = 'flex';
   const err = document.getElementById('auth-err');
